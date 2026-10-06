@@ -23,6 +23,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.event.TableModelEvent;
 
 import com.portfolio.sistemaloja.Aplicacao;
@@ -77,6 +78,10 @@ public class PainelPDV extends JPanel {
         configurarEventos();
         recarregarClientes();
         recarregarProdutos();
+    }
+
+    public void focarBusca() {
+        SwingUtilities.invokeLater(busca::requestFocusInWindow);
     }
 
     private JPanel montarTopo() {

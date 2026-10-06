@@ -3,6 +3,7 @@ package com.portfolio.sistemaloja.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.event.KeyEvent;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
@@ -13,6 +14,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
 import com.portfolio.sistemaloja.Aplicacao;
@@ -27,6 +29,7 @@ public class TelaPrincipal extends JFrame {
     private final transient Aplicacao aplicacao;
     private final transient Usuario usuario;
     private final JLabel relogio = new JLabel();
+    private transient PainelPDV painelPdv;
 
     public TelaPrincipal(Aplicacao aplicacao, Usuario usuario) {
         this.aplicacao = aplicacao;
@@ -43,7 +46,8 @@ public class TelaPrincipal extends JFrame {
         JTabbedPane abas = new JTabbedPane(JTabbedPane.LEFT);
         abas.setFont(abas.getFont().deriveFont(13f));
         abas.addTab("Dashboard", new PainelDashboard(aplicacao));
-        abas.addTab("PDV", new PainelPDV(aplicacao, usuario));
+        painelPdv = new PainelPDV(aplicacao, usuario);
+        abas.addTab("PDV", painelPdv);
         abas.addTab("Produtos", new PainelProdutos(aplicacao));
         abas.addTab("Clientes", new PainelClientes(aplicacao));
         abas.addTab("Relatórios", new PainelRelatorios(aplicacao));
@@ -67,6 +71,12 @@ public class TelaPrincipal extends JFrame {
         sistema.addSeparator();
         sistema.add(sair);
 
+        JMenu operacao = new JMenu("Operação");
+        JMenuItem pdv = new JMenuItem("PDV");
+        pdv.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0));
+        pdv.addActionListener(e -> abrirPdv(abas));
+        operacao.add(pdv);
+
         JMenu cadastros = new JMenu("Cadastros");
         JMenuItem usuarios = new JMenuItem("Usuários...");
         usuarios.setEnabled(usuario.isAdmin());
@@ -80,8 +90,14 @@ public class TelaPrincipal extends JFrame {
         cadastros.add(clientes);
 
         barra.add(sistema);
+        barra.add(operacao);
         barra.add(cadastros);
         return barra;
+    }
+
+    private void abrirPdv(JTabbedPane abas) {
+        abas.setSelectedIndex(1);
+        painelPdv.focarBusca();
     }
 
     private void abrirDialogo(java.awt.Dialog dialogo) {
