@@ -6,10 +6,12 @@ import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
+import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -17,10 +19,12 @@ import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.SpinnerDateModel;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.io.File;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
@@ -46,6 +50,10 @@ public class PainelRelatorios extends JPanel {
             Ui.modeloTabela("Produto", "Estoque", "Preço");
     private final JTable tabelaEstoque = Ui.tabela(modeloEstoque);
     private List<Venda> vendas = List.of();
+    private List<ProdutoVendado> maisVendidos = List.of();
+    private RelatorioService.ResumoDashboard resumoAtual;
+    private LocalDate periodoInicio;
+    private LocalDate periodoFim;
 
     public PainelRelatorios(Aplicacao aplicacao) {
         this.aplicacao = aplicacao;
@@ -79,6 +87,15 @@ public class PainelRelatorios extends JPanel {
         cancelar.setForeground(Color.WHITE);
         cancelar.addActionListener(e -> cancelarVenda());
         periodo.add(cancelar);
+
+        JButton pdf = new JButton("Exportar PDF");
+        pdf.setToolTipText("Gera o relatório do período em PDF");
+        pdf.addActionListener(e -> exportar("pdf"));
+        JButton excel = new JButton("Exportar Excel");
+        excel.setToolTipText("Gera o relatório do período em planilha .xlsx");
+        excel.addActionListener(e -> exportar("xlsx"));
+        periodo.add(pdf);
+        periodo.add(excel);
 
         topo.add(periodo, BorderLayout.CENTER);
         return topo;
@@ -150,6 +167,9 @@ public class PainelRelatorios extends JPanel {
         LocalDate ate = dataDo(fim);
         try {
             RelatorioService.ResumoDashboard resumo = aplicacao.getRelatorios().resumoPeriodo(de, ate);
+            resumoAtual = resumo;
+            periodoInicio = de;
+            periodoFim = ate;
             cardVendas.setText(String.valueOf(resumo.vendas()));
             cardFaturamento.setText(Ui.moeda(resumo.faturamento()));
             cardTicket.setText(Ui.moeda(resumo.ticketMedio()));
@@ -169,6 +189,7 @@ public class PainelRelatorios extends JPanel {
             }
 
             List<ProdutoVendado> top = aplicacao.getRelatorios().maisVendidos(de, ate);
+            maisVendidos = top;
             modeloTop.setRowCount(0);
             top.forEach(p -> modeloTop.addRow(new Object[]{p.nome(), p.quantidade(), Ui.moeda(p.totalVendido())}));
 
@@ -176,6 +197,38 @@ public class PainelRelatorios extends JPanel {
             modeloEstoque.setRowCount(0);
             baixo.forEach(p -> modeloEstoque.addRow(new Object[]{p.nome(), p.estoque(), Ui.moeda(p.precoVenda())}));
         } catch (RuntimeException e) {
+            Ui.erro(this, e.getMessage());
+        }
+    }
+
+    private void exportar(String extensao) {
+        if (resumoAtual == null || periodoInicio == null) {
+            gerar();
+        }
+        ExportacaoService.DadosRelatorio dados = new ExportacaoService.DadosRelatorio(
+                periodoInicio, periodoFim, resumoAtual, vendas, maisVendidos);
+
+        JFileChooser seletor = new JFileChooser();
+        seletor.setDialogTitle("Exportar relatório de vendas");
+        seletor.setSelectedFile(new File(aplicacao.getExportacao().nomeSugerido(dados, extensao)));
+        seletor.setFileFilter(new FileNameExtensionFilter(
+                "Arquivo ." + extensao, extensao));
+        if (seletor.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File arquivo = seletor.getSelectedFile();
+        if (!arquivo.getName().toLowerCase().endsWith("." + extensao)) {
+            arquivo = new File(arquivo.getAbsolutePath() + "." + extensao);
+        }
+        try {
+            if ("pdf".equals(extensao)) {
+                aplicacao.getExportacao().exportarPdf(arquivo, dados);
+            } else {
+                aplicacao.getExportacao().exportarExcel(arquivo, dados);
+            }
+            Ui.info(this, "Relatório exportado com sucesso:\n" + arquivo.getAbsolutePath());
+        } catch (ExportacaoService.ExportacaoException e) {
             Ui.erro(this, e.getMessage());
         }
     }
