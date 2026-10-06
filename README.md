@@ -19,6 +19,7 @@ regras de negócio e testes automatizados.
 ### Dashboard
 - Cards de **vendas do dia**, **faturamento**, **ticket médio** e **itens com estoque baixo**
 - Tabelas de **produtos mais vendidos** e **estoque crítico** (≤ 5 un.)
+- **Gráfico de faturamento dos últimos 14 dias** logo abaixo das tabelas, com tooltip por dia
 
 ### PDV (Ponto de Venda)
 - Busca por **código de barras** (Enter adiciona direto) ou **nome**, com duplo clique
@@ -26,10 +27,13 @@ regras de negócio e testes automatizados.
 - **4 formas de pagamento**: dinheiro, débito, crédito e PIX, com **cálculo de troco** em tempo real
 - Seleção de cliente opcional e **cupom não fiscal** gerado no fim da venda
 - Baixa de estoque **transacional** (commit/rollback) e validação de estoque antes de vender
+- Atalho **F2** (menu Operação) abre o PDV de qualquer tela e foca a busca de produtos
 
 ### Cadastros
 - **Produtos**: código de barras único, categoria (criada em linha de comando), preço de custo/venda,
   margem calculada, estoque e situação ativo/inativo
+- **Importação/exportação em CSV** (UTF-8 com BOM, separador `;`): valida linha a linha,
+  importa o que é válido, reporta o que não é e grava **um único evento de auditoria**
 - **Clientes**: CPF com **validação real de dígitos verificadores**, e-mail, busca e exclusão
 - **Usuários** (somente admin): criação com perfil e validação de senha
 
@@ -117,9 +121,9 @@ Ou pela IDE: execute a classe `com.portfolio.sistemaloja.App`.
 mvn test
 ```
 
-**67 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda,
-a exportação em PDF/Excel, o gráfico, as migrações do Flyway e a trilha de auditoria —
-rodam sobre **H2 em modo MySQL**, ou seja, não dependem do Docker.
+**75 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda,
+a exportação em PDF/Excel, o gráfico, o CSV de produtos, as migrações do Flyway e a trilha de
+auditoria — rodam sobre **H2 em modo MySQL**, ou seja, não dependem do Docker.
 
 ---
 
@@ -173,7 +177,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1__esquema_inicial.sql + V2__auditoria.sql
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 67 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 75 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -229,12 +233,13 @@ sistema-loja/
 - [x] Migrações de banco com Flyway (V1 esquema, V2 auditoria, baseline)
 - [x] Logs em arquivo com rotação e stack traces da interface (Log4j2)
 - [x] Trilha de auditoria com consulta na aba Relatórios (admin)
-- [x] 67 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 75 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Jar executável com `mvn package`
-- [ ] Gráfico de vendas por dia no dashboard
-- [ ] Importação/exportação de produtos em CSV
-- [ ] Tecla de atalho global para o PDV
-- [ ] Publicar no GitHub
+- [x] Gráfico de faturamento dos últimos 14 dias no dashboard
+- [x] Importação/exportação de produtos em CSV
+- [x] Tecla de atalho F2 para o PDV
+- [x] CI no GitHub Actions com badge de build
+- [x] Publicar no GitHub
 
 ---
 
