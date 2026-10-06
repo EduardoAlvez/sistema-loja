@@ -30,6 +30,7 @@ public class PainelDashboard extends JPanel {
     private final JLabel cardEstoque = cardValor();
     private final JTable tabelaTop = Ui.tabela(Ui.modeloTabela("Produto", "Qtd. vendida", "Total vendido"));
     private final JTable tabelaEstoque = Ui.tabela(Ui.modeloTabela("Produto", "Estoque", "Preço"));
+    private final PainelGrafico grafico = new PainelGrafico();
 
     public PainelDashboard(Aplicacao aplicacao) {
         this.aplicacao = aplicacao;
@@ -88,14 +89,27 @@ public class PainelDashboard extends JPanel {
         return valor;
     }
 
-    private JSplitPane montarCentro() {
+    private JPanel montarCentro() {
         JPanel esquerda = painelTabela("Mais vendidos (hoje)", new JScrollPane(tabelaTop));
         JPanel direita = painelTabela("Estoque baixo (≤ 5 un.)", new JScrollPane(tabelaEstoque));
         JSplitPane divisao = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, esquerda, direita);
         divisao.setResizeWeight(0.5);
         divisao.setDividerSize(8);
         divisao.setBorder(null);
-        return divisao;
+
+        JPanel painelGrafico = new JPanel(new BorderLayout(0, 8));
+        painelGrafico.setOpaque(false);
+        JLabel rotulo = new JLabel("Faturamento — últimos 14 dias");
+        rotulo.setFont(rotulo.getFont().deriveFont(Font.BOLD, 14f));
+        painelGrafico.add(rotulo, BorderLayout.NORTH);
+        grafico.setPreferredSize(new Dimension(grafico.getPreferredSize().width, 200));
+        painelGrafico.add(grafico, BorderLayout.CENTER);
+
+        JPanel centro = new JPanel(new BorderLayout(0, 12));
+        centro.setOpaque(false);
+        centro.add(divisao, BorderLayout.CENTER);
+        centro.add(painelGrafico, BorderLayout.SOUTH);
+        return centro;
     }
 
     private JPanel painelTabela(String titulo, JScrollPane rolagem) {
@@ -127,6 +141,9 @@ public class PainelDashboard extends JPanel {
         preencher(tabelaEstoque, baixo.stream()
                 .map(p -> new Object[]{p.nome(), p.estoque(), Ui.moeda(p.precoVenda())})
                 .toList());
+
+        grafico.setDados(aplicacao.getRelatorios().faturamentoPorDia(
+                java.time.LocalDate.now().minusDays(13), java.time.LocalDate.now()));
     }
 
     private void preencher(JTable tabela, List<Object[]> linhas) {

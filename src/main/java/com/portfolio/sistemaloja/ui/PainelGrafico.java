@@ -32,6 +32,10 @@ public class PainelGrafico extends JPanel {
         repaint();
     }
 
+    public List<VendaDoDia> getDados() {
+        return dados;
+    }
+
     @Override
     protected void paintComponent(Graphics graficos) {
         super.paintComponent(graficos);
