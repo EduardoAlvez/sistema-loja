@@ -9,6 +9,22 @@ regras de negócio e testes automatizados.
 
 ---
 
+## Telas
+
+| Login | Dashboard |
+|-------|-----------|
+| ![Tela de login](docs/LOGIN.png) | ![Dashboard com cards e gráfico de faturamento](docs/DASHBOARD.png) |
+
+| PDV | Produtos |
+|-----|----------|
+| ![Ponto de venda com carrinho](docs/PDV.png) | ![Produtos com botões de importação e exportação CSV](docs/PRODUTOS.png) |
+
+| Relatórios |
+|------------|
+| ![Relatórios com abas de resumo, vendas, mais vendidos e auditoria](docs/RELATORIOS.png) |
+
+---
+
 ## Funcionalidades
 
 ### Acesso
@@ -99,6 +115,9 @@ java -jar target/sistema-loja-1.0.0.jar
 ```
 
 Ou pela IDE: execute a classe `com.portfolio.sistemaloja.App`.
+
+Também é possível baixar o jar pronto na página de
+[Releases](https://github.com/EduardoAlvez/sistema-loja/releases).
 
 ### Credenciais padrão
 
@@ -240,6 +259,7 @@ sistema-loja/
 - [x] Tecla de atalho F2 para o PDV
 - [x] CI no GitHub Actions com badge de build
 - [x] Publicar no GitHub
+- [x] Telas no README e release `v1.0.0` com jar para download
 
 ---
 
