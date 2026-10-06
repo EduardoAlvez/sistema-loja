@@ -1,0 +1,22 @@
+# Compilação
+out/
+target/
+*.class
+dependency-reduced-pom.xml
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Eclipse
+.classpath
+.project
+.settings/
+.factorypath
+
+# VS Code
+.vscode/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
