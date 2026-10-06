@@ -1,25 +1,5 @@
 package com.portfolio.sistemaloja.ui;
 
-import com.portfolio.sistemaloja.Aplicacao;
-import com.portfolio.sistemaloja.model.Cliente;
-import com.portfolio.sistemaloja.model.FormaPagamento;
-import com.portfolio.sistemaloja.model.Produto;
-import com.portfolio.sistemaloja.model.Usuario;
-import com.portfolio.sistemaloja.model.Venda;
-import com.portfolio.sistemaloja.model.VendaItem;
-import com.portfolio.sistemaloja.service.ValidacaoException;
-
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import javax.swing.event.TableModelEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -33,6 +13,26 @@ import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.event.TableModelEvent;
+
+import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.Cliente;
+import com.portfolio.sistemaloja.model.FormaPagamento;
+import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.model.Usuario;
+import com.portfolio.sistemaloja.model.Venda;
+import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.service.ValidacaoException;
 
 public class PainelPDV extends JPanel {
 

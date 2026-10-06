@@ -1,9 +1,11 @@
 package com.portfolio.sistemaloja.ui;
 
-import com.portfolio.sistemaloja.Aplicacao;
-import com.portfolio.sistemaloja.model.Usuario;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
-import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -12,11 +14,9 @@ import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
+
+import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.Usuario;
 
 public class TelaPrincipal extends JFrame {
 

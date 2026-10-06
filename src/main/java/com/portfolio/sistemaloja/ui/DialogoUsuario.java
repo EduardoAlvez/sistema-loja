@@ -1,9 +1,13 @@
 package com.portfolio.sistemaloja.ui;
 
-import com.portfolio.sistemaloja.Aplicacao;
-import com.portfolio.sistemaloja.model.PerfilUsuario;
-import com.portfolio.sistemaloja.model.Usuario;
-import com.portfolio.sistemaloja.service.ValidacaoException;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.FlowLayout;
+import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -15,15 +19,11 @@ import javax.swing.JPasswordField;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dialog;
-import java.awt.FlowLayout;
-import java.awt.Frame;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.util.List;
+
+import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.PerfilUsuario;
+import com.portfolio.sistemaloja.model.Usuario;
+import com.portfolio.sistemaloja.service.ValidacaoException;
 
 public class DialogoUsuario extends JDialog {
 

@@ -1,9 +1,11 @@
 package com.portfolio.sistemaloja.ui;
 
-import com.portfolio.sistemaloja.Aplicacao;
-import com.portfolio.sistemaloja.model.Categoria;
-import com.portfolio.sistemaloja.model.Produto;
-import com.portfolio.sistemaloja.service.ValidacaoException;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.math.BigDecimal;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -13,13 +15,11 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
-import java.awt.Frame;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.math.BigDecimal;
+
+import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.Categoria;
+import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.service.ValidacaoException;
 
 public class DialogoProduto extends JDialog {
 

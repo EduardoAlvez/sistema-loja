@@ -1,23 +1,21 @@
 package com.portfolio.sistemaloja.ui;
 
-import com.portfolio.sistemaloja.Aplicacao;
-import com.portfolio.sistemaloja.model.Produto;
-
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.math.BigDecimal;
 import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+
+import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.Produto;
 
 public class PainelProdutos extends JPanel {
 
