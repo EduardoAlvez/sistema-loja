@@ -29,12 +29,13 @@ class AuditoriaServiceTest {
         app.getAuditoria().registrar("PRODUTO_SALVO", "PRODUTO", 7L, "Refrigerante Cola 2L");
 
         List<EventoAuditoria> eventos = hoje();
-        assertEquals(1, eventos.size());
-        assertEquals("admin", eventos.get(0).usuarioLogin());
+        assertEquals(2, eventos.size());
         assertEquals("PRODUTO_SALVO", eventos.get(0).acao());
+        assertEquals("admin", eventos.get(0).usuarioLogin());
         assertEquals("PRODUTO", eventos.get(0).entidade());
         assertEquals(7L, eventos.get(0).entidadeId());
         assertEquals("Refrigerante Cola 2L", eventos.get(0).detalhe());
+        assertEquals("LOGIN_OK", eventos.get(1).acao());
     }
 
     @Test

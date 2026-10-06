@@ -10,9 +10,11 @@ import java.util.List;
 public class UsuarioService {
 
     private final UsuarioRepository usuarios;
+    private final AuditoriaService auditoria;
 
-    public UsuarioService(UsuarioRepository usuarios) {
+    public UsuarioService(UsuarioRepository usuarios, AuditoriaService auditoria) {
         this.usuarios = usuarios;
+        this.auditoria = auditoria;
     }
 
     public List<Usuario> listar() {
@@ -39,6 +41,8 @@ public class UsuarioService {
         String sal = Senhas.gerarSal();
         usuario.setSal(sal);
         usuario.setSenhaHash(Senhas.hash(senha, sal));
-        return usuarios.salvar(usuario);
+        Usuario criado = usuarios.salvar(usuario);
+        auditoria.registrar("USUARIO_CRIADO", "USUARIO", criado.getId(), criado.getLogin());
+        return criado;
     }
 }

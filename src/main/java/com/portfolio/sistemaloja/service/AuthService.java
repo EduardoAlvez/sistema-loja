@@ -15,10 +15,12 @@ public class AuthService {
 
     private final UsuarioRepository usuarios;
     private final Sessao sessao;
+    private final AuditoriaService auditoria;
 
-    public AuthService(UsuarioRepository usuarios, Sessao sessao) {
+    public AuthService(UsuarioRepository usuarios, Sessao sessao, AuditoriaService auditoria) {
         this.usuarios = usuarios;
         this.sessao = sessao;
+        this.auditoria = auditoria;
     }
 
     public Usuario autenticar(String login, String senha) {
@@ -31,15 +33,20 @@ public class AuthService {
         Optional<Usuario> encontrado = usuarios.buscarPorLogin(login.strip());
         if (encontrado.isEmpty() || !Senhas.confere(senha, encontrado.get().getSal(), encontrado.get().getSenhaHash())) {
             LOG.warn("Tentativa de login invalida para '{}'", login.strip());
+            auditoria.registrarComo(login.strip(), "LOGIN_FALHA", "USUARIO", null,
+                    "Login ou senha invalidos");
             throw new ValidacaoException("Login ou senha inválidos.");
         }
         Usuario usuario = encontrado.get();
         if (!usuario.isAtivo()) {
             LOG.warn("Login '{}' desativado tentou entrar", login.strip());
+            auditoria.registrarComo(login.strip(), "LOGIN_FALHA", "USUARIO", null,
+                    "Usuario desativado");
             throw new ValidacaoException("Usuário desativado. Contate o administrador.");
         }
         LOG.info("Login realizado: {} ({})", usuario.getLogin(), usuario.getPerfil());
         sessao.setAtual(usuario);
+        auditoria.registrar("LOGIN_OK", "USUARIO", usuario.getId(), usuario.getLogin());
         return usuario;
     }
 }

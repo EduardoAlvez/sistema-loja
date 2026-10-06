@@ -8,9 +8,11 @@ import java.util.List;
 public class ClienteService {
 
     private final ClienteRepository clientes;
+    private final AuditoriaService auditoria;
 
-    public ClienteService(ClienteRepository clientes) {
+    public ClienteService(ClienteRepository clientes, AuditoriaService auditoria) {
         this.clientes = clientes;
+        this.auditoria = auditoria;
     }
 
     public List<Cliente> listar(String termo) {
@@ -37,7 +39,9 @@ public class ClienteService {
                 && !cliente.getEmail().matches("^[\\w.+-]+@[\\w-]+\\.[\\w.]+$")) {
             throw new ValidacaoException("E-mail inválido.");
         }
-        return clientes.salvar(cliente);
+        Cliente salvo = clientes.salvar(cliente);
+        auditoria.registrar("CLIENTE_SALVO", "CLIENTE", salvo.getId(), salvo.getNome());
+        return salvo;
     }
 
     public void remover(long id) {

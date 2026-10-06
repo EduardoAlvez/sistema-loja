@@ -40,14 +40,14 @@ public class Aplicacao {
         RelatorioRepository relatorioRepository = new RelatorioRepository(fonte);
         AuditoriaRepository auditoriaRepository = new AuditoriaRepository(fonte);
 
-        this.auth = new AuthService(usuarioRepository, sessao);
-        this.produtos = new ProdutoService(produtoRepository, categoriaRepository);
-        this.clientes = new ClienteService(clienteRepository);
-        this.vendas = new VendaService(vendaRepository, produtoRepository);
-        this.usuarios = new UsuarioService(usuarioRepository);
+        this.auditoria = new AuditoriaService(auditoriaRepository, sessao);
+        this.auth = new AuthService(usuarioRepository, sessao, auditoria);
+        this.produtos = new ProdutoService(produtoRepository, categoriaRepository, auditoria);
+        this.clientes = new ClienteService(clienteRepository, auditoria);
+        this.vendas = new VendaService(vendaRepository, produtoRepository, auditoria);
+        this.usuarios = new UsuarioService(usuarioRepository, auditoria);
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
         this.exportacao = new ExportacaoService();
-        this.auditoria = new AuditoriaService(auditoriaRepository, sessao);
         this.produtoRepository = produtoRepository;
     }
 

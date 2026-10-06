@@ -22,10 +22,12 @@ public class VendaService {
 
     private final VendaRepository vendas;
     private final ProdutoRepository produtos;
+    private final AuditoriaService auditoria;
 
-    public VendaService(VendaRepository vendas, ProdutoRepository produtos) {
+    public VendaService(VendaRepository vendas, ProdutoRepository produtos, AuditoriaService auditoria) {
         this.vendas = vendas;
         this.produtos = produtos;
+        this.auditoria = auditoria;
     }
 
     public Venda registrar(Venda venda) {
@@ -45,12 +47,15 @@ public class VendaService {
         Venda registrada = vendas.registrar(venda);
         LOG.info("Venda registrada: numero {} total {} forma {}",
                 registrada.getNumero(), registrada.getTotal(), registrada.getFormaPagamento());
+        auditoria.registrar("VENDA_REGISTRADA", "VENDA", registrada.getId(),
+                "numero " + registrada.getNumero() + " total " + registrada.getTotal());
         return registrada;
     }
 
     public void cancelar(long vendaId) {
         vendas.cancelar(vendaId);
         LOG.warn("Venda {} cancelada", vendaId);
+        auditoria.registrar("VENDA_CANCELADA", "VENDA", vendaId, null);
     }
 
     public List<Venda> listar(java.time.LocalDate inicio, java.time.LocalDate fim) {

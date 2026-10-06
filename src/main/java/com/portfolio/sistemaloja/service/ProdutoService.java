@@ -12,10 +12,13 @@ public class ProdutoService {
 
     private final ProdutoRepository produtos;
     private final CategoriaRepository categorias;
+    private final AuditoriaService auditoria;
 
-    public ProdutoService(ProdutoRepository produtos, CategoriaRepository categorias) {
+    public ProdutoService(ProdutoRepository produtos, CategoriaRepository categorias,
+                          AuditoriaService auditoria) {
         this.produtos = produtos;
         this.categorias = categorias;
+        this.auditoria = auditoria;
     }
 
     public List<Produto> listar(String termo) {
@@ -40,7 +43,9 @@ public class ProdutoService {
         if (produtos.codigoExiste(produto.getCodigoBarras(), produto.getId())) {
             throw new ValidacaoException("Já existe um produto com esse código de barras.");
         }
-        return produtos.salvar(produto);
+        Produto salvo = produtos.salvar(produto);
+        auditoria.registrar("PRODUTO_SALVO", "PRODUTO", salvo.getId(), salvo.getNome());
+        return salvo;
     }
 
     public void remover(long id) {
