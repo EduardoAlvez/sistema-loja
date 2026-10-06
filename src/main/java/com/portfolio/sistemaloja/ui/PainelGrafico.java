@@ -39,8 +39,10 @@ public class PainelGrafico extends JPanel {
     @Override
     protected void paintComponent(Graphics graficos) {
         super.paintComponent(graficos);
-        desenho = grafico.render(getWidth(), getHeight(), dados);
-        graficos.drawImage(desenho.imagem(), 0, 0, null);
+        java.awt.Graphics2D graficos2d = (java.awt.Graphics2D) graficos;
+        double escala = graficos2d.getTransform().getScaleX();
+        desenho = grafico.render(getWidth(), getHeight(), dados, escala);
+        graficos2d.drawImage(desenho.imagem(), 0, 0, getWidth(), getHeight(), null);
     }
 
     @Override

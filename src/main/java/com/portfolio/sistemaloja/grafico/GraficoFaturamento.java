@@ -40,11 +40,18 @@ public final class GraficoFaturamento {
     }
 
     public Desenho render(int largura, int altura, List<VendaDoDia> dados) {
-        BufferedImage imagem = new BufferedImage(largura, altura, BufferedImage.TYPE_INT_RGB);
+        return render(largura, altura, dados, 1.0);
+    }
+
+    public Desenho render(int largura, int altura, List<VendaDoDia> dados, double escala) {
+        int pixelsLargura = Math.max(1, (int) Math.ceil(largura * escala));
+        int pixelsAltura = Math.max(1, (int) Math.ceil(altura * escala));
+        BufferedImage imagem = new BufferedImage(pixelsLargura, pixelsAltura, BufferedImage.TYPE_INT_RGB);
         Graphics2D graficos = imagem.createGraphics();
         List<Barra> barras = new ArrayList<>();
         boolean semVendas = dados.stream().allMatch(d -> d.total().signum() == 0);
         try {
+            graficos.scale(escala, escala);
             graficos.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             graficos.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             desenhar(graficos, largura, altura, dados, barras, semVendas);

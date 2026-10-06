@@ -71,6 +71,21 @@ class GraficoFaturamentoTest {
         assertTrue(desenho.barras().isEmpty());
     }
 
+    @Test
+    void renderComEscalaDobraOsPixelsSemMudarAsBarras() {
+        List<VendaDoDia> dados = List.of(
+                new VendaDoDia(LocalDate.now(), 3, new BigDecimal("150.00")));
+
+        Desenho normal = grafico.render(600, 240, dados);
+        Desenho alto = grafico.render(600, 240, dados, 2.0);
+
+        assertEquals(1200, alto.imagem().getWidth(), "pixels dobram na horizontal");
+        assertEquals(480, alto.imagem().getHeight(), "pixels dobram na vertical");
+        assertEquals(normal.barras(), alto.barras(),
+                "barras continuam em unidades do componente para os tooltips");
+        assertTrue(possuiPixelDaBarra(alto.imagem()), "a barra deve continuar pintada");
+    }
+
     private boolean possuiPixelDaBarra(BufferedImage imagem) {
         for (int y = 0; y < imagem.getHeight(); y++) {
             for (int x = 0; x < imagem.getWidth(); x++) {

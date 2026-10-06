@@ -138,7 +138,7 @@ public class ExportacaoService {
         int altura = 220;
         int escala = 2;
         GraficoFaturamento grafico = new GraficoFaturamento();
-        GraficoFaturamento.Desenho desenho = grafico.render(largura * escala, altura * escala, porDia);
+        GraficoFaturamento.Desenho desenho = grafico.render(largura, altura, porDia, escala);
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         ImageIO.write(desenho.imagem(), "png", buffer);
         org.openpdf.text.Image imagem = org.openpdf.text.Image.getInstance(buffer.toByteArray());
