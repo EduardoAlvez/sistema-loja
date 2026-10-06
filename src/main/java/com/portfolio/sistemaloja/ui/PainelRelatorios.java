@@ -6,6 +6,7 @@ import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
+import com.portfolio.sistemaloja.repository.VendaDoDia;
 import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
 
@@ -41,6 +42,7 @@ public class PainelRelatorios extends JPanel {
     private final JLabel cardVendas = cardValor();
     private final JLabel cardFaturamento = cardValor();
     private final JLabel cardTicket = cardValor();
+    private final PainelGrafico grafico = new PainelGrafico();
 
     private final javax.swing.table.DefaultTableModel modeloVendas =
             Ui.modeloTabela("Número", "Data/Hora", "Cliente", "Operador", "Pagamento", "Total", "Status");
@@ -53,6 +55,7 @@ public class PainelRelatorios extends JPanel {
     private final JTable tabelaEstoque = Ui.tabela(modeloEstoque);
     private List<Venda> vendas = List.of();
     private List<ProdutoVendado> maisVendidos = List.of();
+    private List<VendaDoDia> porDia = List.of();
     private RelatorioService.ResumoDashboard resumoAtual;
     private LocalDate periodoInicio;
     private LocalDate periodoFim;
@@ -124,10 +127,12 @@ public class PainelRelatorios extends JPanel {
         cards.add(card("Ticket médio", cardTicket, new Color(130, 90, 160)));
         painel.add(cards, BorderLayout.NORTH);
 
+        painel.add(grafico, BorderLayout.CENTER);
+
         JLabel dica = Ui.rotulo("A aba Vendas mostra o histórico detalhado; selecione uma linha para cancelar "
                 + "uma venda (o estoque é devolvido automaticamente).");
         dica.setForeground(new Color(110, 118, 126));
-        painel.add(dica, BorderLayout.CENTER);
+        painel.add(dica, BorderLayout.SOUTH);
         return painel;
     }
 
@@ -194,6 +199,9 @@ public class PainelRelatorios extends JPanel {
             maisVendidos = top;
             modeloTop.setRowCount(0);
             top.forEach(p -> modeloTop.addRow(new Object[]{p.nome(), p.quantidade(), Ui.moeda(p.totalVendido())}));
+
+            porDia = aplicacao.getRelatorios().faturamentoPorDia(de, ate);
+            grafico.setDados(porDia);
 
             List<ProdutoEstoque> baixo = aplicacao.getRelatorios().estoqueBaixo();
             modeloEstoque.setRowCount(0);
