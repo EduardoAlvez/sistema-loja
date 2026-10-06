@@ -1,4 +1,4 @@
-# Sistema de Gestão de Loja / PDV 🏪
+# Sistema de Gestão de Loja / PDV
 
 Sistema completo de gestão de loja com **PDV (ponto de venda)** em **Java Desktop (Swing)** e **MySQL**,
 desenvolvido como projeto de portfólio para demonstrar arquitetura em camadas, JDBC puro,
@@ -6,7 +6,7 @@ regras de negócio e testes automatizados.
 
 ---
 
-## ✨ Funcionalidades
+## Funcionalidades
 
 ### Acesso
 - **Login** com perfis distintos: **Administrador** e **Operador de caixa**
@@ -58,7 +58,7 @@ regras de negócio e testes automatizados.
 
 ---
 
-## 🚀 Como executar
+## Como executar
 
 ### Pré-requisitos
 - **JDK 21** ou superior
@@ -119,7 +119,7 @@ rodam sobre **H2 em modo MySQL**, ou seja, não dependem do Docker.
 
 ---
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 Projeto em **quatro camadas**, com dependência sempre de cima para baixo:
 
@@ -149,7 +149,7 @@ a mesma classe é usada pelos testes apontando para o H2.
 
 ---
 
-## 📁 Estrutura do projeto
+## Estrutura do projeto
 
 ```
 sistema-loja/
@@ -175,7 +175,7 @@ sistema-loja/
 
 ---
 
-## 🛠️ Tecnologias
+## Tecnologias
 
 - **Java 21** + **Swing** (interface desktop)
 - **FlatLaf 3.5** (visual moderno nativo do Swing)
@@ -190,7 +190,7 @@ sistema-loja/
 
 ---
 
-## 📝 Notas de implementação
+## Notas de implementação
 
 - **Venda em transação**: `VendaRepository.registrar()` faz `commit` da venda + itens + baixa de
   estoque juntos; qualquer falha (ex.: estoque insuficiente) dispara `rollback` e nada é gravado.
@@ -212,7 +212,7 @@ sistema-loja/
 
 ---
 
-## 📌 Roadmap
+## Roadmap
 
 - [x] Migração de esquema + dados de exemplo
 - [x] Login com perfis e senha com hash
@@ -234,7 +234,7 @@ sistema-loja/
 
 ---
 
-## 👤 Autor
+## Autor
 
 **Eduardo Alvez** — [byteswood@gmail.com](mailto:byteswood@gmail.com)
 
