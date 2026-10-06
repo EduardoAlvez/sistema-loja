@@ -21,6 +21,8 @@ import java.util.List;
 
 public class PainelProdutos extends JPanel {
 
+    private static final long serialVersionUID = 1L;
+
     private final transient Aplicacao aplicacao;
     private final JTextField busca = new JTextField(24);
     private final javax.swing.table.DefaultTableModel modelo =

@@ -32,6 +32,8 @@ import java.util.List;
 
 public class PainelRelatorios extends JPanel {
 
+    private static final long serialVersionUID = 1L;
+
     private final transient Aplicacao aplicacao;
     private final JSpinner inicio = dataSpinner();
     private final JSpinner fim = dataSpinner();

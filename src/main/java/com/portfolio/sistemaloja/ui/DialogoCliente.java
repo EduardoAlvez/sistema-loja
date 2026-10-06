@@ -20,6 +20,8 @@ import java.awt.Insets;
 
 public class DialogoCliente extends JDialog {
 
+    private static final long serialVersionUID = 1L;
+
     private final transient Aplicacao aplicacao;
     private final Cliente cliente;
     private final Runnable aoSalvar;

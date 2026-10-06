@@ -36,6 +36,8 @@ import java.util.List;
 
 public class PainelPDV extends JPanel {
 
+    private static final long serialVersionUID = 1L;
+
     private final transient Aplicacao aplicacao;
     private final transient Usuario usuario;
 

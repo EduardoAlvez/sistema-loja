@@ -23,6 +23,8 @@ import java.math.BigDecimal;
 
 public class DialogoProduto extends JDialog {
 
+    private static final long serialVersionUID = 1L;
+
     private final transient Aplicacao aplicacao;
     private final Produto produto;
     private final Runnable aoSalvar;

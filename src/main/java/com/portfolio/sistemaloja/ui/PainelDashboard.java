@@ -21,6 +21,8 @@ import java.util.List;
 
 public class PainelDashboard extends JPanel {
 
+    private static final long serialVersionUID = 1L;
+
     private final transient Aplicacao aplicacao;
     private final JLabel cardVendas = cardValor();
     private final JLabel cardFaturamento = cardValor();

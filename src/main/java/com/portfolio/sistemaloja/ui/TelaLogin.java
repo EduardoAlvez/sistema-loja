@@ -23,6 +23,8 @@ import java.awt.event.KeyEvent;
 
 public class TelaLogin extends JFrame {
 
+    private static final long serialVersionUID = 1L;
+
     private final transient Aplicacao aplicacao;
     private final JTextField campoLogin = new JTextField(18);
     private final JPasswordField campoSenha = new JPasswordField(18);

@@ -27,6 +27,8 @@ import java.util.List;
 
 public class DialogoUsuario extends JDialog {
 
+    private static final long serialVersionUID = 1L;
+
     private final transient Aplicacao aplicacao;
     private final JTextField nome = new JTextField(18);
     private final JTextField login = new JTextField(14);

@@ -20,6 +20,8 @@ import java.time.format.DateTimeFormatter;
 
 public class TelaPrincipal extends JFrame {
 
+    private static final long serialVersionUID = 1L;
+
     private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
 
     private final transient Aplicacao aplicacao;
