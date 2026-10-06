@@ -4,6 +4,7 @@ import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.repository.EventoAuditoria;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
@@ -56,6 +57,9 @@ public class PainelRelatorios extends JPanel {
     private final javax.swing.table.DefaultTableModel modeloEstoque =
             Ui.modeloTabela("Produto", "Estoque", "Preço");
     private final JTable tabelaEstoque = Ui.tabela(modeloEstoque);
+    private final javax.swing.table.DefaultTableModel modeloAuditoria =
+            Ui.modeloTabela("Data/Hora", "Usuário", "Ação", "Entidade", "ID", "Detalhe");
+    private final JTable tabelaAuditoria = Ui.tabela(modeloAuditoria);
     private List<Venda> vendas = List.of();
     private List<ProdutoVendado> maisVendidos = List.of();
     private List<VendaDoDia> porDia = List.of();
@@ -115,7 +119,14 @@ public class PainelRelatorios extends JPanel {
         abas.addTab("Vendas", new JScrollPane(tabelaVendas));
         abas.addTab("Mais vendidos", new JScrollPane(tabelaTop));
         abas.addTab("Estoque baixo", new JScrollPane(tabelaEstoque));
+        if (eAdmin()) {
+            abas.addTab("Auditoria", new JScrollPane(tabelaAuditoria));
+        }
         return abas;
+    }
+
+    private boolean eAdmin() {
+        return aplicacao.getUsuarioAtual() != null && aplicacao.getUsuarioAtual().isAdmin();
     }
 
     private JPanel montarResumo() {
@@ -209,9 +220,25 @@ public class PainelRelatorios extends JPanel {
             List<ProdutoEstoque> baixo = aplicacao.getRelatorios().estoqueBaixo();
             modeloEstoque.setRowCount(0);
             baixo.forEach(p -> modeloEstoque.addRow(new Object[]{p.nome(), p.estoque(), Ui.moeda(p.precoVenda())}));
+
+            if (eAdmin()) {
+                preencherAuditoria(aplicacao.getAuditoria().listar(de, ate));
+            }
         } catch (RuntimeException e) {
             Ui.erro(this, e.getMessage(), e);
         }
+    }
+
+    private void preencherAuditoria(List<EventoAuditoria> eventos) {
+        modeloAuditoria.setRowCount(0);
+        eventos.forEach(evento -> modeloAuditoria.addRow(new Object[]{
+                Ui.dataHora(evento.dataHora()),
+                evento.usuarioLogin(),
+                evento.acao(),
+                evento.entidade() == null ? "" : evento.entidade(),
+                evento.entidadeId() == null ? "" : evento.entidadeId(),
+                evento.detalhe() == null ? "" : evento.detalhe()
+        }));
     }
 
     private void exportar(String extensao) {
