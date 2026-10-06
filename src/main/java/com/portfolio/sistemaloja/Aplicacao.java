@@ -9,6 +9,7 @@ import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaRepository;
 import com.portfolio.sistemaloja.service.AuthService;
 import com.portfolio.sistemaloja.service.ClienteService;
+import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.ProdutoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
 import com.portfolio.sistemaloja.service.UsuarioService;
@@ -22,6 +23,7 @@ public class Aplicacao {
     private final VendaService vendas;
     private final UsuarioService usuarios;
     private final RelatorioService relatorios;
+    private final ExportacaoService exportacao;
     private final ProdutoRepository produtoRepository;
 
     public Aplicacao(ConexaoFonte fonte) {
@@ -38,6 +40,7 @@ public class Aplicacao {
         this.vendas = new VendaService(vendaRepository, produtoRepository);
         this.usuarios = new UsuarioService(usuarioRepository);
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
+        this.exportacao = new ExportacaoService();
         this.produtoRepository = produtoRepository;
     }
 
@@ -63,6 +66,10 @@ public class Aplicacao {
 
     public RelatorioService getRelatorios() {
         return relatorios;
+    }
+
+    public ExportacaoService getExportacao() {
+        return exportacao;
     }
 
     public ProdutoRepository getProdutoRepository() {
