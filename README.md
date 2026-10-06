@@ -35,6 +35,14 @@ regras de negócio e testes automatizados.
 - Histórico de vendas com status e **cancelamento de venda com devolução automática de estoque**
 - **Mais vendidos** do período e lista de **estoque baixo**
 
+### Exportação
+- **PDF** (OpenPDF): relatório com resumo, tabela de vendas, mais vendidos, zebra de linhas,
+  destaque para vendas canceladas e número de página no rodapé
+- **Excel .xlsx** (Apache POI): 3 abas (`Resumo`, `Vendas`, `Mais vendidos`) com cabeçalho
+  destacado, moeda formatada, largura de colunas e painéis congelados
+- Nome de arquivo sugerido com o período (`relatorio_vendas_2026-10-01_a_2026-10-06.pdf`)
+  e caixa de diálogo para escolher onde salvar
+
 ---
 
 ## 🚀 Como executar
@@ -84,8 +92,9 @@ Ou pela IDE: execute a classe `com.portfolio.sistemaloja.App`.
 mvn test
 ```
 
-**39 testes** cobrindo serviços, validações, senhas e o ciclo completo de venda —
-rodam sobre **H2 em modo MySQL**, ou seja, não dependem do Docker.
+**44 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda
+e a exportação em PDF/Excel — rodam sobre **H2 em modo MySQL**, ou seja,
+não dependem do Docker.
 
 ---
 
@@ -132,10 +141,10 @@ sistema-loja/
 │   │   │   ├── db/                          # Banco, Migrador, Senhas, ConexaoFonte
 │   │   │   ├── model/                       # Produto, Cliente, Venda, Usuario, enums
 │   │   │   ├── repository/                  # 6 repositórios JDBC + records de relatório
-│   │   │   ├── service/                     # Regras de negócio e validações (8 classes)
+│   │   │   ├── service/                     # Regras de negócio e validações (9 classes)
 │   │   │   └── ui/                          # 11 classes Swing (telas, painéis, diálogos)
 │   │   └── resources/sql/esquema.sql        # DDL idempotente (CREATE TABLE IF NOT EXISTS)
-│   └── test/java/com/portfolio/sistemaloja/ # 39 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 44 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -147,6 +156,7 @@ sistema-loja/
 - **FlatLaf 3.5** (visual moderno nativo do Swing)
 - **MySQL 8** via **mysql-connector-j** (JDBC puro, sem ORM)
 - **H2** no modo MySQL (banco dos testes)
+- **Apache POI 5.5** (exportação em `.xlsx`) + **OpenPDF 3** (exportação em PDF)
 - **JUnit 5** + Maven Surefire
 - **Maven Shade** (jar executável único)
 
@@ -177,7 +187,8 @@ sistema-loja/
 - [x] PDV com carrinho, pagamento e cupom
 - [x] Cancelamento de venda com devolução de estoque
 - [x] Dashboard e relatórios por período
-- [x] 39 testes JUnit (serviços + integração sobre H2)
+- [x] 44 testes JUnit (serviços + integração sobre H2)
+- [x] Exportação de relatórios em PDF e Excel (.xlsx)
 - [x] Jar executável com `mvn package`
 - [ ] Gráfico de vendas por dia no dashboard
 - [ ] Importação/exportação de produtos em CSV
