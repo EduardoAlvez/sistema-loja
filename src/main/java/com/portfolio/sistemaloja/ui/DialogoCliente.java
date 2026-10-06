@@ -105,7 +105,7 @@ public class DialogoCliente extends JDialog {
         } catch (ValidacaoException e) {
             Ui.erro(this, e.getMessage());
         } catch (RuntimeException e) {
-            Ui.erro(this, "Falha ao salvar: " + e.getMessage());
+            Ui.erro(this, "Falha ao salvar: " + e.getMessage(), e);
         }
     }
 }

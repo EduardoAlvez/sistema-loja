@@ -7,6 +7,8 @@ import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 import com.portfolio.sistemaloja.repository.VendaRepository;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -15,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 public class VendaService {
+
+    private static final Logger LOG = LogManager.getLogger(VendaService.class);
 
     private final VendaRepository vendas;
     private final ProdutoRepository produtos;
@@ -38,11 +42,15 @@ public class VendaService {
         finalizarPagamento(venda);
         venda.setStatus(StatusVenda.CONCLUIDA);
         venda.setNumero(vendas.proximoNumero());
-        return vendas.registrar(venda);
+        Venda registrada = vendas.registrar(venda);
+        LOG.info("Venda registrada: numero {} total {} forma {}",
+                registrada.getNumero(), registrada.getTotal(), registrada.getFormaPagamento());
+        return registrada;
     }
 
     public void cancelar(long vendaId) {
         vendas.cancelar(vendaId);
+        LOG.warn("Venda {} cancelada", vendaId);
     }
 
     public List<Venda> listar(java.time.LocalDate inicio, java.time.LocalDate fim) {

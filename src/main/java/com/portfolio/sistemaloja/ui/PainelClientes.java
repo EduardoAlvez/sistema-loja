@@ -126,7 +126,7 @@ public class PainelClientes extends JPanel {
             aplicacao.getClientes().remover(cliente.getId());
             atualizar();
         } catch (RuntimeException e) {
-            Ui.erro(this, e.getMessage());
+            Ui.erro(this, e.getMessage(), e);
         }
     }
 }

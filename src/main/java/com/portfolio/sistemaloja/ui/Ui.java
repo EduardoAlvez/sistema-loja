@@ -1,5 +1,8 @@
 package com.portfolio.sistemaloja.ui;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -21,6 +24,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 public final class Ui {
+
+    private static final Logger LOG = LogManager.getLogger(Ui.class);
 
     public static final Color COR_PRINCIPAL = new Color(33, 97, 140);
     public static final Color COR_ESCURA = new Color(23, 66, 96);
@@ -56,6 +61,11 @@ public final class Ui {
     }
 
     public static void erro(Component pai, String mensagem) {
+        JOptionPane.showMessageDialog(pai, mensagem, "Erro", JOptionPane.ERROR_MESSAGE);
+    }
+
+    public static void erro(Component pai, String mensagem, Throwable causa) {
+        LOG.error(mensagem, causa);
         JOptionPane.showMessageDialog(pai, mensagem, "Erro", JOptionPane.ERROR_MESSAGE);
     }
 

@@ -3,10 +3,14 @@ package com.portfolio.sistemaloja.service;
 import com.portfolio.sistemaloja.db.Senhas;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Optional;
 
 public class AuthService {
+
+    private static final Logger LOG = LogManager.getLogger(AuthService.class);
 
     private final UsuarioRepository usuarios;
 
@@ -23,12 +27,15 @@ public class AuthService {
         }
         Optional<Usuario> encontrado = usuarios.buscarPorLogin(login.strip());
         if (encontrado.isEmpty() || !Senhas.confere(senha, encontrado.get().getSal(), encontrado.get().getSenhaHash())) {
+            LOG.warn("Tentativa de login invalida para '{}'", login.strip());
             throw new ValidacaoException("Login ou senha inválidos.");
         }
         Usuario usuario = encontrado.get();
         if (!usuario.isAtivo()) {
+            LOG.warn("Login '{}' desativado tentou entrar", login.strip());
             throw new ValidacaoException("Usuário desativado. Contate o administrador.");
         }
+        LOG.info("Login realizado: {} ({})", usuario.getLogin(), usuario.getPerfil());
         return usuario;
     }
 }

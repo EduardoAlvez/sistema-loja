@@ -138,7 +138,7 @@ public class PainelProdutos extends JPanel {
             aplicacao.getProdutos().remover(produto.getId());
             atualizar();
         } catch (RuntimeException e) {
-            Ui.erro(this, e.getMessage());
+            Ui.erro(this, e.getMessage(), e);
         }
     }
 }

@@ -115,7 +115,7 @@ public class DialogoUsuario extends JDialog {
         } catch (ValidacaoException e) {
             Ui.erro(this, e.getMessage());
         } catch (RuntimeException e) {
-            Ui.erro(this, "Falha ao criar usuário: " + e.getMessage());
+            Ui.erro(this, "Falha ao criar usuário: " + e.getMessage(), e);
         }
     }
 

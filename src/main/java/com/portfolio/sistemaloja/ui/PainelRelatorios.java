@@ -9,6 +9,8 @@ import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
 import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -34,6 +36,7 @@ import java.util.List;
 public class PainelRelatorios extends JPanel {
 
     private static final long serialVersionUID = 1L;
+    private static final Logger LOG = LogManager.getLogger(PainelRelatorios.class);
 
     private final transient Aplicacao aplicacao;
     private final JSpinner inicio = dataSpinner();
@@ -207,7 +210,7 @@ public class PainelRelatorios extends JPanel {
             modeloEstoque.setRowCount(0);
             baixo.forEach(p -> modeloEstoque.addRow(new Object[]{p.nome(), p.estoque(), Ui.moeda(p.precoVenda())}));
         } catch (RuntimeException e) {
-            Ui.erro(this, e.getMessage());
+            Ui.erro(this, e.getMessage(), e);
         }
     }
 
@@ -238,8 +241,9 @@ public class PainelRelatorios extends JPanel {
                 aplicacao.getExportacao().exportarExcel(arquivo, dados);
             }
             Ui.info(this, "Relatório exportado com sucesso:\n" + arquivo.getAbsolutePath());
+            LOG.info("Relatorio exportado: {}", arquivo.getAbsolutePath());
         } catch (ExportacaoService.ExportacaoException e) {
-            Ui.erro(this, e.getMessage());
+            Ui.erro(this, e.getMessage(), e);
         }
     }
 
@@ -263,7 +267,7 @@ public class PainelRelatorios extends JPanel {
             Ui.info(this, "Venda cancelada e estoque devolvido.");
             gerar();
         } catch (RuntimeException e) {
-            Ui.erro(this, "Falha ao cancelar: " + e.getMessage());
+            Ui.erro(this, "Falha ao cancelar: " + e.getMessage(), e);
         }
     }
 

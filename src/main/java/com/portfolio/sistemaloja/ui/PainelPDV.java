@@ -398,7 +398,7 @@ public class PainelPDV extends JPanel {
         } catch (ValidacaoException e) {
             Ui.erro(this, e.getMessage());
         } catch (RuntimeException e) {
-            Ui.erro(this, "Falha ao finalizar a venda: " + e.getMessage());
+            Ui.erro(this, "Falha ao finalizar a venda: " + e.getMessage(), e);
         }
     }
 

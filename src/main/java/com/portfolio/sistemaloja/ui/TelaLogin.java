@@ -124,7 +124,7 @@ public class TelaLogin extends JFrame {
             campoSenha.setText("");
             campoSenha.requestFocusInWindow();
         } catch (RuntimeException e) {
-            Ui.erro(this, "Falha inesperada ao entrar: " + e.getMessage());
+            Ui.erro(this, "Falha inesperada ao entrar: " + e.getMessage(), e);
         }
     }
 }
