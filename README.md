@@ -1,5 +1,8 @@
 # Sistema de Gestão de Loja / PDV
 
+[![CI](https://github.com/EduardoAlvez/sistema-loja/actions/workflows/ci.yml/badge.svg)](https://github.com/EduardoAlvez/sistema-loja/actions/workflows/ci.yml)
+[![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
+
 Sistema completo de gestão de loja com **PDV (ponto de venda)** em **Java Desktop (Swing)** e **MySQL**,
 desenvolvido como projeto de portfólio para demonstrar arquitetura em camadas, JDBC puro,
 regras de negócio e testes automatizados.
