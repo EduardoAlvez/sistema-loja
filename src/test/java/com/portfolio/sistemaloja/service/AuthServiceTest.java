@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -24,6 +25,15 @@ class AuthServiceTest {
         Usuario admin = app.getAuth().autenticar("admin", "admin123");
         assertEquals("ADMIN", admin.getPerfil().name());
         assertTrue(admin.isAtivo());
+    }
+
+    @Test
+    void guardaUsuarioNaSessaoAposLogin() {
+        assertNull(app.getUsuarioAtual());
+
+        app.getAuth().autenticar("admin", "admin123");
+
+        assertEquals("admin", app.getUsuarioAtual().getLogin());
     }
 
     @Test

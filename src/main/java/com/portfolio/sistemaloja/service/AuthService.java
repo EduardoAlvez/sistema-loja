@@ -1,5 +1,6 @@
 package com.portfolio.sistemaloja.service;
 
+import com.portfolio.sistemaloja.Sessao;
 import com.portfolio.sistemaloja.db.Senhas;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
@@ -13,9 +14,11 @@ public class AuthService {
     private static final Logger LOG = LogManager.getLogger(AuthService.class);
 
     private final UsuarioRepository usuarios;
+    private final Sessao sessao;
 
-    public AuthService(UsuarioRepository usuarios) {
+    public AuthService(UsuarioRepository usuarios, Sessao sessao) {
         this.usuarios = usuarios;
+        this.sessao = sessao;
     }
 
     public Usuario autenticar(String login, String senha) {
@@ -36,6 +39,7 @@ public class AuthService {
             throw new ValidacaoException("Usuário desativado. Contate o administrador.");
         }
         LOG.info("Login realizado: {} ({})", usuario.getLogin(), usuario.getPerfil());
+        sessao.setAtual(usuario);
         return usuario;
     }
 }
