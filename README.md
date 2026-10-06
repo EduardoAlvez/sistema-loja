@@ -68,10 +68,11 @@ regras de negócio e testes automatizados.
 ### 1. Subir o banco de dados
 
 ```bash
-docker run -d --name mysql-sistema-loja -p 3306:3306 \
-  -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=sistema_loja \
-  --restart unless-stopped mysql:8.0
+docker compose up -d
 ```
+
+> Já tem o container antigo (`docker run`)? Remova-o antes: `docker rm -f mysql-sistema-loja`.
+> Os dados vivem no volume `mysql-data`; numa máquina nova o banco começa com o seed de exemplo.
 
 O esquema é versionado com **Flyway** (`src/main/resources/db/migration`) e os dados de
 exemplo entram na primeira execução. Bancos criados antes do Flyway recebem `baseline`
