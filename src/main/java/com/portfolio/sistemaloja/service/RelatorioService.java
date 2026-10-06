@@ -4,11 +4,13 @@ import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
+import com.portfolio.sistemaloja.repository.VendaDoDia;
 import com.portfolio.sistemaloja.repository.VendaRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 public class RelatorioService {
@@ -58,6 +60,23 @@ public class RelatorioService {
 
     public List<ProdutoVendado> maisVendidos(LocalDate inicio, LocalDate fim) {
         return relatorios.maisVendidos(inicio, fim, 10);
+    }
+
+    public List<VendaDoDia> faturamentoPorDia(LocalDate inicio, LocalDate fim) {
+        if (inicio.isAfter(fim)) {
+            throw new ValidacaoException("A data inicial deve ser anterior à final.");
+        }
+        List<VendaDoDia> doBanco = relatorios.faturamentoPorDia(inicio, fim);
+        List<VendaDoDia> porDia = new ArrayList<>();
+        int posicao = 0;
+        for (LocalDate dia = inicio; !dia.isAfter(fim); dia = dia.plusDays(1)) {
+            if (posicao < doBanco.size() && doBanco.get(posicao).dia().equals(dia)) {
+                porDia.add(doBanco.get(posicao++));
+            } else {
+                porDia.add(new VendaDoDia(dia, 0, BigDecimal.ZERO));
+            }
+        }
+        return porDia;
     }
 
     public List<ProdutoEstoque> estoqueBaixo() {

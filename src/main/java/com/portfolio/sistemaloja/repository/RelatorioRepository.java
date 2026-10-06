@@ -49,6 +49,32 @@ public class RelatorioRepository {
         return lista;
     }
 
+    public List<VendaDoDia> faturamentoPorDia(LocalDate inicio, LocalDate fim) {
+        String sql = """
+                SELECT CAST(data_hora AS DATE) AS dia, COUNT(*) AS qtd, COALESCE(SUM(total), 0) AS total
+                  FROM vendas
+                 WHERE status = 'CONCLUIDA' AND data_hora >= ? AND data_hora < ?
+                 GROUP BY CAST(data_hora AS DATE)
+                 ORDER BY dia""";
+        List<VendaDoDia> lista = new ArrayList<>();
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setObject(1, inicio);
+            preparada.setObject(2, fim.plusDays(1));
+            try (ResultSet resultado = preparada.executeQuery()) {
+                while (resultado.next()) {
+                    lista.add(new VendaDoDia(
+                            resultado.getObject("dia", LocalDate.class),
+                            resultado.getInt("qtd"),
+                            resultado.getBigDecimal("total")));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao gerar o faturamento por dia", e);
+        }
+        return lista;
+    }
+
     public List<ProdutoEstoque> estoqueBaixo(int limiteMinimo) {
         String sql = """
                 SELECT id, nome, estoque, preco_venda
