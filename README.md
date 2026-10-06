@@ -36,6 +36,7 @@ regras de negócio e testes automatizados.
 - **Mais vendidos** do período e lista de **estoque baixo**
 - **Gráfico de faturamento por dia** (barras desenhadas com `Graphics2D`, sem biblioteca externa),
   com tooltip ao passar o mouse sobre cada barra
+- **Aba Auditoria** (somente admin): trilha de ações do sistema no período
 
 ### Exportação
 - **PDF** (OpenPDF): relatório com resumo, **gráfico de faturamento por dia**, tabela de vendas,
@@ -44,6 +45,16 @@ regras de negócio e testes automatizados.
   destacado, moeda formatada, largura de colunas e painéis congelados
 - Nome de arquivo sugerido com o período (`relatorio_vendas_2026-10-01_a_2026-10-06.pdf`)
   e caixa de diálogo para escolher onde salvar
+
+### Confiabilidade e governança
+- **Logs** em `logs/sistema-loja.log` (rotação 5 MB × 3) e console via **Log4j2**:
+  erros inesperados da interface guardam a stack trace completa, junto de ações como
+  login, vendas, cancelamentos e exportações
+- **Migrações de banco com Flyway** (`V1` esquema, `V2` auditoria), com histórico
+  consultável e `baseline` automático para bancos já existentes
+- **Trilha de auditoria** (tabela `auditoria`, append-only): login ok/falha, venda
+  registrada/cancelada, produto/cliente salvos e usuário criado — com usuário, data/hora
+  e detalhe; nunca grava senha
 
 ---
 
@@ -62,7 +73,15 @@ docker run -d --name mysql-sistema-loja -p 3306:3306 \
   --restart unless-stopped mysql:8.0
 ```
 
-O esquema e os dados de exemplo são criados **automaticamente** na primeira execução.
+O esquema é versionado com **Flyway** (`src/main/resources/db/migration`) e os dados de
+exemplo entram na primeira execução. Bancos criados antes do Flyway recebem `baseline`
+automático — nada de reaplicar DDL em cima de dados.
+
+```bash
+# histórico de migrações (opcional)
+mvn flyway:info -Dflyway.url=jdbc:mysql://localhost:3306/sistema_loja \
+  -Dflyway.user=root -Dflyway.password=root
+```
 
 ### 2. Executar
 
@@ -94,9 +113,9 @@ Ou pela IDE: execute a classe `com.portfolio.sistemaloja.App`.
 mvn test
 ```
 
-**52 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda,
-a exportação em PDF/Excel e o gráfico — rodam sobre **H2 em modo MySQL**, ou seja,
-não dependem do Docker.
+**67 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda,
+a exportação em PDF/Excel, o gráfico, as migrações do Flyway e a trilha de auditoria —
+rodam sobre **H2 em modo MySQL**, ou seja, não dependem do Docker.
 
 ---
 
@@ -120,10 +139,10 @@ Projeto em **quatro camadas**, com dependência sempre de cima para baixo:
 | Camada | Pacote | Responsabilidade |
 |--------|--------|------------------|
 | UI | `ui` | `TelaLogin`, `TelaPrincipal` com abas, painéis e diálogos |
-| Serviço | `service` | `VendaService`, `ProdutoService`, `ClienteService`, `AuthService`, `RelatorioService`, `Cpf` |
-| Repositório | `repository` | `ProdutoRepository`, `VendaRepository`, `ClienteRepository`, `UsuarioRepository`, `CategoriaRepository`, `RelatorioRepository` |
+| Serviço | `service` | `VendaService`, `ProdutoService`, `ClienteService`, `AuthService`, `RelatorioService`, `AuditoriaService`, `Cpf` |
+| Repositório | `repository` | `ProdutoRepository`, `VendaRepository`, `ClienteRepository`, `UsuarioRepository`, `CategoriaRepository`, `RelatorioRepository`, `AuditoriaRepository` |
 | Modelo | `model` | `Produto`, `Cliente`, `Venda`, `VendaItem`, `Usuario`, enums |
-| Infra | `db` | `Banco` (fonte de conexão), `Migrador` (DDL + seed), `Senhas` |
+| Infra | `db` | `Banco` (fonte de conexão), `Migrador` (Flyway + seed), `Senhas` |
 
 A interface recebe uma única instância de `Aplicacao`, que monta toda a árvore de dependências —
 a mesma classe é usada pelos testes apontando para o H2.
@@ -140,14 +159,17 @@ sistema-loja/
 │   │   ├── java/com/portfolio/sistemaloja/
 │   │   │   ├── App.java                     # Ponto de entrada: FlatLaf + migração + login
 │   │   │   ├── Aplicacao.java               # Composição das dependências (DI manual)
-│   │   │   ├── db/                          # Banco, Migrador, Senhas, ConexaoFonte
+│   │   │   ├── Sessao.java                  # Usuário logado (contexto da auditoria)
+│   │   │   ├── db/                          # Banco, Migrador (Flyway), Senhas, ConexaoFonte
 │   │   │   ├── grafico/                     # GraficoFaturamento: render com Graphics2D
 │   │   │   ├── model/                       # Produto, Cliente, Venda, Usuario, enums
-│   │   │   ├── repository/                  # 6 repositórios JDBC + records de relatório
-│   │   │   ├── service/                     # Regras de negócio e validações (9 classes)
+│   │   │   ├── repository/                  # 7 repositórios JDBC + records de relatório
+│   │   │   ├── service/                     # Regras de negócio e validações (10 classes)
 │   │   │   └── ui/                          # 12 classes Swing (telas, painéis, diálogos)
-│   │   └── resources/sql/esquema.sql        # DDL idempotente (CREATE TABLE IF NOT EXISTS)
-│   └── test/java/com/portfolio/sistemaloja/ # 52 testes JUnit 5
+│   │   └── resources/
+│   │       ├── db/migration/                # V1__esquema_inicial.sql + V2__auditoria.sql
+│   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
+│   └── test/java/com/portfolio/sistemaloja/ # 67 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -159,6 +181,8 @@ sistema-loja/
 - **FlatLaf 3.5** (visual moderno nativo do Swing)
 - **Gráficos com `Graphics2D`** da própria JDK (nenhuma dependência de biblioteca de charts)
 - **MySQL 8** via **mysql-connector-j** (JDBC puro, sem ORM)
+- **Flyway** (migrações versionadas do esquema, com baseline para bancos existentes)
+- **Log4j2** (logs em arquivo com rotação e no console)
 - **H2** no modo MySQL (banco dos testes)
 - **Apache POI 5.5** (exportação em `.xlsx`) + **OpenPDF 3** (exportação em PDF)
 - **JUnit 5** + Maven Surefire
@@ -174,8 +198,13 @@ sistema-loja/
   ou seja, a proteção contra corrida entre caixas está no próprio banco.
 - **Cancelamento devolve estoque**: mesma transação, e a venda fica registrada com status `CANCELADA`
   para manter a trilha de auditoria (nunca é apagada).
-- **Migração idempotente**: o `esquema.sql` usa `IF NOT EXISTS` e o seed só roda se a tabela
-  `usuarios` estiver vazia — dá para executar o sistema quantas vezes quiser.
+- **Migrações versionadas**: esquema no Flyway (`V1` esquema inicial, `V2` auditoria);
+  bancos já existentes recebem `baselineOnMigrate`, então o histórico nasce sem reaplicar DDL.
+  O seed continua idempotente (só roda se a tabela `usuarios` estiver vazia).
+- **Auditoria fora da transação**: os services gravam na trilha com `try/catch` próprio —
+  se a gravação falhar, o erro vai para o log e a operação principal não é afetada.
+- **Erros da interface com stack trace**: `Ui.erro(..., causa)` loga a exceção completa antes
+  de mostrar a mensagem amigável; validações previstas ficam só no diálogo, sem poluir o log.
 - **Números de venda sequenciais** (`V000001`, `V000002`...) com constraint de unicidade.
 - **CPF de verdade**: algoritmo dos dois dígitos verificadores, rejeita sequências repetidas
   e guarda o CPF formatado (`000.000.000-00`).
@@ -192,8 +221,11 @@ sistema-loja/
 - [x] Cancelamento de venda com devolução de estoque
 - [x] Dashboard e relatórios por período
 - [x] Gráfico de faturamento por dia (Graphics2D) na tela e no PDF
-- [x] 52 testes JUnit (serviços + integração sobre H2)
 - [x] Exportação de relatórios em PDF e Excel (.xlsx)
+- [x] Migrações de banco com Flyway (V1 esquema, V2 auditoria, baseline)
+- [x] Logs em arquivo com rotação e stack traces da interface (Log4j2)
+- [x] Trilha de auditoria com consulta na aba Relatórios (admin)
+- [x] 67 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Jar executável com `mvn package`
 - [ ] Gráfico de vendas por dia no dashboard
 - [ ] Importação/exportação de produtos em CSV
