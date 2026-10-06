@@ -27,7 +27,22 @@ public class Banco implements ConexaoFonte {
 
     @Override
     public Connection getConnection() throws SQLException {
+        if (senha == null) {
+            return DriverManager.getConnection(url);
+        }
         return DriverManager.getConnection(url, usuario, senha);
+    }
+
+    String getUrl() {
+        return url;
+    }
+
+    String getUsuario() {
+        return usuario;
+    }
+
+    String getSenha() {
+        return senha;
     }
 
     public void testarConexao() throws SQLException {

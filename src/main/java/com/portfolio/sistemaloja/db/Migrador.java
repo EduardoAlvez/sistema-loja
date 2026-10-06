@@ -1,10 +1,8 @@
 package com.portfolio.sistemaloja.db;
 
 import com.portfolio.sistemaloja.model.PerfilUsuario;
+import org.flywaydb.core.Flyway;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,29 +14,20 @@ public final class Migrador {
     private Migrador() {
     }
 
-    public static void executar(ConexaoFonte fonte) throws SQLException {
-        String ddl = carregarEsquema();
-        try (Connection conexao = fonte.getConnection();
-             Statement declaracao = conexao.createStatement()) {
-            for (String comando : ddl.split(";")) {
-                String sql = comando.strip();
-                if (!sql.isEmpty()) {
-                    declaracao.execute(sql);
-                }
-            }
+    public static void executar(Banco banco) throws SQLException {
+        migrarEsquema(banco);
+        try (Connection conexao = banco.getConnection()) {
             semear(conexao);
         }
     }
 
-    private static String carregarEsquema() {
-        try (InputStream entrada = Migrador.class.getResourceAsStream("/sql/esquema.sql")) {
-            if (entrada == null) {
-                throw new IllegalStateException("Recurso /sql/esquema.sql não encontrado no classpath");
-            }
-            return new String(entrada.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new IllegalStateException("Falha ao ler o esquema do banco", e);
-        }
+    private static void migrarEsquema(Banco banco) {
+        Flyway.configure()
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .dataSource(banco.getUrl(), banco.getUsuario(), banco.getSenha())
+                .load()
+                .migrate();
     }
 
     private static void semear(Connection conexao) throws SQLException {

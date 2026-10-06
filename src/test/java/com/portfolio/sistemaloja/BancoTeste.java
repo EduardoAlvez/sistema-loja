@@ -1,9 +1,7 @@
 package com.portfolio.sistemaloja;
 
-import com.portfolio.sistemaloja.db.ConexaoFonte;
+import com.portfolio.sistemaloja.db.Banco;
 import com.portfolio.sistemaloja.db.Migrador;
-
-import java.sql.DriverManager;
 
 public final class BancoTeste {
 
@@ -13,12 +11,12 @@ public final class BancoTeste {
     public static Aplicacao criar(String nomeBanco) {
         String url = "jdbc:h2:mem:" + nomeBanco
                 + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
-        ConexaoFonte fonte = () -> DriverManager.getConnection(url);
+        Banco banco = new Banco(url, null, null);
         try {
-            Migrador.executar(fonte);
+            Migrador.executar(banco);
         } catch (java.sql.SQLException e) {
             throw new IllegalStateException("Falha ao preparar o banco de teste", e);
         }
-        return new Aplicacao(fonte);
+        return new Aplicacao(banco);
     }
 }
