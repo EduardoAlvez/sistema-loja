@@ -33,7 +33,7 @@ public class Banco implements ConexaoFonte {
         return DriverManager.getConnection(url, usuario, senha);
     }
 
-    String getUrl() {
+    public String getUrl() {
         return url;
     }
 

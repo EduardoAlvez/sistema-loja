@@ -1,13 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="ERROR">
     <Appenders>
-        <Console name="Console" target="SYSTEM_ERR">
-            <PatternLayout pattern="%level %logger{1} - %msg%n"/>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout charset="UTF-8" pattern="%d{dd/MM/yyyy HH:mm:ss.SSS} %-5p %c{1} - %m%n"/>
         </Console>
+        <RollingFile name="Arquivo" fileName="logs/sistema-loja.log"
+                     filePattern="logs/sistema-loja-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout charset="UTF-8"
+                           pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p [%t] %c{1} - %m%n"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="5 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="3"/>
+        </RollingFile>
     </Appenders>
     <Loggers>
-        <Root level="ERROR">
+        <Logger name="org.apache.poi" level="WARN"/>
+        <Root level="INFO">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="Arquivo"/>
         </Root>
     </Loggers>
 </Configuration>

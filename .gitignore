@@ -4,6 +4,9 @@ target/
 *.class
 dependency-reduced-pom.xml
 
+# Logs da aplicação
+logs/
+
 # IntelliJ IDEA
 .idea/
 *.iml
