@@ -88,7 +88,7 @@ class ExportacaoServiceTest {
         Aplicacao bancoLimpo = BancoTeste.criar("exportvazio" + System.nanoTime());
         DadosRelatorio vazio = new DadosRelatorio(hoje, hoje,
                 bancoLimpo.getRelatorios().resumoPeriodo(hoje, hoje),
-                bancoLimpo.getRelatorios().vendasDoPeriodo(hoje, hoje), List.of());
+                bancoLimpo.getRelatorios().vendasDoPeriodo(hoje, hoje), List.of(), List.of());
 
         Path pdf = Files.createTempFile("vazio", ".pdf");
         Path xlsx = Files.createTempFile("vazio", ".xlsx");
@@ -99,6 +99,25 @@ class ExportacaoServiceTest {
         assertTrue(Files.size(xlsx) > 0);
         Files.deleteIfExists(pdf);
         Files.deleteIfExists(xlsx);
+    }
+
+    @Test
+    void exportaPdfIncluiOGraficoDeFaturamento() throws Exception {
+        DadosRelatorio comGrafico = dados();
+        DadosRelatorio semImagem = new DadosRelatorio(hoje, hoje, comGrafico.resumo(),
+                comGrafico.vendas(), comGrafico.maisVendidos(), List.of());
+
+        Path comGraficoPdf = Files.createTempFile("comgrafico", ".pdf");
+        Path semImagemPdf = Files.createTempFile("semimagem", ".pdf");
+        app.getExportacao().exportarPdf(comGraficoPdf.toFile(), comGrafico);
+        app.getExportacao().exportarPdf(semImagemPdf.toFile(), semImagem);
+
+        String conteudo = new String(Files.readAllBytes(comGraficoPdf), java.nio.charset.StandardCharsets.ISO_8859_1);
+        assertTrue(conteudo.contains("/Image"), "o PDF deve conter a imagem do gráfico");
+        assertTrue(Files.size(comGraficoPdf) > Files.size(semImagemPdf),
+                "PDF com gráfico deve ser maior que sem imagem");
+        Files.deleteIfExists(comGraficoPdf);
+        Files.deleteIfExists(semImagemPdf);
     }
 
     @Test
@@ -120,7 +139,8 @@ class ExportacaoServiceTest {
         List<Venda> vendas = app.getRelatorios().vendasDoPeriodo(hoje, hoje);
         List<ProdutoVendado> top = app.getRelatorios().maisVendidos(hoje, hoje);
         RelatorioService.ResumoDashboard resumo = app.getRelatorios().resumoPeriodo(hoje, hoje);
-        return new ExportacaoService.DadosRelatorio(hoje, hoje, resumo, vendas, top);
+        return new ExportacaoService.DadosRelatorio(hoje, hoje, resumo, vendas, top,
+                app.getRelatorios().faturamentoPorDia(hoje, hoje));
     }
 
     private void registrarVenda(String codigo, int quantidade) {

@@ -216,7 +216,7 @@ public class PainelRelatorios extends JPanel {
             gerar();
         }
         ExportacaoService.DadosRelatorio dados = new ExportacaoService.DadosRelatorio(
-                periodoInicio, periodoFim, resumoAtual, vendas, maisVendidos);
+                periodoInicio, periodoFim, resumoAtual, vendas, maisVendidos, porDia);
 
         JFileChooser seletor = new JFileChooser();
         seletor.setDialogTitle("Exportar relatório de vendas");

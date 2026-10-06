@@ -1,8 +1,10 @@
 package com.portfolio.sistemaloja.service;
 
+import com.portfolio.sistemaloja.grafico.GraficoFaturamento;
 import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
+import com.portfolio.sistemaloja.repository.VendaDoDia;
 
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
@@ -29,7 +31,9 @@ import org.openpdf.text.pdf.PdfPTable;
 import org.openpdf.text.pdf.PdfPageEventHelper;
 import org.openpdf.text.pdf.PdfWriter;
 
+import javax.imageio.ImageIO;
 import java.awt.Color;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -56,10 +60,12 @@ public class ExportacaoService {
     public record DadosRelatorio(LocalDate inicio, LocalDate fim,
                                  RelatorioService.ResumoDashboard resumo,
                                  List<Venda> vendas,
-                                 List<ProdutoVendado> maisVendidos) {
+                                 List<ProdutoVendado> maisVendidos,
+                                 List<VendaDoDia> porDia) {
         public DadosRelatorio {
             vendas = vendas == null ? List.of() : List.copyOf(vendas);
             maisVendidos = maisVendidos == null ? List.of() : List.copyOf(maisVendidos);
+            porDia = porDia == null ? List.of() : List.copyOf(porDia);
         }
     }
 
@@ -82,6 +88,10 @@ public class ExportacaoService {
             documento.add(titulo("Resumo do período", 13));
             documento.add(new Paragraph(resumoTexto(dados.resumo()),
                     fonte(11, org.openpdf.text.Font.NORMAL, Color.BLACK)));
+            documento.add(Chunk.NEWLINE);
+
+            documento.add(titulo("Faturamento por dia", 13));
+            documento.add(grafico(dados.porDia()));
             documento.add(Chunk.NEWLINE);
 
             documento.add(titulo("Vendas (" + dados.vendas().size() + ")", 13));
@@ -121,6 +131,20 @@ public class ExportacaoService {
         } catch (IOException e) {
             throw new ExportacaoException("Falha ao escrever o arquivo Excel: " + e.getMessage(), e);
         }
+    }
+
+    private org.openpdf.text.Image grafico(List<VendaDoDia> porDia) throws IOException {
+        int largura = 500;
+        int altura = 220;
+        int escala = 2;
+        GraficoFaturamento grafico = new GraficoFaturamento();
+        GraficoFaturamento.Desenho desenho = grafico.render(largura * escala, altura * escala, porDia);
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        ImageIO.write(desenho.imagem(), "png", buffer);
+        org.openpdf.text.Image imagem = org.openpdf.text.Image.getInstance(buffer.toByteArray());
+        imagem.scaleAbsolute(largura, altura);
+        imagem.setAlignment(Element.ALIGN_CENTER);
+        return imagem;
     }
 
     private Paragraph titulo(String texto, int tamanho) {
