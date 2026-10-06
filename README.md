@@ -34,10 +34,12 @@ regras de negócio e testes automatizados.
 - Período livre (de/até) com **vendas, faturamento e ticket médio**
 - Histórico de vendas com status e **cancelamento de venda com devolução automática de estoque**
 - **Mais vendidos** do período e lista de **estoque baixo**
+- **Gráfico de faturamento por dia** (barras desenhadas com `Graphics2D`, sem biblioteca externa),
+  com tooltip ao passar o mouse sobre cada barra
 
 ### Exportação
-- **PDF** (OpenPDF): relatório com resumo, tabela de vendas, mais vendidos, zebra de linhas,
-  destaque para vendas canceladas e número de página no rodapé
+- **PDF** (OpenPDF): relatório com resumo, **gráfico de faturamento por dia**, tabela de vendas,
+  mais vendidos, zebra de linhas, destaque para vendas canceladas e número de página no rodapé
 - **Excel .xlsx** (Apache POI): 3 abas (`Resumo`, `Vendas`, `Mais vendidos`) com cabeçalho
   destacado, moeda formatada, largura de colunas e painéis congelados
 - Nome de arquivo sugerido com o período (`relatorio_vendas_2026-10-01_a_2026-10-06.pdf`)
@@ -92,8 +94,8 @@ Ou pela IDE: execute a classe `com.portfolio.sistemaloja.App`.
 mvn test
 ```
 
-**44 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda
-e a exportação em PDF/Excel — rodam sobre **H2 em modo MySQL**, ou seja,
+**52 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda,
+a exportação em PDF/Excel e o gráfico — rodam sobre **H2 em modo MySQL**, ou seja,
 não dependem do Docker.
 
 ---
@@ -139,12 +141,13 @@ sistema-loja/
 │   │   │   ├── App.java                     # Ponto de entrada: FlatLaf + migração + login
 │   │   │   ├── Aplicacao.java               # Composição das dependências (DI manual)
 │   │   │   ├── db/                          # Banco, Migrador, Senhas, ConexaoFonte
+│   │   │   ├── grafico/                     # GraficoFaturamento: render com Graphics2D
 │   │   │   ├── model/                       # Produto, Cliente, Venda, Usuario, enums
 │   │   │   ├── repository/                  # 6 repositórios JDBC + records de relatório
 │   │   │   ├── service/                     # Regras de negócio e validações (9 classes)
-│   │   │   └── ui/                          # 11 classes Swing (telas, painéis, diálogos)
+│   │   │   └── ui/                          # 12 classes Swing (telas, painéis, diálogos)
 │   │   └── resources/sql/esquema.sql        # DDL idempotente (CREATE TABLE IF NOT EXISTS)
-│   └── test/java/com/portfolio/sistemaloja/ # 44 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 52 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -154,6 +157,7 @@ sistema-loja/
 
 - **Java 21** + **Swing** (interface desktop)
 - **FlatLaf 3.5** (visual moderno nativo do Swing)
+- **Gráficos com `Graphics2D`** da própria JDK (nenhuma dependência de biblioteca de charts)
 - **MySQL 8** via **mysql-connector-j** (JDBC puro, sem ORM)
 - **H2** no modo MySQL (banco dos testes)
 - **Apache POI 5.5** (exportação em `.xlsx`) + **OpenPDF 3** (exportação em PDF)
@@ -187,7 +191,8 @@ sistema-loja/
 - [x] PDV com carrinho, pagamento e cupom
 - [x] Cancelamento de venda com devolução de estoque
 - [x] Dashboard e relatórios por período
-- [x] 44 testes JUnit (serviços + integração sobre H2)
+- [x] Gráfico de faturamento por dia (Graphics2D) na tela e no PDF
+- [x] 52 testes JUnit (serviços + integração sobre H2)
 - [x] Exportação de relatórios em PDF e Excel (.xlsx)
 - [x] Jar executável com `mvn package`
 - [ ] Gráfico de vendas por dia no dashboard
