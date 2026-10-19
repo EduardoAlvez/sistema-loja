@@ -20,6 +20,7 @@ public class Venda {
     private BigDecimal troco = BigDecimal.ZERO;
     private StatusVenda status = StatusVenda.CONCLUIDA;
     private final List<VendaItem> itens = new ArrayList<>();
+    private final List<VendaPagamento> pagamentos = new ArrayList<>();
 
     public Long getId() {
         return id;
@@ -132,6 +133,18 @@ public class Venda {
     public void adicionarItem(VendaItem item) {
         itens.add(item);
         recalcularTotal();
+    }
+
+    public List<VendaPagamento> getPagamentos() {
+        return pagamentos;
+    }
+
+    public void adicionarPagamento(VendaPagamento pagamento) {
+        pagamentos.add(pagamento);
+    }
+
+    public boolean isPagamentoDividido() {
+        return pagamentos.size() > 1;
     }
 
     public void recalcularTotal() {

@@ -5,6 +5,7 @@ import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.model.VendaPagamento;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -41,6 +42,7 @@ public class VendaRepository {
                 conexao.setAutoCommit(false);
                 inserirVenda(venda, conexao);
                 inserirItens(venda, conexao);
+                inserirPagamentos(venda, conexao);
                 baixarEstoque(venda, conexao);
                 conexao.commit();
                 return venda;
@@ -98,6 +100,39 @@ public class VendaRepository {
                 preparada.addBatch();
             }
             preparada.executeBatch();
+        }
+    }
+
+    private void inserirPagamentos(Venda venda, Connection conexao) throws SQLException {
+        if (venda.getPagamentos().isEmpty()) {
+            return;
+        }
+        String sql = "INSERT INTO venda_pagamentos (venda_id, forma_pagamento, valor) VALUES (?, ?, ?)";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            for (VendaPagamento pagamento : venda.getPagamentos()) {
+                preparada.setLong(1, venda.getId());
+                preparada.setString(2, pagamento.getFormaPagamento().name());
+                preparada.setBigDecimal(3, pagamento.getValor());
+                preparada.addBatch();
+            }
+            preparada.executeBatch();
+        }
+    }
+
+    private void carregarPagamentos(Venda venda, Connection conexao) throws SQLException {
+        String sql = "SELECT id, forma_pagamento, valor FROM venda_pagamentos WHERE venda_id = ? ORDER BY id";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, venda.getId());
+            try (ResultSet resultado = preparada.executeQuery()) {
+                while (resultado.next()) {
+                    VendaPagamento pagamento = new VendaPagamento(
+                            FormaPagamento.valueOf(resultado.getString("forma_pagamento")),
+                            resultado.getBigDecimal("valor"));
+                    pagamento.setId(resultado.getLong("id"));
+                    pagamento.setVendaId(venda.getId());
+                    venda.getPagamentos().add(pagamento);
+                }
+            }
         }
     }
 
@@ -164,6 +199,7 @@ public class VendaRepository {
                 if (resultado.next()) {
                     Venda venda = mapear(resultado);
                     carregarItens(venda, conexao);
+                    carregarPagamentos(venda, conexao);
                     return Optional.of(venda);
                 }
             }
@@ -258,12 +294,21 @@ public class VendaRepository {
     }
 
     public Map<FormaPagamento, BigDecimal> totaisPorFormaApos(String dataHoraInicio) {
-        String sql = "SELECT forma_pagamento, COALESCE(SUM(total), 0) FROM vendas "
-                + "WHERE status = 'CONCLUIDA' AND data_hora >= ? GROUP BY forma_pagamento";
+        String sql = "SELECT forma, SUM(valor) FROM ("
+                + "SELECT v.forma_pagamento AS forma, v.total AS valor FROM vendas v "
+                + "WHERE v.status = 'CONCLUIDA' AND v.data_hora >= ? "
+                + "AND NOT EXISTS (SELECT 1 FROM venda_pagamentos p WHERE p.venda_id = v.id) "
+                + "UNION ALL "
+                + "SELECT p.forma_pagamento, p.valor FROM venda_pagamentos p "
+                + "JOIN vendas v ON v.id = p.venda_id "
+                + "WHERE v.status = 'CONCLUIDA' AND v.data_hora >= ?"
+                + ") pagamentos GROUP BY forma";
         Map<FormaPagamento, BigDecimal> totais = new EnumMap<>(FormaPagamento.class);
         try (Connection conexao = fonte.getConnection();
              PreparedStatement preparada = conexao.prepareStatement(sql)) {
-            preparada.setObject(1, java.sql.Timestamp.valueOf(dataHoraInicio.replace('T', ' ')));
+            java.sql.Timestamp inicio = java.sql.Timestamp.valueOf(dataHoraInicio.replace('T', ' '));
+            preparada.setObject(1, inicio);
+            preparada.setObject(2, inicio);
             try (ResultSet resultado = preparada.executeQuery()) {
                 while (resultado.next()) {
                     totais.put(FormaPagamento.valueOf(resultado.getString(1)), resultado.getBigDecimal(2));

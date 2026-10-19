@@ -7,6 +7,7 @@ import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.model.VendaPagamento;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -281,6 +282,74 @@ class VendaServiceTest {
 
         assertEquals(0, new BigDecimal("4.50").compareTo(registrada.getDesconto()));
         assertEquals(0, new BigDecimal("5.50").compareTo(registrada.getTotal()));
+    }
+
+    @Test
+    void pagamentoDivididoRegistraParcelasCertinho() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 4, null, null);
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.DINHEIRO, new BigDecimal("6.00")));
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.PIX, new BigDecimal("4.00")));
+
+        Venda registrada = app.getVendas().registrar(venda);
+
+        assertEquals(2, registrada.getPagamentos().size());
+        assertEquals(0, new BigDecimal("6.00").compareTo(registrada.getPagamentos().get(0).getValor()));
+        assertEquals(FormaPagamento.DINHEIRO, registrada.getPagamentos().get(0).getFormaPagamento());
+        assertEquals(FormaPagamento.DINHEIRO, registrada.getFormaPagamento());
+        assertEquals(0, new BigDecimal("10.00").compareTo(registrada.getValorPago()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(registrada.getTroco()));
+
+        Venda buscada = app.getVendas().buscarPorId(registrada.getId());
+        assertEquals(2, buscada.getPagamentos().size());
+    }
+
+    @Test
+    void pagamentoDivididoRegistraTrocoQuandoDinheiroExcede() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 4, null, null);
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.PIX, new BigDecimal("6.00")));
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.DINHEIRO, new BigDecimal("10.00")));
+
+        Venda registrada = app.getVendas().registrar(venda);
+
+        assertEquals(FormaPagamento.DINHEIRO, registrada.getFormaPagamento());
+        assertEquals(0, new BigDecimal("16.00").compareTo(registrada.getValorPago()));
+        assertEquals(0, new BigDecimal("6.00").compareTo(registrada.getTroco()));
+    }
+
+    @Test
+    void somaDePagamentosMenorQueTotalEReprovada() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 4, null, null);
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.PIX, new BigDecimal("4.00")));
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.DINHEIRO, new BigDecimal("5.00")));
+        assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
+    }
+
+    @Test
+    void excedenteSemDinheiroEReprovado() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 4, null, null);
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.PIX, new BigDecimal("4.00")));
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.DEBITO, new BigDecimal("8.00")));
+        ValidacaoException erro = assertThrows(ValidacaoException.class,
+                () -> app.getVendas().registrar(venda));
+        assertTrue(erro.getMessage().contains("excedente"));
+    }
+
+    @Test
+    void parcelaComValorZeradoEReprovada() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 4, null, null);
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.PIX, new BigDecimal("10.00")));
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.DINHEIRO, BigDecimal.ZERO));
+        assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
     }
 
     private Venda novaVenda(Produto produto, int quantidade, FormaPagamento pagamento, BigDecimal pago) {

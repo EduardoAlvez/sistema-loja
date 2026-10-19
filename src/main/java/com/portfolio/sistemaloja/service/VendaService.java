@@ -6,6 +6,7 @@ import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.model.VendaPagamento;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaRepository;
@@ -167,6 +168,10 @@ public class VendaService {
         if (total.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ValidacaoException("O total da venda deve ser maior que zero.");
         }
+        if (!venda.getPagamentos().isEmpty()) {
+            finalizarPagamentoDividido(venda, total);
+            return;
+        }
         BigDecimal pago = venda.getValorPago();
         if (pago == null || pago.compareTo(BigDecimal.ZERO) == 0) {
             pago = total;
@@ -181,5 +186,38 @@ public class VendaService {
             venda.setValorPago(total);
             venda.setTroco(BigDecimal.ZERO);
         }
+    }
+
+    private void finalizarPagamentoDividido(Venda venda, BigDecimal total) {
+        BigDecimal soma = BigDecimal.ZERO;
+        BigDecimal emDinheiro = BigDecimal.ZERO;
+        VendaPagamento principal = venda.getPagamentos().get(0);
+        for (VendaPagamento pagamento : venda.getPagamentos()) {
+            if (pagamento.getFormaPagamento() == null) {
+                throw new ValidacaoException("Informe a forma de pagamento de cada parcela.");
+            }
+            if (pagamento.getValor() == null || pagamento.getValor().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ValidacaoException("Cada parcela de pagamento deve ter valor maior que zero.");
+            }
+            soma = soma.add(pagamento.getValor());
+            if (pagamento.getFormaPagamento() == FormaPagamento.DINHEIRO) {
+                emDinheiro = emDinheiro.add(pagamento.getValor());
+            }
+            if (pagamento.getValor().compareTo(principal.getValor()) > 0) {
+                principal = pagamento;
+            }
+        }
+        if (soma.compareTo(total) < 0) {
+            throw new ValidacaoException("A soma dos pagamentos (" + soma.toPlainString()
+                    + ") é menor que o total da venda (" + total.toPlainString() + ").");
+        }
+        BigDecimal excedente = soma.subtract(total);
+        if (excedente.compareTo(BigDecimal.ZERO) > 0 && emDinheiro.compareTo(excedente) < 0) {
+            throw new ValidacaoException("O valor excedente de " + excedente.toPlainString()
+                    + " só é permitido quando estiver coberto por pagamento em dinheiro.");
+        }
+        venda.setFormaPagamento(principal.getFormaPagamento());
+        venda.setValorPago(soma);
+        venda.setTroco(excedente);
     }
 }

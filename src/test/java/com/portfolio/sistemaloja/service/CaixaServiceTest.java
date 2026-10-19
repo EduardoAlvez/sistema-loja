@@ -11,6 +11,7 @@ import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.model.VendaPagamento;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
@@ -212,5 +213,24 @@ class CaixaServiceTest {
         app.getCaixa().fechar(null, null, operador);
 
         assertThrows(ValidacaoException.class, () -> app.getCaixa().fechar(null, null, operador));
+    }
+
+    @Test
+    void pagamentoDivididoEntraNoSaldoPelaParteEmDinheiro() {
+        Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = new Venda();
+        venda.setUsuarioId(operador.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda()));
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.PIX, new BigDecimal("4.00")));
+        venda.adicionarPagamento(new VendaPagamento(FormaPagamento.DINHEIRO, new BigDecimal("6.00")));
+        app.getVendas().registrar(venda);
+
+        CaixaService.Resumo resumo = app.getCaixa().resumo(caixa);
+
+        assertEquals(0, new BigDecimal("6.00").compareTo(resumo.porForma().get(FormaPagamento.DINHEIRO)));
+        assertEquals(0, new BigDecimal("4.00").compareTo(resumo.porForma().get(FormaPagamento.PIX)));
+        assertEquals(0, new BigDecimal("106.00").compareTo(resumo.saldoEsperado()));
     }
 }
