@@ -83,15 +83,16 @@ public class VendaRepository {
     }
 
     private void inserirItens(Venda venda, Connection conexao) throws SQLException {
-        String sql = "INSERT INTO venda_itens (venda_id, produto_id, quantidade, preco_unitario, subtotal) "
-                + "VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO venda_itens (venda_id, produto_id, quantidade, preco_unitario, desconto, subtotal) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             for (VendaItem item : venda.getItens()) {
                 preparada.setLong(1, venda.getId());
                 preparada.setLong(2, item.getProdutoId());
                 preparada.setInt(3, item.getQuantidade());
                 preparada.setBigDecimal(4, item.getPrecoUnitario());
-                preparada.setBigDecimal(5, item.getSubtotal());
+                preparada.setBigDecimal(5, item.getDesconto());
+                preparada.setBigDecimal(6, item.getSubtotal());
                 preparada.addBatch();
             }
             preparada.executeBatch();
@@ -169,7 +170,8 @@ public class VendaRepository {
     }
 
     private void carregarItens(Venda venda, Connection conexao) throws SQLException {
-        String sql = "SELECT i.id, i.produto_id, p.nome AS produto_nome, i.quantidade, i.preco_unitario, i.subtotal "
+        String sql = "SELECT i.id, i.produto_id, p.nome AS produto_nome, i.quantidade, i.preco_unitario, "
+                + "i.desconto, i.subtotal "
                 + "FROM venda_itens i JOIN produtos p ON p.id = i.produto_id WHERE i.venda_id = ?";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, venda.getId());
@@ -181,6 +183,7 @@ public class VendaRepository {
                             resultado.getInt("quantidade"),
                             resultado.getBigDecimal("preco_unitario"));
                     item.setId(resultado.getLong("id"));
+                    item.setDesconto(resultado.getBigDecimal("desconto"));
                     item.setSubtotal(resultado.getBigDecimal("subtotal"));
                     venda.getItens().add(item);
                 }

@@ -9,6 +9,7 @@ public class VendaItem {
     private String produtoNome;
     private int quantidade;
     private BigDecimal precoUnitario;
+    private BigDecimal desconto = BigDecimal.ZERO;
     private BigDecimal subtotal = BigDecimal.ZERO;
 
     public VendaItem() {
@@ -72,9 +73,25 @@ public class VendaItem {
         this.subtotal = subtotal;
     }
 
+    public BigDecimal getDesconto() {
+        return desconto;
+    }
+
+    public void setDesconto(BigDecimal desconto) {
+        this.desconto = desconto == null ? BigDecimal.ZERO : desconto;
+        recalcularSubtotal();
+    }
+
+    public BigDecimal getValorBruto() {
+        if (precoUnitario == null) {
+            return BigDecimal.ZERO;
+        }
+        return precoUnitario.multiply(BigDecimal.valueOf(quantidade));
+    }
+
     private void recalcularSubtotal() {
         if (precoUnitario != null) {
-            subtotal = precoUnitario.multiply(BigDecimal.valueOf(quantidade));
+            subtotal = getValorBruto().subtract(desconto == null ? BigDecimal.ZERO : desconto);
         }
     }
 }

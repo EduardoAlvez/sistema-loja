@@ -38,7 +38,7 @@ public class VendaService {
         if (itens.isEmpty()) {
             throw new ValidacaoException("Adicione pelo menos um item à venda.");
         }
-        validarDesconto(venda);
+        validarDescontos(venda, itens);
         venda.getItens().clear();
         itens.forEach(venda::adicionarItem);
         validarEstoque(venda);
@@ -78,22 +78,36 @@ public class VendaService {
             if (existente == null) {
                 porProduto.put(item.getProdutoId(), item);
             } else {
+                existente.setDesconto(existente.getDesconto().add(
+                        item.getDesconto() == null ? BigDecimal.ZERO : item.getDesconto()));
                 existente.setQuantidade(existente.getQuantidade() + item.getQuantidade());
             }
         }
         return new ArrayList<>(porProduto.values());
     }
 
-    private void validarDesconto(Venda venda) {
+    private void validarDescontos(Venda venda, List<VendaItem> itens) {
         BigDecimal desconto = venda.getDesconto() == null ? BigDecimal.ZERO : venda.getDesconto();
         venda.setDesconto(desconto);
         if (desconto.compareTo(BigDecimal.ZERO) < 0) {
             throw new ValidacaoException("O desconto não pode ser negativo.");
         }
+        for (VendaItem item : itens) {
+            BigDecimal descontoItem = item.getDesconto() == null ? BigDecimal.ZERO : item.getDesconto();
+            item.setDesconto(descontoItem);
+            if (descontoItem.compareTo(BigDecimal.ZERO) < 0) {
+                throw new ValidacaoException("O desconto do item " + item.getProdutoNome()
+                        + " não pode ser negativo.");
+            }
+            if (descontoItem.compareTo(item.getValorBruto()) >= 0) {
+                throw new ValidacaoException("O desconto do item " + item.getProdutoNome()
+                        + " não pode alcançar o subtotal do item.");
+            }
+        }
         if (desconto.compareTo(BigDecimal.ZERO) == 0) {
             return;
         }
-        BigDecimal somaItens = venda.getItens().stream()
+        BigDecimal somaItens = itens.stream()
                 .map(VendaItem::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (desconto.compareTo(somaItens) >= 0) {

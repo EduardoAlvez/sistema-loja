@@ -143,6 +143,95 @@ class VendaServiceTest {
         assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
     }
 
+    @Test
+    void descontoPorItemAbatidoNoSubtotal() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = new Venda();
+        venda.setUsuarioId(operador.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        VendaItem item = new VendaItem(agua.getId(), agua.getNome(), 2, agua.getPrecoVenda());
+        item.setDesconto(new BigDecimal("1.00"));
+        venda.adicionarItem(item);
+
+        Venda registrada = app.getVendas().registrar(venda);
+
+        assertEquals(0, new BigDecimal("1.00").compareTo(registrada.getItens().get(0).getDesconto()));
+        assertEquals(0, new BigDecimal("4.00").compareTo(registrada.getItens().get(0).getSubtotal()));
+        assertEquals(0, new BigDecimal("4.00").compareTo(registrada.getTotal()));
+
+        Venda buscada = app.getVendas().buscarPorId(registrada.getId());
+        assertEquals(0, new BigDecimal("1.00").compareTo(buscada.getItens().get(0).getDesconto()));
+    }
+
+    @Test
+    void somaDescontosDeItensDiferentesEVenda() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Produto feijao = app.getProdutos().buscarPorCodigoBarras("7891000200101");
+        Venda venda = new Venda();
+        venda.setUsuarioId(operador.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        VendaItem itemAgua = new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda());
+        itemAgua.setDesconto(new BigDecimal("1.00"));
+        VendaItem itemFeijao = new VendaItem(feijao.getId(), feijao.getNome(), 2, feijao.getPrecoVenda());
+        itemFeijao.setDesconto(new BigDecimal("0.50"));
+        venda.adicionarItem(itemAgua);
+        venda.adicionarItem(itemFeijao);
+        venda.setDesconto(new BigDecimal("1.50"));
+
+        Venda registrada = app.getVendas().registrar(venda);
+
+        assertEquals(0, new BigDecimal("0.50").compareTo(registrada.getItens().get(1).getDesconto()));
+        BigDecimal somaLiquida = registrada.getItens().stream()
+                .map(VendaItem::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertEquals(0, somaLiquida.subtract(new BigDecimal("1.50")).compareTo(registrada.getTotal()));
+    }
+
+    @Test
+    void mesclaDescontosDoMesmoProdutoNoCarrinho() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = new Venda();
+        venda.setUsuarioId(operador.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        VendaItem primeiro = new VendaItem(agua.getId(), agua.getNome(), 2, agua.getPrecoVenda());
+        primeiro.setDesconto(new BigDecimal("0.50"));
+        VendaItem segundo = new VendaItem(agua.getId(), agua.getNome(), 2, agua.getPrecoVenda());
+        segundo.setDesconto(new BigDecimal("0.50"));
+        venda.adicionarItem(primeiro);
+        venda.adicionarItem(segundo);
+
+        Venda registrada = app.getVendas().registrar(venda);
+
+        assertEquals(1, registrada.getItens().size());
+        assertEquals(4, registrada.getItens().get(0).getQuantidade());
+        assertEquals(0, new BigDecimal("1.00").compareTo(registrada.getItens().get(0).getDesconto()));
+        assertEquals(0, new BigDecimal("9.00").compareTo(registrada.getTotal()));
+    }
+
+    @Test
+    void naoPermiteDescontoPorItemNegativo() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = new Venda();
+        venda.setUsuarioId(operador.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        VendaItem item = new VendaItem(agua.getId(), agua.getNome(), 1, agua.getPrecoVenda());
+        item.setDesconto(new BigDecimal("-0.10"));
+        venda.adicionarItem(item);
+        assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
+    }
+
+    @Test
+    void naoPermiteDescontoPorItemIgualAoBruto() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = new Venda();
+        venda.setUsuarioId(operador.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        VendaItem item = new VendaItem(agua.getId(), agua.getNome(), 2, agua.getPrecoVenda());
+        item.setDesconto(new BigDecimal("5.00"));
+        venda.adicionarItem(item);
+        assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
+    }
+
     private Venda novaVenda(Produto produto, int quantidade, FormaPagamento pagamento, BigDecimal pago) {
         Venda venda = new Venda();
         venda.setUsuarioId(operador.getId());

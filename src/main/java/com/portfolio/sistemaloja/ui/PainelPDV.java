@@ -60,10 +60,10 @@ public class PainelPDV extends JPanel {
     private BigDecimal subtotal = BigDecimal.ZERO;
     private final javax.swing.table.DefaultTableModel modeloCarrinho =
             new javax.swing.table.DefaultTableModel(
-                    new Object[]{"Produto", "Qtd", "Preço unit.", "Subtotal"}, 0) {
+                    new Object[]{"Produto", "Qtd", "Desconto", "Preço unit.", "Subtotal"}, 0) {
                 @Override
                 public boolean isCellEditable(int linha, int coluna) {
-                    return coluna == 1;
+                    return coluna == 1 || coluna == 2;
                 }
             };
     private final JTable tabelaCarrinho = Ui.tabela(modeloCarrinho);
@@ -236,6 +236,8 @@ public class PainelPDV extends JPanel {
         modeloCarrinho.addTableModelListener(e -> {
             if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 1) {
                 atualizarQuantidade(e.getFirstRow());
+            } else if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 2) {
+                atualizarDescontoItem(e.getFirstRow());
             }
         });
 
@@ -344,6 +346,24 @@ public class PainelPDV extends JPanel {
         sincronizarCarrinho();
     }
 
+    private void atualizarDescontoItem(int linha) {
+        if (linha < 0 || linha >= carrinho.size()) {
+            return;
+        }
+        Object valor = modeloCarrinho.getValueAt(linha, 2);
+        BigDecimal descontoItem = parseMoeda(String.valueOf(valor));
+        VendaItem item = carrinho.get(linha);
+        if (descontoItem.compareTo(BigDecimal.ZERO) <= 0) {
+            item.setDesconto(BigDecimal.ZERO);
+        } else if (descontoItem.compareTo(item.getValorBruto()) >= 0) {
+            Ui.erro(this, "O desconto de " + item.getProdutoNome() + " não pode alcançar o subtotal do item.");
+            item.setDesconto(BigDecimal.ZERO);
+        } else {
+            item.setDesconto(descontoItem);
+        }
+        sincronizarCarrinho();
+    }
+
     private void sincronizarCarrinho() {
         modeloCarrinho.setRowCount(0);
         BigDecimal soma = BigDecimal.ZERO;
@@ -351,6 +371,7 @@ public class PainelPDV extends JPanel {
             modeloCarrinho.addRow(new Object[]{
                     item.getProdutoNome(),
                     item.getQuantidade(),
+                    Ui.moeda(item.getDesconto()),
                     Ui.moeda(item.getPrecoUnitario()),
                     Ui.moeda(item.getSubtotal())
             });
@@ -440,6 +461,9 @@ public class PainelPDV extends JPanel {
             texto.append(String.format("%s%n  %d x %s  =  %s%n",
                     item.getProdutoNome(), item.getQuantidade(),
                     Ui.moeda(item.getPrecoUnitario()), Ui.moeda(item.getSubtotal())));
+            if (item.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
+                texto.append("  desc. item: -").append(Ui.moeda(item.getDesconto())).append('\n');
+            }
         }
         texto.append("--------------------------------\n");
         if (venda.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
