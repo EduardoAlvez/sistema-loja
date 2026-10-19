@@ -137,6 +137,32 @@ Ou pela IDE: execute a classe `com.portfolio.sistemaloja.App`.
 Também é possível baixar o jar pronto na página de
 [Releases](https://github.com/EduardoAlvez/sistema-loja/releases).
 
+### Formas de implantação
+
+O aplicativo é um **cliente de banco de dados**: ele abre a conexão e aplica as migrações do
+Flyway **antes** de exibir o login. O banco precisa existir em algum lugar — e **Docker é só a
+opção mais rápida para desenvolvimento, não um requisito da loja**.
+
+| Cenário | Banco | Como |
+|---------|-------|------|
+| Desenvolvimento | MySQL 8 em container | `docker compose up -d` (este repositório) |
+| Um caixa | MySQL 8 no próprio PC | instalador oficial como **serviço do Windows** (sobe com o PC), sem Docker |
+| Várias lojas/terminais | MySQL 8 num servidor | um banco só na rede; cada caixa aponta `DB_URL` para ele |
+| Balcão sem banco instalado | H2 **em arquivo** | *planejado*: banco embarcado junto da pasta de dados do app (roadmap) |
+
+Como a configuração é sempre `DB_URL`, `DB_USER` e `DB_PASS`, sair do container para um
+**serviço do Windows** ou para um **servidor** não muda uma linha de código — só a variável.
+
+> O banco em arquivo (H2) aceita **um processo por vez**: serve para um caixa. Para vários
+> terminais no mesmo banco, use MySQL ou o modo servidor do H2. O backup passa a ser copiar
+> o arquivo de dados.
+>
+> Sem JDK na máquina do balcão? O caminho é empacotar com **`jpackage`** (JRE embutida) —
+> também no roadmap. Hoje é necessário ter o **JDK 21** instalado.
+>
+> O `docker-compose.yml` ainda usa `mysql:8.0`, que chegou ao **EOL em abril/2026**; para
+> novas instalações o alvo é o **MySQL 8.4 LTS** (no roadmap).
+
 ### Credenciais padrão
 
 | Perfil | Login | Senha |
@@ -313,6 +339,10 @@ sistema-loja/
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
 - [x] 164 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
+- [ ] Modo embarcado com H2 em arquivo (rodar sem instalar banco)
+- [ ] Instalador com `jpackage` (JRE embutida, sem JDK no balcão)
+- [ ] Subir o `docker-compose.yml` para MySQL 8.4 LTS
+- [ ] Relatórios de estoque crítico usando o `estoque_minimo` de cada produto
 
 ---
 
