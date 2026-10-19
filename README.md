@@ -339,10 +339,36 @@ sistema-loja/
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
 - [x] 164 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
-- [ ] Modo embarcado com H2 em arquivo (rodar sem instalar banco)
-- [ ] Instalador com `jpackage` (JRE embutida, sem JDK no balcão)
-- [ ] Subir o `docker-compose.yml` para MySQL 8.4 LTS
+Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
+
+**Onda 1 — baixo esforço, alto valor**
+
+- [ ] Impressora ESC/POS (corte, negrito e comando de abrir gaveta) com impressora falsa nos testes
+- [ ] Promoções com vigência e preço por dia/horário (happy hour)
+- [ ] Fidelidade por pontos, com resgate como desconto na venda
+- [ ] Autorização de supervisor por PIN (desconto acima da alçada, cancelamento e sangria)
+- [ ] Conferência cega no fechamento de caixa, com a divergência registrada
+- [ ] Indicadores: vendas por hora, curva ABC, giro/ruptura, produtos sem movimentação, comparativo mensal
+
+**Onda 2 — médio esforço**
+
+- [ ] Fornecedores, entrada de mercadoria e sugestão de compra pelo consumo real
+- [ ] Inventário/contagem cíclica, perdas com motivo e transferência entre lojas
+- [ ] Lote e validade com alerta de vencimento
+- [ ] TEF por interface abstrata, taxa por bandeira e conciliação de cartões
+- [ ] Fiado/crediário com limite, vencimento, recebimento parcial e juros
+- [ ] Multi-caixa e multi-loja com preço centralizado
 - [ ] Relatórios de estoque crítico usando o `estoque_minimo` de cada produto
+- [ ] Subir o `docker-compose.yml` para MySQL 8.4 LTS
+
+**Onda 3 — alto esforço**
+
+- [ ] Modo embarcado com H2 em arquivo (rodar sem instalar banco)
+- [ ] Offline-first: vender sem internet e sincronizar depois
+- [ ] Instalador com `jpackage` (JRE embutida, sem JDK no balcão)
+- [ ] NFC-e/SAT com certificado digital, Menu Fiscal e IBS/CBS
+- [ ] Restaurante: comanda, divisão de conta, KDS e impressão setorizada
+- [ ] Delivery/omnichannel: cardápio QR, totem e integrações
 
 ---
 
