@@ -145,9 +145,10 @@ class VendaServiceTest {
 
     @Test
     void descontoPorItemAbatidoNoSubtotal() {
+        Usuario admin = app.getAuth().autenticar("admin", "admin123");
         Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
         Venda venda = new Venda();
-        venda.setUsuarioId(operador.getId());
+        venda.setUsuarioId(admin.getId());
         venda.setFormaPagamento(FormaPagamento.PIX);
         VendaItem item = new VendaItem(agua.getId(), agua.getNome(), 2, agua.getPrecoVenda());
         item.setDesconto(new BigDecimal("1.00"));
@@ -165,10 +166,11 @@ class VendaServiceTest {
 
     @Test
     void somaDescontosDeItensDiferentesEVenda() {
+        Usuario admin = app.getAuth().autenticar("admin", "admin123");
         Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
         Produto feijao = app.getProdutos().buscarPorCodigoBarras("7891000200101");
         Venda venda = new Venda();
-        venda.setUsuarioId(operador.getId());
+        venda.setUsuarioId(admin.getId());
         venda.setFormaPagamento(FormaPagamento.PIX);
         VendaItem itemAgua = new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda());
         itemAgua.setDesconto(new BigDecimal("1.00"));
@@ -230,6 +232,55 @@ class VendaServiceTest {
         item.setDesconto(new BigDecimal("5.00"));
         venda.adicionarItem(item);
         assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
+    }
+
+    @Test
+    void operadorPodeAplicarDescontoAteDezPorCento() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 4, FormaPagamento.PIX, null);
+        venda.setDesconto(new BigDecimal("1.00"));
+
+        Venda registrada = app.getVendas().registrar(venda);
+
+        assertEquals(0, new BigDecimal("1.00").compareTo(registrada.getDesconto()));
+        assertEquals(0, new BigDecimal("9.00").compareTo(registrada.getTotal()));
+    }
+
+    @Test
+    void operadorNaoPodeAplicarDescontoAcimaDoLimiteDoPerfil() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 4, FormaPagamento.PIX, null);
+        venda.setDesconto(new BigDecimal("1.10"));
+        ValidacaoException erro = assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
+        assertTrue(erro.getMessage().contains("10%"));
+    }
+
+    @Test
+    void descontoDeItemContaNoLimiteDoPerfil() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = new Venda();
+        venda.setUsuarioId(operador.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        VendaItem item = new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda());
+        item.setDesconto(new BigDecimal("1.00"));
+        venda.adicionarItem(item);
+        venda.setDesconto(new BigDecimal("0.10"));
+        ValidacaoException erro = assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
+        assertTrue(erro.getMessage().contains("10%"));
+    }
+
+    @Test
+    void adminPodeAplicarDescontoAteCinquentaPorCento() {
+        Usuario admin = app.getAuth().autenticar("admin", "admin123");
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 4, FormaPagamento.PIX, null);
+        venda.setUsuarioId(admin.getId());
+        venda.setDesconto(new BigDecimal("4.50"));
+
+        Venda registrada = app.getVendas().registrar(venda);
+
+        assertEquals(0, new BigDecimal("4.50").compareTo(registrada.getDesconto()));
+        assertEquals(0, new BigDecimal("5.50").compareTo(registrada.getTotal()));
     }
 
     private Venda novaVenda(Produto produto, int quantidade, FormaPagamento pagamento, BigDecimal pago) {

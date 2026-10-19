@@ -3,14 +3,17 @@ package com.portfolio.sistemaloja.service;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.StatusVenda;
+import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
+import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,11 +25,14 @@ public class VendaService {
 
     private final VendaRepository vendas;
     private final ProdutoRepository produtos;
+    private final UsuarioRepository usuarios;
     private final AuditoriaService auditoria;
 
-    public VendaService(VendaRepository vendas, ProdutoRepository produtos, AuditoriaService auditoria) {
+    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
+                        AuditoriaService auditoria) {
         this.vendas = vendas;
         this.produtos = produtos;
+        this.usuarios = usuarios;
         this.auditoria = auditoria;
     }
 
@@ -39,6 +45,7 @@ public class VendaService {
             throw new ValidacaoException("Adicione pelo menos um item à venda.");
         }
         validarDescontos(venda, itens);
+        validarLimiteDescontoPorPerfil(venda, itens);
         venda.getItens().clear();
         itens.forEach(venda::adicionarItem);
         validarEstoque(venda);
@@ -112,6 +119,28 @@ public class VendaService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (desconto.compareTo(somaItens) >= 0) {
             throw new ValidacaoException("O desconto não pode alcançar o total dos itens.");
+        }
+    }
+
+    private void validarLimiteDescontoPorPerfil(Venda venda, List<VendaItem> itens) {
+        if (venda.getUsuarioId() == null) {
+            return;
+        }
+        Usuario usuario = usuarios.buscarPorId(venda.getUsuarioId())
+                .orElseThrow(() -> new ValidacaoException("Operador da venda não encontrado."));
+        int percentual = usuario.getPerfil().getPercentualMaximoDesconto();
+        BigDecimal bruto = itens.stream()
+                .map(VendaItem::getValorBruto)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal descontoTotal = venda.getDesconto().add(itens.stream()
+                .map(VendaItem::getDesconto)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        BigDecimal limite = bruto.multiply(BigDecimal.valueOf(percentual))
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        if (descontoTotal.compareTo(limite) > 0) {
+            throw new ValidacaoException("O desconto total de " + descontoTotal.toPlainString()
+                    + " excede o limite de " + percentual + "% do perfil "
+                    + usuario.getPerfil().getDescricao() + ".");
         }
     }
 

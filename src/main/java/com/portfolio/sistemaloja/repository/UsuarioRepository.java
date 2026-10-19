@@ -40,6 +40,22 @@ public class UsuarioRepository {
         return Optional.empty();
     }
 
+    public Optional<Usuario> buscarPorId(long id) {
+        String sql = SELECT_BASE + " WHERE id = ?";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, id);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (resultado.next()) {
+                    return Optional.of(mapear(resultado));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao buscar usuário", e);
+        }
+        return Optional.empty();
+    }
+
     public List<Usuario> listar() {
         String sql = SELECT_BASE + " ORDER BY nome";
         List<Usuario> usuarios = new ArrayList<>();

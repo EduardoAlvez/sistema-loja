@@ -154,7 +154,8 @@ public class PainelPDV extends JPanel {
         valorPago.setToolTipText("Apenas para dinheiro; nos demais, o valor é o total da venda");
         pagamentoPainel.add(valorPago);
         pagamentoPainel.add(Ui.rotulo("Desconto:"));
-        desconto.setToolTipText("Desconto aplicado no total da venda (ex.: 10 ou 10,50)");
+        desconto.setToolTipText("Desconto aplicado no total da venda (ex.: 10 ou 10,50). "
+                + "Limite do seu perfil: " + usuario.getPerfil().getPercentualMaximoDesconto() + "%");
         desconto.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {

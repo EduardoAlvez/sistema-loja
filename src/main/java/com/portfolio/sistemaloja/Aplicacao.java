@@ -44,7 +44,7 @@ public class Aplicacao {
         this.auth = new AuthService(usuarioRepository, sessao, auditoria);
         this.produtos = new ProdutoService(produtoRepository, categoriaRepository, auditoria);
         this.clientes = new ClienteService(clienteRepository, auditoria);
-        this.vendas = new VendaService(vendaRepository, produtoRepository, auditoria);
+        this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository, auditoria);
         this.usuarios = new UsuarioService(usuarioRepository, auditoria);
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
         this.exportacao = new ExportacaoService();
