@@ -44,6 +44,15 @@ public final class Ui {
         return MOEDA.format(valor == null ? BigDecimal.ZERO : valor);
     }
 
+    public static BigDecimal parseMoeda(String texto) {
+        try {
+            String limpo = String.valueOf(texto).replaceAll("[^0-9,.-]", "").replace(',', '.');
+            return new BigDecimal(limpo.isBlank() ? "0" : limpo);
+        } catch (NumberFormatException e) {
+            return BigDecimal.ZERO;
+        }
+    }
+
     public static String data(LocalDate data) {
         return data == null ? "-" : DATA.format(data);
     }

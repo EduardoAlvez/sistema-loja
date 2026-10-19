@@ -35,6 +35,7 @@ import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.model.VendaPagamento;
 import com.portfolio.sistemaloja.service.CaixaService;
 import com.portfolio.sistemaloja.service.ValidacaoException;
 
@@ -50,6 +51,7 @@ public class PainelPDV extends JPanel {
     private final JComboBox<FormaPagamento> pagamento = new JComboBox<>(FormaPagamento.values());
     private final JTextField valorPago = new JTextField(12);
     private final JTextField desconto = new JTextField(8);
+    private final JLabel statusPagamento = new JLabel(" ");
     private final JLabel total = new JLabel("R$ 0,00");
     private final JLabel troco = new JLabel("R$ 0,00");
     private final JLabel statusEstoque = new JLabel(" ");
@@ -65,6 +67,7 @@ public class PainelPDV extends JPanel {
     private List<Produto> produtos = List.of();
 
     private final List<VendaItem> carrinho = new ArrayList<>();
+    private final List<VendaPagamento> pagamentosDivididos = new ArrayList<>();
     private BigDecimal subtotal = BigDecimal.ZERO;
     private final javax.swing.table.DefaultTableModel modeloCarrinho =
             new javax.swing.table.DefaultTableModel(
@@ -182,6 +185,8 @@ public class PainelPDV extends JPanel {
             }
         });
         pagamentoPainel.add(desconto);
+        statusPagamento.setForeground(Ui.COR_PRINCIPAL);
+        pagamentoPainel.add(statusPagamento);
 
         JPanel totais = new JPanel(new GridLayout(2, 2, 12, 0));
         totais.setOpaque(false);
@@ -199,12 +204,15 @@ public class PainelPDV extends JPanel {
         botoes.setOpaque(false);
         JButton limpar = new JButton("Limpar carrinho");
         limpar.addActionListener(e -> limpar());
+        JButton dividir = new JButton("Pagamento dividido");
+        dividir.addActionListener(e -> abrirPagamentoDividido());
         JButton finalizar = new JButton("Finalizar venda");
         finalizar.setBackground(Ui.COR_OK);
         finalizar.setForeground(Color.WHITE);
         finalizar.setFont(finalizar.getFont().deriveFont(Font.BOLD, 14f));
         finalizar.addActionListener(e -> finalizar());
         botoes.add(limpar);
+        botoes.add(dividir);
         botoes.add(finalizar);
 
         JPanel esquerda = new JPanel(new BorderLayout(10, 0));
@@ -537,18 +545,36 @@ public class PainelPDV extends JPanel {
             valorPago.setText("");
             valorPago.setEnabled(false);
         } else {
-            valorPago.setEnabled(true);
+            valorPago.setEnabled(pagamentosDivididos.isEmpty());
         }
         calcularTroco();
     }
 
     private BigDecimal parseMoeda(String texto) {
-        try {
-            String limpo = texto.replaceAll("[^0-9,.-]", "").replace(',', '.');
-            return new BigDecimal(limpo.isBlank() ? "0" : limpo);
-        } catch (NumberFormatException e) {
-            return BigDecimal.ZERO;
+        return Ui.parseMoeda(texto);
+    }
+
+    private void abrirPagamentoDividido() {
+        if (carrinho.isEmpty()) {
+            Ui.erro(this, "O carrinho está vazio.");
+            return;
         }
+        BigDecimal totalVenda = parseMoeda(total.getText());
+        if (totalVenda.compareTo(BigDecimal.ZERO) <= 0) {
+            Ui.erro(this, "O total da venda deve ser maior que zero.");
+            return;
+        }
+        DialogoPagamentoDividido dialogo = new DialogoPagamentoDividido(
+                SwingUtilities.getWindowAncestor(this), totalVenda, (FormaPagamento) pagamento.getSelectedItem());
+        dialogo.setVisible(true);
+        if (!dialogo.isConfirmado()) {
+            return;
+        }
+        pagamentosDivididos.clear();
+        pagamentosDivididos.addAll(dialogo.getParcelas());
+        statusPagamento.setText("Dividido em " + pagamentosDivididos.size() + " parcela(s)");
+        pagamento.setEnabled(false);
+        valorPago.setEnabled(false);
     }
 
     private void finalizar() {
@@ -567,6 +593,7 @@ public class PainelPDV extends JPanel {
             venda.setDesconto(parseMoeda(desconto.getText()));
             venda.setValorPago(parseMoeda(valorPago.getText()));
             carrinho.forEach(venda::adicionarItem);
+            pagamentosDivididos.forEach(venda::adicionarPagamento);
 
             Venda registrada = aplicacao.getVendas().registrar(venda);
             mostrarCupom(registrada);
@@ -600,20 +627,35 @@ public class PainelPDV extends JPanel {
             texto.append("Desconto: -").append(Ui.moeda(venda.getDesconto())).append('\n');
         }
         texto.append("TOTAL: ").append(Ui.moeda(venda.getTotal())).append('\n');
-        texto.append("Pagamento: ").append(venda.getFormaPagamento().getDescricao()).append('\n');
-        if (venda.getFormaPagamento() == FormaPagamento.DINHEIRO) {
-            texto.append("Pago: ").append(Ui.moeda(venda.getValorPago()))
-                    .append("   Troco: ").append(Ui.moeda(venda.getTroco())).append('\n');
+        if (venda.isPagamentoDividido()) {
+            texto.append("Pagamento dividido:\n");
+            for (VendaPagamento parcela : venda.getPagamentos()) {
+                texto.append("  ").append(parcela.getFormaPagamento().getDescricao())
+                        .append(": ").append(Ui.moeda(parcela.getValor())).append('\n');
+            }
+            if (venda.getTroco().compareTo(BigDecimal.ZERO) > 0) {
+                texto.append("Troco: ").append(Ui.moeda(venda.getTroco())).append('\n');
+            }
+        } else {
+            texto.append("Pagamento: ").append(venda.getFormaPagamento().getDescricao()).append('\n');
+            if (venda.getFormaPagamento() == FormaPagamento.DINHEIRO) {
+                texto.append("Pago: ").append(Ui.moeda(venda.getValorPago()))
+                        .append("   Troco: ").append(Ui.moeda(venda.getTroco())).append('\n');
+            }
         }
         Ui.info(this, texto.toString());
     }
 
     private void limpar() {
         carrinho.clear();
+        pagamentosDivididos.clear();
+        statusPagamento.setText(" ");
+        pagamento.setEnabled(true);
         sincronizarCarrinho();
         valorPago.setText("");
         desconto.setText("");
         busca.setText("");
+        ajustarValorPago();
     }
 
     private void recarregarClientes() {
