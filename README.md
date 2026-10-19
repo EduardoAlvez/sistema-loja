@@ -129,7 +129,7 @@ mvn flyway:info -Dflyway.url=jdbc:mysql://localhost:3306/sistema_loja \
 
 ```bash
 mvn clean package
-java -jar target/sistema-loja-1.0.0.jar
+java -jar target/sistema-loja-1.1.0.jar
 ```
 
 Ou pela IDE: execute a classe `com.portfolio.sistemaloja.App`.

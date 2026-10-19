@@ -6,7 +6,7 @@
 
     <groupId>com.portfolio</groupId>
     <artifactId>sistema-loja</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
 
     <name>Sistema de Gestao de Loja / PDV - Portfolio Java</name>
