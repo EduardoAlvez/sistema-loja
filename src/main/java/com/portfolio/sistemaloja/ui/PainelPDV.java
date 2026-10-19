@@ -36,6 +36,7 @@ import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.model.VendaPagamento;
+import com.portfolio.sistemaloja.model.VendaPausada;
 import com.portfolio.sistemaloja.service.CaixaService;
 import com.portfolio.sistemaloja.service.ValidacaoException;
 
@@ -206,6 +207,10 @@ public class PainelPDV extends JPanel {
         limpar.addActionListener(e -> limpar());
         JButton dividir = new JButton("Pagamento dividido");
         dividir.addActionListener(e -> abrirPagamentoDividido());
+        JButton pausar = new JButton("Pausar venda");
+        pausar.addActionListener(e -> pausarVenda());
+        JButton retomar = new JButton("Retomar venda");
+        retomar.addActionListener(e -> retomarVenda());
         JButton finalizar = new JButton("Finalizar venda");
         finalizar.setBackground(Ui.COR_OK);
         finalizar.setForeground(Color.WHITE);
@@ -213,6 +218,8 @@ public class PainelPDV extends JPanel {
         finalizar.addActionListener(e -> finalizar());
         botoes.add(limpar);
         botoes.add(dividir);
+        botoes.add(pausar);
+        botoes.add(retomar);
         botoes.add(finalizar);
 
         JPanel esquerda = new JPanel(new BorderLayout(10, 0));
@@ -577,25 +584,116 @@ public class PainelPDV extends JPanel {
         valorPago.setEnabled(false);
     }
 
+    private Venda montarVenda() {
+        Venda venda = new Venda();
+        Cliente selecionado = (Cliente) cliente.getSelectedItem();
+        if (selecionado != null) {
+            venda.setClienteId(selecionado.getId());
+        }
+        venda.setUsuarioId(usuario.getId());
+        venda.setFormaPagamento((FormaPagamento) pagamento.getSelectedItem());
+        venda.setDesconto(parseMoeda(desconto.getText()));
+        venda.setValorPago(parseMoeda(valorPago.getText()));
+        carrinho.forEach(venda::adicionarItem);
+        pagamentosDivididos.forEach(venda::adicionarPagamento);
+        return venda;
+    }
+
+    private void pausarVenda() {
+        if (carrinho.isEmpty()) {
+            Ui.erro(this, "O carrinho está vazio.");
+            return;
+        }
+        String observacao = javax.swing.JOptionPane.showInputDialog(this,
+                "Identificação da venda pausada (opcional):", "");
+        if (observacao == null) {
+            return;
+        }
+        try {
+            aplicacao.getPausas().pausar(montarVenda(), observacao, usuario);
+            limpar();
+            Ui.info(this, "Venda pausada. Use Retomar venda para continuar.");
+        } catch (ValidacaoException e) {
+            Ui.erro(this, e.getMessage());
+        }
+    }
+
+    private void retomarVenda() {
+        List<VendaPausada> pausadas = aplicacao.getPausas().listar();
+        if (pausadas.isEmpty()) {
+            Ui.info(this, "Nenhuma venda pausada no momento.");
+            return;
+        }
+        if (!carrinho.isEmpty() && !Ui.confirma(this,
+                "O carrinho atual será substituído pela venda recuperada. Continuar?")) {
+            return;
+        }
+        String[] opcoes = pausadas.stream().map(this::descreverPausada).toArray(String[]::new);
+        Object escolha = javax.swing.JOptionPane.showInputDialog(this, "Selecione a venda pausada:",
+                "Retomar venda", javax.swing.JOptionPane.QUESTION_MESSAGE, null, opcoes, opcoes[0]);
+        if (escolha == null) {
+            return;
+        }
+        long id = Long.parseLong(((String) escolha).substring(1).split(" ")[0]);
+        int acao = javax.swing.JOptionPane.showOptionDialog(this,
+                "O que deseja fazer com a venda pausada " + id + "?", "Venda pausada",
+                javax.swing.JOptionPane.YES_NO_CANCEL_OPTION, javax.swing.JOptionPane.QUESTION_MESSAGE, null,
+                new Object[]{"Recuperar", "Descartar", "Cancelar"}, "Recuperar");
+        if (acao == 1) {
+            aplicacao.getPausas().descartar(id);
+            Ui.info(this, "Venda pausada descartada.");
+            return;
+        }
+        if (acao != 0) {
+            return;
+        }
+        preencherComPausada(aplicacao.getPausas().buscarPorId(id));
+        aplicacao.getPausas().descartar(id);
+        Ui.info(this, "Venda recuperada no carrinho.");
+    }
+
+    private String descreverPausada(VendaPausada pausada) {
+        StringBuilder descricao = new StringBuilder("#").append(pausada.getId())
+                .append(" - ").append(Ui.dataHora(pausada.getDataHora()))
+                .append(" - ").append(pausada.getQuantidadeItens()).append(" item(ns)")
+                .append(" - ").append(Ui.moeda(pausada.getTotal()));
+        if (pausada.getObservacao() != null && !pausada.getObservacao().isBlank()) {
+            descricao.append(" (").append(pausada.getObservacao()).append(')');
+        }
+        return descricao.toString();
+    }
+
+    private void preencherComPausada(VendaPausada pausada) {
+        limpar();
+        carrinho.addAll(pausada.getItens());
+        if (pausada.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
+            desconto.setText(pausada.getDesconto().toPlainString().replace('.', ','));
+        }
+        if (pausada.getClienteId() != null) {
+            for (int i = 0; i < cliente.getItemCount(); i++) {
+                Cliente item = cliente.getItemAt(i);
+                if (item != null && item.getId().equals(pausada.getClienteId())) {
+                    cliente.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
+        pagamentosDivididos.addAll(pausada.getPagamentos());
+        if (!pagamentosDivididos.isEmpty()) {
+            statusPagamento.setText("Dividido em " + pagamentosDivididos.size() + " parcela(s)");
+            pagamento.setEnabled(false);
+            valorPago.setEnabled(false);
+        }
+        sincronizarCarrinho();
+    }
+
     private void finalizar() {
         if (carrinho.isEmpty()) {
             Ui.erro(this, "O carrinho está vazio.");
             return;
         }
         try {
-            Venda venda = new Venda();
-            Cliente selecionado = (Cliente) cliente.getSelectedItem();
-            if (selecionado != null) {
-                venda.setClienteId(selecionado.getId());
-            }
-            venda.setUsuarioId(usuario.getId());
-            venda.setFormaPagamento((FormaPagamento) pagamento.getSelectedItem());
-            venda.setDesconto(parseMoeda(desconto.getText()));
-            venda.setValorPago(parseMoeda(valorPago.getText()));
-            carrinho.forEach(venda::adicionarItem);
-            pagamentosDivididos.forEach(venda::adicionarPagamento);
-
-            Venda registrada = aplicacao.getVendas().registrar(venda);
+            Venda registrada = aplicacao.getVendas().registrar(montarVenda());
             mostrarCupom(registrada);
             limpar();
             recarregarProdutos();
