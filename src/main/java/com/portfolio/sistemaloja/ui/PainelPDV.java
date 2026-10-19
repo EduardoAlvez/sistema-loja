@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Frame;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
@@ -230,6 +231,8 @@ public class PainelPDV extends JPanel {
         reimprimir.addActionListener(e -> reimprimirCupom());
         JButton ajuda = new JButton("Atalhos");
         ajuda.addActionListener(e -> mostrarAtalhos());
+        JButton cupomTermico = new JButton("Cupom 80mm (PIX)");
+        cupomTermico.addActionListener(e -> abrirCupomTermico());
         JButton finalizar = new JButton("Finalizar venda [F12]");
         finalizar.setBackground(Ui.COR_OK);
         finalizar.setForeground(Color.WHITE);
@@ -240,6 +243,7 @@ public class PainelPDV extends JPanel {
         botoes.add(pausar);
         botoes.add(retomar);
         botoes.add(reimprimir);
+        botoes.add(cupomTermico);
         botoes.add(ajuda);
         botoes.add(finalizar);
 
@@ -812,6 +816,18 @@ public class PainelPDV extends JPanel {
 
     private void mostrarCupom(Venda venda) {
         Ui.info(this, aplicacao.getCupom().formatar(venda));
+    }
+
+    private void abrirCupomTermico() {
+        var ultima = aplicacao.getVendas().ultimaDoOperador(usuario.getId());
+        if (ultima.isEmpty()) {
+            Ui.info(this, "Nenhuma venda registrada por você ainda.");
+            return;
+        }
+        String conteudo = aplicacao.getCupomTermico().formatar(ultima.get());
+        java.awt.Window janela = SwingUtilities.getWindowAncestor(this);
+        Frame pai = janela instanceof Frame frame ? frame : null;
+        new DialogoCupomTermico(pai, conteudo).setVisible(true);
     }
 
     private void reimprimirCupom() {

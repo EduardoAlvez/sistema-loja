@@ -16,7 +16,9 @@ import com.portfolio.sistemaloja.service.AuthService;
 import com.portfolio.sistemaloja.service.AuditoriaService;
 import com.portfolio.sistemaloja.service.CaixaService;
 import com.portfolio.sistemaloja.service.ClienteService;
+import com.portfolio.sistemaloja.service.ConfiguracaoPix;
 import com.portfolio.sistemaloja.service.CupomService;
+import com.portfolio.sistemaloja.service.CupomTermicoService;
 import com.portfolio.sistemaloja.service.DevolucaoService;
 import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.PausaService;
@@ -36,6 +38,7 @@ public class Aplicacao {
     private final PausaService pausas;
     private final CupomService cupom;
     private final DevolucaoService devolucoes;
+    private final CupomTermicoService cupomTermico;
     private final UsuarioService usuarios;
     private final RelatorioService relatorios;
     private final ExportacaoService exportacao;
@@ -63,6 +66,7 @@ public class Aplicacao {
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();
         this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria);
+        this.cupomTermico = new CupomTermicoService(ConfiguracaoPix.padrao());
         this.usuarios = new UsuarioService(usuarioRepository, auditoria);
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
         this.exportacao = new ExportacaoService();
@@ -99,6 +103,10 @@ public class Aplicacao {
 
     public DevolucaoService getDevolucoes() {
         return devolucoes;
+    }
+
+    public CupomTermicoService getCupomTermico() {
+        return cupomTermico;
     }
 
     public UsuarioService getUsuarios() {
