@@ -211,6 +211,8 @@ public class PainelPDV extends JPanel {
         pausar.addActionListener(e -> pausarVenda());
         JButton retomar = new JButton("Retomar venda");
         retomar.addActionListener(e -> retomarVenda());
+        JButton reimprimir = new JButton("Reimprimir cupom");
+        reimprimir.addActionListener(e -> reimprimirCupom());
         JButton finalizar = new JButton("Finalizar venda");
         finalizar.setBackground(Ui.COR_OK);
         finalizar.setForeground(Color.WHITE);
@@ -220,6 +222,7 @@ public class PainelPDV extends JPanel {
         botoes.add(dividir);
         botoes.add(pausar);
         botoes.add(retomar);
+        botoes.add(reimprimir);
         botoes.add(finalizar);
 
         JPanel esquerda = new JPanel(new BorderLayout(10, 0));
@@ -705,43 +708,16 @@ public class PainelPDV extends JPanel {
     }
 
     private void mostrarCupom(Venda venda) {
-        StringBuilder texto = new StringBuilder();
-        texto.append("       CUPOM NÃO FISCAL\n");
-        texto.append("       ").append(venda.getNumero()).append("\n\n");
-        texto.append("Cliente: ")
-                .append(venda.getClienteNome() == null ? "Consumidor" : venda.getClienteNome()).append('\n');
-        texto.append("Operador: ").append(usuario.getNome()).append('\n');
-        texto.append("--------------------------------\n");
-        for (VendaItem item : venda.getItens()) {
-            texto.append(String.format("%s%n  %d x %s  =  %s%n",
-                    item.getProdutoNome(), item.getQuantidade(),
-                    Ui.moeda(item.getPrecoUnitario()), Ui.moeda(item.getSubtotal())));
-            if (item.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
-                texto.append("  desc. item: -").append(Ui.moeda(item.getDesconto())).append('\n');
-            }
+        Ui.info(this, aplicacao.getCupom().formatar(venda));
+    }
+
+    private void reimprimirCupom() {
+        var ultima = aplicacao.getVendas().ultimaDoOperador(usuario.getId());
+        if (ultima.isEmpty()) {
+            Ui.info(this, "Nenhuma venda registrada por você ainda.");
+            return;
         }
-        texto.append("--------------------------------\n");
-        if (venda.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
-            texto.append("Desconto: -").append(Ui.moeda(venda.getDesconto())).append('\n');
-        }
-        texto.append("TOTAL: ").append(Ui.moeda(venda.getTotal())).append('\n');
-        if (venda.isPagamentoDividido()) {
-            texto.append("Pagamento dividido:\n");
-            for (VendaPagamento parcela : venda.getPagamentos()) {
-                texto.append("  ").append(parcela.getFormaPagamento().getDescricao())
-                        .append(": ").append(Ui.moeda(parcela.getValor())).append('\n');
-            }
-            if (venda.getTroco().compareTo(BigDecimal.ZERO) > 0) {
-                texto.append("Troco: ").append(Ui.moeda(venda.getTroco())).append('\n');
-            }
-        } else {
-            texto.append("Pagamento: ").append(venda.getFormaPagamento().getDescricao()).append('\n');
-            if (venda.getFormaPagamento() == FormaPagamento.DINHEIRO) {
-                texto.append("Pago: ").append(Ui.moeda(venda.getValorPago()))
-                        .append("   Troco: ").append(Ui.moeda(venda.getTroco())).append('\n');
-            }
-        }
-        Ui.info(this, texto.toString());
+        Ui.info(this, aplicacao.getCupom().formatar(ultima.get()));
     }
 
     private void limpar() {

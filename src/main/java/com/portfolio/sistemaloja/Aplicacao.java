@@ -15,6 +15,7 @@ import com.portfolio.sistemaloja.service.AuthService;
 import com.portfolio.sistemaloja.service.AuditoriaService;
 import com.portfolio.sistemaloja.service.CaixaService;
 import com.portfolio.sistemaloja.service.ClienteService;
+import com.portfolio.sistemaloja.service.CupomService;
 import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.PausaService;
 import com.portfolio.sistemaloja.service.ProdutoService;
@@ -31,6 +32,7 @@ public class Aplicacao {
     private final VendaService vendas;
     private final CaixaService caixa;
     private final PausaService pausas;
+    private final CupomService cupom;
     private final UsuarioService usuarios;
     private final RelatorioService relatorios;
     private final ExportacaoService exportacao;
@@ -55,6 +57,7 @@ public class Aplicacao {
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository, auditoria);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria);
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
+        this.cupom = new CupomService();
         this.usuarios = new UsuarioService(usuarioRepository, auditoria);
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
         this.exportacao = new ExportacaoService();
@@ -83,6 +86,10 @@ public class Aplicacao {
 
     public PausaService getPausas() {
         return pausas;
+    }
+
+    public CupomService getCupom() {
+        return cupom;
     }
 
     public UsuarioService getUsuarios() {

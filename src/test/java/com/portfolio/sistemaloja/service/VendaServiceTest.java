@@ -352,6 +352,28 @@ class VendaServiceTest {
         assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
     }
 
+    @Test
+    void ultimaVendaDoOperadorTrazARegistradaPorUltimo() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        app.getVendas().registrar(novaVenda(agua, 1, FormaPagamento.PIX, null));
+        Venda ultima = app.getVendas().registrar(novaVenda(agua, 2, FormaPagamento.PIX, null));
+
+        Venda encontrada = app.getVendas().ultimaDoOperador(operador.getId()).orElseThrow();
+
+        assertEquals(ultima.getId(), encontrada.getId());
+        assertEquals(1, encontrada.getItens().size());
+        assertEquals(0, new BigDecimal("5.00").compareTo(encontrada.getTotal()));
+    }
+
+    @Test
+    void ultimaVendaDoOperadorVaziaParaQuemNaoVendeu() {
+        Usuario admin = app.getAuth().autenticar("admin", "admin123");
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        app.getVendas().registrar(novaVenda(agua, 1, FormaPagamento.PIX, null));
+
+        assertTrue(app.getVendas().ultimaDoOperador(admin.getId()).isEmpty());
+    }
+
     private Venda novaVenda(Produto produto, int quantidade, FormaPagamento pagamento, BigDecimal pago) {
         Venda venda = new Venda();
         venda.setUsuarioId(operador.getId());

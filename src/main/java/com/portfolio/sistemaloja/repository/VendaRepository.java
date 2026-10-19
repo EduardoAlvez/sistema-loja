@@ -45,7 +45,6 @@ public class VendaRepository {
                 inserirPagamentos(venda, conexao);
                 baixarEstoque(venda, conexao);
                 conexao.commit();
-                return venda;
             } catch (SQLException e) {
                 conexao.rollback();
                 throw e;
@@ -53,6 +52,7 @@ public class VendaRepository {
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao registrar a venda", e);
         }
+        return buscarPorId(venda.getId()).orElse(venda);
     }
 
     private void inserirVenda(Venda venda, Connection conexao) throws SQLException {
@@ -181,6 +181,25 @@ public class VendaRepository {
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao cancelar a venda", e);
         }
+    }
+
+    public Optional<Venda> ultimaDoUsuario(long usuarioId) {
+        String sql = "SELECT MAX(id) FROM vendas WHERE usuario_id = ?";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, usuarioId);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (resultado.next()) {
+                    long id = resultado.getLong(1);
+                    if (!resultado.wasNull()) {
+                        return buscarPorId(id);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao buscar a última venda", e);
+        }
+        return Optional.empty();
     }
 
     public Optional<Venda> buscarPorId(long id) {

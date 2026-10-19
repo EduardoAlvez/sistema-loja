@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class VendaService {
 
@@ -74,6 +75,10 @@ public class VendaService {
     public Venda buscarPorId(long id) {
         return vendas.buscarPorId(id)
                 .orElseThrow(() -> new ValidacaoException("Venda não encontrada."));
+    }
+
+    public Optional<Venda> ultimaDoOperador(long usuarioId) {
+        return vendas.ultimaDoUsuario(usuarioId);
     }
 
     private List<VendaItem> mesclar(List<VendaItem> itens) {
