@@ -14,6 +14,7 @@ public class Venda {
     private Long usuarioId;
     private String usuarioNome;
     private FormaPagamento formaPagamento;
+    private BigDecimal desconto = BigDecimal.ZERO;
     private BigDecimal total = BigDecimal.ZERO;
     private BigDecimal valorPago = BigDecimal.ZERO;
     private BigDecimal troco = BigDecimal.ZERO;
@@ -84,6 +85,14 @@ public class Venda {
         this.formaPagamento = formaPagamento;
     }
 
+    public BigDecimal getDesconto() {
+        return desconto;
+    }
+
+    public void setDesconto(BigDecimal desconto) {
+        this.desconto = desconto == null ? BigDecimal.ZERO : desconto;
+    }
+
     public BigDecimal getTotal() {
         return total;
     }
@@ -126,8 +135,9 @@ public class Venda {
     }
 
     public void recalcularTotal() {
-        total = itens.stream()
+        BigDecimal somaItens = itens.stream()
                 .map(VendaItem::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        total = somaItens.subtract(desconto == null ? BigDecimal.ZERO : desconto);
     }
 }

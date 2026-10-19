@@ -38,6 +38,7 @@ public class VendaService {
         if (itens.isEmpty()) {
             throw new ValidacaoException("Adicione pelo menos um item à venda.");
         }
+        validarDesconto(venda);
         venda.getItens().clear();
         itens.forEach(venda::adicionarItem);
         validarEstoque(venda);
@@ -81,6 +82,23 @@ public class VendaService {
             }
         }
         return new ArrayList<>(porProduto.values());
+    }
+
+    private void validarDesconto(Venda venda) {
+        BigDecimal desconto = venda.getDesconto() == null ? BigDecimal.ZERO : venda.getDesconto();
+        venda.setDesconto(desconto);
+        if (desconto.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidacaoException("O desconto não pode ser negativo.");
+        }
+        if (desconto.compareTo(BigDecimal.ZERO) == 0) {
+            return;
+        }
+        BigDecimal somaItens = venda.getItens().stream()
+                .map(VendaItem::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (desconto.compareTo(somaItens) >= 0) {
+            throw new ValidacaoException("O desconto não pode alcançar o total dos itens.");
+        }
     }
 
     private void validarEstoque(Venda venda) {

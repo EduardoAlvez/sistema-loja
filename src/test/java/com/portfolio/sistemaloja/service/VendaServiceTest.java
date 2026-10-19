@@ -102,6 +102,47 @@ class VendaServiceTest {
         assertEquals(0, new BigDecimal("12.50").compareTo(registrada.getTotal()));
     }
 
+    @Test
+    void descontoAbatidoDoTotalETrocadoNoTroco() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 4, FormaPagamento.DINHEIRO, new BigDecimal("10.00"));
+        venda.setDesconto(new BigDecimal("1.00"));
+
+        Venda registrada = app.getVendas().registrar(venda);
+
+        assertEquals(0, new BigDecimal("1.00").compareTo(registrada.getDesconto()));
+        assertEquals(0, new BigDecimal("9.00").compareTo(registrada.getTotal()));
+        assertEquals(0, new BigDecimal("1.00").compareTo(registrada.getTroco()));
+
+        Venda buscada = app.getVendas().buscarPorId(registrada.getId());
+        assertEquals(0, new BigDecimal("1.00").compareTo(buscada.getDesconto()));
+        assertEquals(0, new BigDecimal("9.00").compareTo(buscada.getTotal()));
+    }
+
+    @Test
+    void naoPermiteDescontoNegativo() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 1, FormaPagamento.PIX, null);
+        venda.setDesconto(new BigDecimal("-0.01"));
+        assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
+    }
+
+    @Test
+    void naoPermiteDescontoMaiorQueOsItens() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 1, FormaPagamento.PIX, null);
+        venda.setDesconto(new BigDecimal("2.51"));
+        assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
+    }
+
+    @Test
+    void naoPermiteDescontoIgualAoTotalDosItens() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 2, FormaPagamento.PIX, null);
+        venda.setDesconto(new BigDecimal("5.00"));
+        assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
+    }
+
     private Venda novaVenda(Produto produto, int quantidade, FormaPagamento pagamento, BigDecimal pago) {
         Venda venda = new Venda();
         venda.setUsuarioId(operador.getId());

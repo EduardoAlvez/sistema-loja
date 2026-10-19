@@ -46,6 +46,7 @@ public class PainelPDV extends JPanel {
     private final JComboBox<Cliente> cliente = new JComboBox<>();
     private final JComboBox<FormaPagamento> pagamento = new JComboBox<>(FormaPagamento.values());
     private final JTextField valorPago = new JTextField(12);
+    private final JTextField desconto = new JTextField(8);
     private final JLabel total = new JLabel("R$ 0,00");
     private final JLabel troco = new JLabel("R$ 0,00");
     private final JLabel statusEstoque = new JLabel(" ");
@@ -56,6 +57,7 @@ public class PainelPDV extends JPanel {
     private List<Produto> produtos = List.of();
 
     private final List<VendaItem> carrinho = new ArrayList<>();
+    private BigDecimal subtotal = BigDecimal.ZERO;
     private final javax.swing.table.DefaultTableModel modeloCarrinho =
             new javax.swing.table.DefaultTableModel(
                     new Object[]{"Produto", "Qtd", "Preço unit.", "Subtotal"}, 0) {
@@ -151,6 +153,15 @@ public class PainelPDV extends JPanel {
         pagamentoPainel.add(Ui.rotulo("Valor pago:"));
         valorPago.setToolTipText("Apenas para dinheiro; nos demais, o valor é o total da venda");
         pagamentoPainel.add(valorPago);
+        pagamentoPainel.add(Ui.rotulo("Desconto:"));
+        desconto.setToolTipText("Desconto aplicado no total da venda (ex.: 10 ou 10,50)");
+        desconto.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                atualizarTotais();
+            }
+        });
+        pagamentoPainel.add(desconto);
 
         JPanel totais = new JPanel(new GridLayout(2, 2, 12, 0));
         totais.setOpaque(false);
@@ -345,7 +356,16 @@ public class PainelPDV extends JPanel {
             });
             soma = soma.add(item.getSubtotal());
         }
-        total.setText(Ui.moeda(soma));
+        subtotal = soma;
+        atualizarTotais();
+    }
+
+    private void atualizarTotais() {
+        BigDecimal descontoValor = parseMoeda(desconto.getText());
+        if (descontoValor.compareTo(subtotal) > 0) {
+            descontoValor = subtotal;
+        }
+        total.setText(Ui.moeda(subtotal.subtract(descontoValor)));
         calcularTroco();
     }
 
@@ -393,6 +413,7 @@ public class PainelPDV extends JPanel {
             }
             venda.setUsuarioId(usuario.getId());
             venda.setFormaPagamento((FormaPagamento) pagamento.getSelectedItem());
+            venda.setDesconto(parseMoeda(desconto.getText()));
             venda.setValorPago(parseMoeda(valorPago.getText()));
             carrinho.forEach(venda::adicionarItem);
 
@@ -421,6 +442,9 @@ public class PainelPDV extends JPanel {
                     Ui.moeda(item.getPrecoUnitario()), Ui.moeda(item.getSubtotal())));
         }
         texto.append("--------------------------------\n");
+        if (venda.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
+            texto.append("Desconto: -").append(Ui.moeda(venda.getDesconto())).append('\n');
+        }
         texto.append("TOTAL: ").append(Ui.moeda(venda.getTotal())).append('\n');
         texto.append("Pagamento: ").append(venda.getFormaPagamento().getDescricao()).append('\n');
         if (venda.getFormaPagamento() == FormaPagamento.DINHEIRO) {
@@ -434,6 +458,7 @@ public class PainelPDV extends JPanel {
         carrinho.clear();
         sincronizarCarrinho();
         valorPago.setText("");
+        desconto.setText("");
         busca.setText("");
     }
 

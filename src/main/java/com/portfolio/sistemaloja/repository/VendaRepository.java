@@ -21,7 +21,7 @@ public class VendaRepository {
 
     private static final String SELECT_BASE = """
             SELECT v.id, v.numero, v.data_hora, v.cliente_id, cl.nome AS cliente_nome,
-                   v.usuario_id, us.nome AS usuario_nome, v.forma_pagamento, v.total,
+                   v.usuario_id, us.nome AS usuario_nome, v.forma_pagamento, v.desconto, v.total,
                    v.valor_pago, v.troco, v.status
               FROM vendas v
               LEFT JOIN clientes cl ON cl.id = v.cliente_id
@@ -53,7 +53,8 @@ public class VendaRepository {
 
     private void inserirVenda(Venda venda, Connection conexao) throws SQLException {
         String sql = "INSERT INTO vendas (numero, data_hora, cliente_id, usuario_id, forma_pagamento, "
-                + "total, valor_pago, troco, status) VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?)";
+                + "desconto, total, valor_pago, troco, status) "
+                + "VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparada.setString(1, venda.getNumero());
             if (venda.getClienteId() == null) {
@@ -67,10 +68,11 @@ public class VendaRepository {
                 preparada.setLong(3, venda.getUsuarioId());
             }
             preparada.setString(4, venda.getFormaPagamento().name());
-            preparada.setBigDecimal(5, venda.getTotal());
-            preparada.setBigDecimal(6, venda.getValorPago());
-            preparada.setBigDecimal(7, venda.getTroco());
-            preparada.setString(8, venda.getStatus().name());
+            preparada.setBigDecimal(5, venda.getDesconto());
+            preparada.setBigDecimal(6, venda.getTotal());
+            preparada.setBigDecimal(7, venda.getValorPago());
+            preparada.setBigDecimal(8, venda.getTroco());
+            preparada.setString(9, venda.getStatus().name());
             preparada.executeUpdate();
             try (ResultSet chaves = preparada.getGeneratedKeys()) {
                 if (chaves.next()) {
@@ -232,6 +234,7 @@ public class VendaRepository {
             venda.setUsuarioNome(resultado.getString("usuario_nome"));
         }
         venda.setFormaPagamento(FormaPagamento.valueOf(resultado.getString("forma_pagamento")));
+        venda.setDesconto(resultado.getBigDecimal("desconto"));
         venda.setTotal(resultado.getBigDecimal("total"));
         venda.setValorPago(resultado.getBigDecimal("valor_pago"));
         venda.setTroco(resultado.getBigDecimal("troco"));
