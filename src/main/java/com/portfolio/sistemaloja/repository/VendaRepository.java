@@ -251,6 +251,20 @@ public class VendaRepository {
         return consultarValor(sql, inicio, fim);
     }
 
+    public BigDecimal totalEmDinheiroApos(String dataHoraInicio) {
+        String sql = "SELECT COALESCE(SUM(total), 0) FROM vendas WHERE status = 'CONCLUIDA' "
+                + "AND forma_pagamento = 'DINHEIRO' AND data_hora >= ?";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setObject(1, java.sql.Timestamp.valueOf(dataHoraInicio.replace('T', ' ')));
+            try (ResultSet resultado = preparada.executeQuery()) {
+                return resultado.next() ? resultado.getBigDecimal(1) : BigDecimal.ZERO;
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao somar vendas em dinheiro", e);
+        }
+    }
+
     public int quantidadeVendas(LocalDate inicio, LocalDate fim) {
         String sql = "SELECT COUNT(*) FROM vendas WHERE status = 'CONCLUIDA' AND data_hora >= ? AND data_hora < ?";
         try (Connection conexao = fonte.getConnection();

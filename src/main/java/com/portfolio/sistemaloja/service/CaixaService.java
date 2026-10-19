@@ -1,12 +1,16 @@
 package com.portfolio.sistemaloja.service;
 
 import com.portfolio.sistemaloja.model.Caixa;
+import com.portfolio.sistemaloja.model.CaixaLancamento;
+import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.CaixaRepository;
+import com.portfolio.sistemaloja.repository.VendaRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 public class CaixaService {
@@ -14,10 +18,12 @@ public class CaixaService {
     private static final Logger LOG = LogManager.getLogger(CaixaService.class);
 
     private final CaixaRepository caixas;
+    private final VendaRepository vendas;
     private final AuditoriaService auditoria;
 
-    public CaixaService(CaixaRepository caixas, AuditoriaService auditoria) {
+    public CaixaService(CaixaRepository caixas, VendaRepository vendas, AuditoriaService auditoria) {
         this.caixas = caixas;
+        this.vendas = vendas;
         this.auditoria = auditoria;
     }
 
@@ -44,6 +50,51 @@ public class CaixaService {
 
     public Optional<Caixa> caixaAberto() {
         return caixas.buscarAberto();
+    }
+
+    public CaixaLancamento lancar(TipoLancamentoCaixa tipo, BigDecimal valor, String observacao, Usuario usuario) {
+        if (usuario == null) {
+            throw new ValidacaoException("É necessário estar autenticado para movimentar o caixa.");
+        }
+        Caixa aberto = caixas.buscarAberto()
+                .orElseThrow(() -> new ValidacaoException(
+                        "Abra o caixa antes de registrar sangria ou suprimento."));
+        BigDecimal lancamentoValor = valor == null ? BigDecimal.ZERO : valor;
+        if (lancamentoValor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidacaoException("O valor do lançamento deve ser maior que zero.");
+        }
+        if (tipo == TipoLancamentoCaixa.SANGRIA) {
+            BigDecimal saldo = saldoEspecie(aberto);
+            if (lancamentoValor.compareTo(saldo) > 0) {
+                throw new ValidacaoException("A sangria de " + lancamentoValor.toPlainString()
+                        + " excede o saldo em espécie de " + saldo.toPlainString() + ".");
+            }
+        }
+        CaixaLancamento lancamento = new CaixaLancamento();
+        lancamento.setCaixaId(aberto.getId());
+        lancamento.setTipo(tipo);
+        lancamento.setValor(lancamentoValor);
+        lancamento.setUsuarioId(usuario.getId());
+        lancamento.setObservacao(observacao);
+        CaixaLancamento registrado = caixas.registrarLancamento(lancamento);
+        LOG.info("Caixa {} {} de {} por {}", aberto.getId(), tipo.getDescricao(),
+                lancamentoValor, usuario.getLogin());
+        auditoria.registrar("CAIXA_" + tipo.name(), "CAIXA", aberto.getId(),
+                tipo.getDescricao() + " " + lancamentoValor.toPlainString());
+        return registrado;
+    }
+
+    public BigDecimal saldoEspecie(Caixa caixa) {
+        BigDecimal saldo = caixa.getValorAbertura()
+                .add(vendas.totalEmDinheiroApos(caixa.getDataAbertura()));
+        for (CaixaLancamento lancamento : caixas.listarLancamentos(caixa.getId())) {
+            saldo = saldo.add(lancamento.getEfeitoNoSaldo());
+        }
+        return saldo;
+    }
+
+    public List<CaixaLancamento> lancamentos(Caixa caixa) {
+        return caixas.listarLancamentos(caixa.getId());
     }
 
     public Caixa buscarPorId(long id) {

@@ -31,6 +31,7 @@ import com.portfolio.sistemaloja.model.Caixa;
 import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
@@ -53,6 +54,8 @@ public class PainelPDV extends JPanel {
     private final JLabel statusEstoque = new JLabel(" ");
     private final JLabel statusCaixa = new JLabel(" ");
     private final JButton botaoCaixa = new JButton("Abrir caixa");
+    private final JButton botaoSangria = new JButton("Sangria");
+    private final JButton botaoSuprimento = new JButton("Suprimento");
 
     private final javax.swing.table.DefaultTableModel modeloProdutos =
             Ui.modeloTabela("Código", "Produto", "Estoque", "Preço");
@@ -104,6 +107,10 @@ public class PainelPDV extends JPanel {
         linhaCliente.add(statusCaixa);
         botaoCaixa.addActionListener(e -> acaoCaixa());
         linhaCliente.add(botaoCaixa);
+        botaoSangria.addActionListener(e -> movimentarCaixa(TipoLancamentoCaixa.SANGRIA));
+        linhaCliente.add(botaoSangria);
+        botaoSuprimento.addActionListener(e -> movimentarCaixa(TipoLancamentoCaixa.SUPRIMENTO));
+        linhaCliente.add(botaoSuprimento);
         linhaCliente.add(Ui.rotulo("Cliente:"));
         cliente.setPreferredSize(new Dimension(240, cliente.getPreferredSize().height));
         linhaCliente.add(cliente);
@@ -208,6 +215,8 @@ public class PainelPDV extends JPanel {
 
     private void atualizarStatusCaixa() {
         Caixa aberto = aplicacao.getCaixa().caixaAberto().orElse(null);
+        botaoSangria.setEnabled(aberto != null);
+        botaoSuprimento.setEnabled(aberto != null);
         if (aberto == null) {
             statusCaixa.setForeground(Ui.COR_ALERTA);
             statusCaixa.setText("Caixa fechado");
@@ -235,6 +244,32 @@ public class PainelPDV extends JPanel {
         try {
             aplicacao.getCaixa().abrir(parseMoeda(valor), usuario);
             atualizarStatusCaixa();
+        } catch (ValidacaoException e) {
+            Ui.erro(this, e.getMessage());
+        }
+    }
+
+    private void movimentarCaixa(TipoLancamentoCaixa tipo) {
+        Caixa aberto = aplicacao.getCaixa().caixaAberto().orElse(null);
+        if (aberto == null) {
+            Ui.erro(this, "Abra o caixa antes de registrar sangria ou suprimento.");
+            return;
+        }
+        String valor = javax.swing.JOptionPane.showInputDialog(this,
+                tipo.getDescricao() + " - valor:", "0,00");
+        if (valor == null) {
+            return;
+        }
+        String observacao = javax.swing.JOptionPane.showInputDialog(this,
+                tipo.getDescricao() + " - observação (opcional):", "");
+        if (observacao == null) {
+            return;
+        }
+        try {
+            aplicacao.getCaixa().lancar(tipo, parseMoeda(valor), observacao, usuario);
+            Caixa atualizado = aplicacao.getCaixa().caixaAberto().orElse(aberto);
+            Ui.info(this, tipo.getDescricao() + " registrado(a). Saldo em espécie: "
+                    + Ui.moeda(aplicacao.getCaixa().saldoEspecie(atualizado)));
         } catch (ValidacaoException e) {
             Ui.erro(this, e.getMessage());
         }

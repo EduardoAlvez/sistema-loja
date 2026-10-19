@@ -2,7 +2,9 @@ package com.portfolio.sistemaloja.repository;
 
 import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.Caixa;
+import com.portfolio.sistemaloja.model.CaixaLancamento;
 import com.portfolio.sistemaloja.model.StatusCaixa;
+import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -42,7 +44,7 @@ public class CaixaRepository {
                     caixa.setId(chaves.getLong(1));
                 }
             }
-            return caixa;
+            return buscarPorId(caixa.getId()).orElse(caixa);
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao abrir o caixa", e);
         }
@@ -62,6 +64,71 @@ public class CaixaRepository {
 
     public List<Caixa> listar() {
         return consultar(SELECT_BASE + " ORDER BY c.id DESC", (Object[]) null);
+    }
+
+    public CaixaLancamento registrarLancamento(CaixaLancamento lancamento) {
+        String sql = "INSERT INTO caixa_lancamentos (caixa_id, tipo, valor, usuario_id, observacao) "
+                + "VALUES (?, ?, ?, ?, ?)";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            preparada.setLong(1, lancamento.getCaixaId());
+            preparada.setString(2, lancamento.getTipo().name());
+            preparada.setBigDecimal(3, lancamento.getValor());
+            if (lancamento.getUsuarioId() == null) {
+                preparada.setObject(4, null);
+            } else {
+                preparada.setLong(4, lancamento.getUsuarioId());
+            }
+            preparada.setString(5, lancamento.getObservacao());
+            preparada.executeUpdate();
+            try (ResultSet chaves = preparada.getGeneratedKeys()) {
+                if (chaves.next()) {
+                    lancamento.setId(chaves.getLong(1));
+                }
+            }
+            return lancamento;
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao registrar lançamento do caixa", e);
+        }
+    }
+
+    public List<CaixaLancamento> listarLancamentos(long caixaId) {
+        String sql = """
+                SELECT l.id, l.caixa_id, l.data_hora, l.tipo, l.valor, l.usuario_id, u.nome AS usuario_nome,
+                       l.observacao
+                  FROM caixa_lancamentos l
+                  LEFT JOIN usuarios u ON u.id = l.usuario_id
+                 WHERE l.caixa_id = ?
+                 ORDER BY l.id""";
+        List<CaixaLancamento> lancamentos = new ArrayList<>();
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, caixaId);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                while (resultado.next()) {
+                    lancamentos.add(mapearLancamento(resultado));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao listar lançamentos do caixa", e);
+        }
+        return lancamentos;
+    }
+
+    private CaixaLancamento mapearLancamento(ResultSet resultado) throws SQLException {
+        CaixaLancamento lancamento = new CaixaLancamento();
+        lancamento.setId(resultado.getLong("id"));
+        lancamento.setCaixaId(resultado.getLong("caixa_id"));
+        lancamento.setDataHora(resultado.getString("data_hora"));
+        lancamento.setTipo(TipoLancamentoCaixa.valueOf(resultado.getString("tipo")));
+        lancamento.setValor(resultado.getBigDecimal("valor"));
+        long usuarioId = resultado.getLong("usuario_id");
+        if (!resultado.wasNull()) {
+            lancamento.setUsuarioId(usuarioId);
+            lancamento.setUsuarioNome(resultado.getString("usuario_nome"));
+        }
+        lancamento.setObservacao(resultado.getString("observacao"));
+        return lancamento;
     }
 
     private List<Caixa> consultar(String sql, Object... parametros) {
