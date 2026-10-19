@@ -3,6 +3,7 @@ package com.portfolio.sistemaloja;
 import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.AuditoriaRepository;
+import com.portfolio.sistemaloja.repository.CaixaRepository;
 import com.portfolio.sistemaloja.repository.CategoriaRepository;
 import com.portfolio.sistemaloja.repository.ClienteRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
@@ -11,6 +12,7 @@ import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaRepository;
 import com.portfolio.sistemaloja.service.AuthService;
 import com.portfolio.sistemaloja.service.AuditoriaService;
+import com.portfolio.sistemaloja.service.CaixaService;
 import com.portfolio.sistemaloja.service.ClienteService;
 import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.ProdutoService;
@@ -25,6 +27,7 @@ public class Aplicacao {
     private final ProdutoService produtos;
     private final ClienteService clientes;
     private final VendaService vendas;
+    private final CaixaService caixa;
     private final UsuarioService usuarios;
     private final RelatorioService relatorios;
     private final ExportacaoService exportacao;
@@ -36,6 +39,7 @@ public class Aplicacao {
         CategoriaRepository categoriaRepository = new CategoriaRepository(fonte);
         ClienteRepository clienteRepository = new ClienteRepository(fonte);
         VendaRepository vendaRepository = new VendaRepository(fonte);
+        CaixaRepository caixaRepository = new CaixaRepository(fonte);
         UsuarioRepository usuarioRepository = new UsuarioRepository(fonte);
         RelatorioRepository relatorioRepository = new RelatorioRepository(fonte);
         AuditoriaRepository auditoriaRepository = new AuditoriaRepository(fonte);
@@ -45,6 +49,7 @@ public class Aplicacao {
         this.produtos = new ProdutoService(produtoRepository, categoriaRepository, auditoria);
         this.clientes = new ClienteService(clienteRepository, auditoria);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository, auditoria);
+        this.caixa = new CaixaService(caixaRepository, auditoria);
         this.usuarios = new UsuarioService(usuarioRepository, auditoria);
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
         this.exportacao = new ExportacaoService();
@@ -65,6 +70,10 @@ public class Aplicacao {
 
     public VendaService getVendas() {
         return vendas;
+    }
+
+    public CaixaService getCaixa() {
+        return caixa;
     }
 
     public UsuarioService getUsuarios() {

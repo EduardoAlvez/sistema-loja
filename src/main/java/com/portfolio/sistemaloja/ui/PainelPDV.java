@@ -27,6 +27,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.TableModelEvent;
 
 import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.Caixa;
 import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
@@ -50,6 +51,8 @@ public class PainelPDV extends JPanel {
     private final JLabel total = new JLabel("R$ 0,00");
     private final JLabel troco = new JLabel("R$ 0,00");
     private final JLabel statusEstoque = new JLabel(" ");
+    private final JLabel statusCaixa = new JLabel(" ");
+    private final JButton botaoCaixa = new JButton("Abrir caixa");
 
     private final javax.swing.table.DefaultTableModel modeloProdutos =
             Ui.modeloTabela("Código", "Produto", "Estoque", "Preço");
@@ -80,6 +83,7 @@ public class PainelPDV extends JPanel {
         configurarEventos();
         recarregarClientes();
         recarregarProdutos();
+        atualizarStatusCaixa();
     }
 
     public void focarBusca() {
@@ -96,6 +100,10 @@ public class PainelPDV extends JPanel {
 
         JPanel linhaCliente = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         linhaCliente.setOpaque(false);
+        statusCaixa.setFont(statusCaixa.getFont().deriveFont(Font.BOLD, 12f));
+        linhaCliente.add(statusCaixa);
+        botaoCaixa.addActionListener(e -> acaoCaixa());
+        linhaCliente.add(botaoCaixa);
         linhaCliente.add(Ui.rotulo("Cliente:"));
         cliente.setPreferredSize(new Dimension(240, cliente.getPreferredSize().height));
         linhaCliente.add(cliente);
@@ -196,6 +204,40 @@ public class PainelPDV extends JPanel {
         rodape.add(totais, BorderLayout.CENTER);
         rodape.add(botoes, BorderLayout.EAST);
         return rodape;
+    }
+
+    private void atualizarStatusCaixa() {
+        Caixa aberto = aplicacao.getCaixa().caixaAberto().orElse(null);
+        if (aberto == null) {
+            statusCaixa.setForeground(Ui.COR_ALERTA);
+            statusCaixa.setText("Caixa fechado");
+            botaoCaixa.setText("Abrir caixa");
+        } else {
+            statusCaixa.setForeground(Ui.COR_OK);
+            statusCaixa.setText("Caixa de " + Ui.dataHora(aberto.getDataAbertura()));
+            botaoCaixa.setText("Caixa aberto");
+        }
+    }
+
+    private void acaoCaixa() {
+        Caixa aberto = aplicacao.getCaixa().caixaAberto().orElse(null);
+        if (aberto != null) {
+            Ui.info(this, "Caixa já aberto por " + aberto.getUsuarioAberturaNome()
+                    + " em " + Ui.dataHora(aberto.getDataAbertura())
+                    + " com fundo de " + Ui.moeda(aberto.getValorAbertura()) + ".");
+            return;
+        }
+        String valor = javax.swing.JOptionPane.showInputDialog(this,
+                "Valor de abertura do caixa:", "0,00");
+        if (valor == null) {
+            return;
+        }
+        try {
+            aplicacao.getCaixa().abrir(parseMoeda(valor), usuario);
+            atualizarStatusCaixa();
+        } catch (ValidacaoException e) {
+            Ui.erro(this, e.getMessage());
+        }
     }
 
     private void configurarEventos() {
