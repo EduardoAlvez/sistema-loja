@@ -1,5 +1,6 @@
 package com.portfolio.sistemaloja.model;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 public class Usuario {
@@ -11,6 +12,7 @@ public class Usuario {
     private String sal;
     private PerfilUsuario perfil;
     private boolean ativo;
+    private BigDecimal comissaoPercentual = BigDecimal.ZERO;
 
     public Usuario() {
     }
@@ -77,6 +79,14 @@ public class Usuario {
 
     public void setAtivo(boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public BigDecimal getComissaoPercentual() {
+        return comissaoPercentual;
+    }
+
+    public void setComissaoPercentual(BigDecimal comissaoPercentual) {
+        this.comissaoPercentual = comissaoPercentual == null ? BigDecimal.ZERO : comissaoPercentual;
     }
 
     public boolean isAdmin() {

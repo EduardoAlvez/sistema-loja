@@ -7,6 +7,7 @@ import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.math.BigDecimal;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -34,8 +35,9 @@ public class DialogoUsuario extends JDialog {
     private final JTextField login = new JTextField(14);
     private final JPasswordField senha = new JPasswordField(14);
     private final JComboBox<PerfilUsuario> perfil = new JComboBox<>(PerfilUsuario.values());
+    private final JTextField comissao = new JTextField(6);
     private final javax.swing.table.DefaultTableModel modelo =
-            Ui.modeloTabela("Nome", "Login", "Perfil", "Situação");
+            Ui.modeloTabela("Nome", "Login", "Perfil", "Comissão", "Situação");
     private final JTable tabela = Ui.tabela(modelo);
     private List<Usuario> usuarios = List.of();
 
@@ -70,13 +72,20 @@ public class DialogoUsuario extends JDialog {
         gbc.gridx = 1;
         formulario.add(perfil, gbc);
 
+        comissao.setText("0");
+        adicionar(formulario, gbc, 4, "Comissão (%)", comissao);
+
         JButton criar = new JButton("Criar usuário");
         criar.setBackground(Ui.COR_PRINCIPAL);
         criar.setForeground(java.awt.Color.WHITE);
         criar.addActionListener(e -> criar());
 
+        JButton definirComissao = new JButton("Definir comissão do selecionado");
+        definirComissao.addActionListener(e -> definirComissao());
+
         JPanel linhaAcao = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 6));
         linhaAcao.add(criar);
+        linhaAcao.add(definirComissao);
         topo.add(formulario, BorderLayout.CENTER);
         topo.add(linhaAcao, BorderLayout.SOUTH);
 
@@ -106,16 +115,50 @@ public class DialogoUsuario extends JDialog {
                     nome.getText(),
                     login.getText(),
                     new String(senha.getPassword()),
-                    (PerfilUsuario) perfil.getSelectedItem());
+                    (PerfilUsuario) perfil.getSelectedItem(),
+                    parseComissao(comissao.getText()));
             nome.setText("");
             login.setText("");
             senha.setText("");
+            comissao.setText("0");
             atualizar();
             Ui.info(this, "Usuário criado com sucesso.");
         } catch (ValidacaoException e) {
             Ui.erro(this, e.getMessage());
         } catch (RuntimeException e) {
             Ui.erro(this, "Falha ao criar usuário: " + e.getMessage(), e);
+        }
+    }
+
+    private void definirComissao() {
+        int linha = tabela.getSelectedRow();
+        if (linha < 0) {
+            Ui.info(this, "Selecione um usuário na tabela.");
+            return;
+        }
+        Usuario selecionado = usuarios.get(tabela.convertRowIndexToModel(linha));
+        String valor = javax.swing.JOptionPane.showInputDialog(this,
+                "Comissão (%) de " + selecionado.getNome() + ":", selecionado.getComissaoPercentual());
+        if (valor == null) {
+            return;
+        }
+        try {
+            aplicacao.getUsuarios().definirComissao(selecionado.getId(), parseComissao(valor));
+            atualizar();
+            Ui.info(this, "Comissão atualizada.");
+        } catch (ValidacaoException e) {
+            Ui.erro(this, e.getMessage());
+        }
+    }
+
+    private BigDecimal parseComissao(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            return new BigDecimal(texto.strip().replace(',', '.'));
+        } catch (NumberFormatException e) {
+            throw new ValidacaoException("Comissão inválida: " + texto);
         }
     }
 
@@ -127,6 +170,7 @@ public class DialogoUsuario extends JDialog {
                     usuario.getNome(),
                     usuario.getLogin(),
                     usuario.getPerfil().getDescricao(),
+                    usuario.getComissaoPercentual().stripTrailingZeros().toPlainString() + "%",
                     usuario.isAtivo() ? "Ativo" : "Inativo"
             });
         }

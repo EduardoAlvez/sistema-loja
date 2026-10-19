@@ -18,13 +18,30 @@ class PainelRelatoriosTest {
     void exibeAbaAuditoriaSomenteParaAdmin() {
         Aplicacao adminApp = BancoTeste.criar("reladmin" + System.nanoTime());
         adminApp.getAuth().autenticar("admin", "admin123");
-        assertEquals(5, abas(new PainelRelatorios(adminApp)).getTabCount(),
-                "admin deve ver a aba Auditoria");
+        JTabbedPane abasAdmin = abas(new PainelRelatorios(adminApp));
+        assertEquals(6, abasAdmin.getTabCount(), "admin deve ver a aba Auditoria");
+        assertEquals("Auditoria", abasAdmin.getTitleAt(abasAdmin.getTabCount() - 1));
 
         Aplicacao operadorApp = BancoTeste.criar("relop" + System.nanoTime());
         operadorApp.getAuth().autenticar("operador", "caixa123");
-        assertEquals(4, abas(new PainelRelatorios(operadorApp)).getTabCount(),
-                "operador nao deve ver a aba Auditoria");
+        JTabbedPane abasOperador = abas(new PainelRelatorios(operadorApp));
+        assertEquals(5, abasOperador.getTabCount(), "operador nao deve ver a aba Auditoria");
+        assertEquals("Por operador", abasOperador.getTitleAt(abasOperador.getTabCount() - 1));
+    }
+
+    @Test
+    void preencheAbaPorOperadorVaziaQuandoNaoHaVendasNoPeriodo() {
+        Aplicacao app = BancoTeste.criar("relopcom" + System.nanoTime());
+        var operador = app.getAuth().autenticar("operador", "caixa123");
+        app.getUsuarios().definirComissao(operador.getId(), new java.math.BigDecimal("10"));
+
+        PainelRelatorios painel = new PainelRelatorios(app);
+        painel.gerar();
+
+        JTabbedPane abas = abas(painel);
+        JTable tabela = (JTable) ((JScrollPane) abas.getComponentAt(abas.getTabCount() - 1))
+                .getViewport().getView();
+        assertEquals(0, tabela.getRowCount(), "operador sem vendas no periodo nao aparece");
     }
 
     @Test

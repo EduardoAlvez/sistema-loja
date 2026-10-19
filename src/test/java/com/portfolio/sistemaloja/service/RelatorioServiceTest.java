@@ -9,6 +9,7 @@ import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
+import com.portfolio.sistemaloja.repository.ResumoOperador;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -132,6 +133,60 @@ class RelatorioServiceTest {
     }
 
     @Test
+    void comissaoPorOperadorUsaOPercentualCadastrado() {
+        app.getUsuarios().definirComissao(operador.getId(), new BigDecimal("10"));
+        registrarVenda("7891000100103", 2, FormaPagamento.PIX);
+        registrarVenda("7891000100104", 4, FormaPagamento.DINHEIRO);
+
+        LocalDate hoje = LocalDate.now();
+        List<ResumoOperador> resumo = app.getRelatorios().resumoPorOperador(hoje, hoje);
+
+        assertEquals(1, resumo.size());
+        ResumoOperador linha = resumo.get(0);
+        assertEquals(operador.getId(), linha.usuarioId());
+        assertEquals(0, new BigDecimal("10.00").compareTo(linha.comissaoPercentual()));
+        assertEquals(2, linha.vendas());
+        assertEquals(0, new BigDecimal("27.98").compareTo(linha.totalVendido()));
+        assertEquals(0, new BigDecimal("2.798").compareTo(linha.comissao()));
+        assertEquals(0, new BigDecimal("2.798").compareTo(app.getRelatorios().comissaoTotal(hoje, hoje)));
+    }
+
+    @Test
+    void operadorSemVendaNoPeriodoNaoApareceNoRelatorio() {
+        LocalDate hoje = LocalDate.now();
+        assertTrue(app.getRelatorios().resumoPorOperador(hoje, hoje).isEmpty());
+        assertEquals(0, BigDecimal.ZERO.compareTo(app.getRelatorios().comissaoTotal(hoje, hoje)));
+
+        registrarVenda("7891000100104", 2, FormaPagamento.DINHEIRO);
+
+        assertEquals(1, app.getRelatorios().resumoPorOperador(hoje, hoje).size());
+        assertTrue(app.getRelatorios().resumoPorOperador(hoje.minusDays(3), hoje.minusDays(1)).isEmpty());
+    }
+
+    @Test
+    void vendaCanceladaNaoGeraComissao() {
+        Venda venda = registrarVenda("7891000100103", 2, FormaPagamento.PIX);
+        app.getUsuarios().definirComissao(operador.getId(), new BigDecimal("5"));
+        app.getVendas().cancelar(venda.getId());
+
+        LocalDate hoje = LocalDate.now();
+        assertTrue(app.getRelatorios().resumoPorOperador(hoje, hoje).isEmpty());
+        assertEquals(0, BigDecimal.ZERO.compareTo(app.getRelatorios().comissaoTotal(hoje, hoje)));
+    }
+
+    @Test
+    void operadorSemComissaoCadastradaTemComissaoZero() {
+        registrarVenda("7891000100103", 2, FormaPagamento.PIX);
+
+        LocalDate hoje = LocalDate.now();
+        ResumoOperador linha = app.getRelatorios().resumoPorOperador(hoje, hoje).get(0);
+
+        assertEquals(0, BigDecimal.ZERO.compareTo(linha.comissaoPercentual()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(linha.comissao()));
+        assertEquals(0, new BigDecimal("17.98").compareTo(linha.totalVendido()));
+    }
+
+    @Test
     void periodoComDataInicialInvalidaEhRejeitado() {
         LocalDate hoje = LocalDate.now();
         assertThrows(ValidacaoException.class,
@@ -140,6 +195,8 @@ class RelatorioServiceTest {
                 () -> app.getRelatorios().vendasDoPeriodo(hoje, hoje.minusDays(1)));
         assertThrows(ValidacaoException.class,
                 () -> app.getRelatorios().faturamentoPorDia(hoje, hoje.minusDays(1)));
+        assertThrows(ValidacaoException.class,
+                () -> app.getRelatorios().resumoPorOperador(hoje, hoje.minusDays(1)));
     }
 
     private Venda registrarVenda(String codigo, int quantidade, FormaPagamento pagamento) {

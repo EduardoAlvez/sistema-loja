@@ -7,6 +7,7 @@ import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.repository.EventoAuditoria;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
+import com.portfolio.sistemaloja.repository.ResumoOperador;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
 import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
@@ -57,6 +58,9 @@ public class PainelRelatorios extends JPanel {
     private final javax.swing.table.DefaultTableModel modeloEstoque =
             Ui.modeloTabela("Produto", "Estoque", "Preço");
     private final JTable tabelaEstoque = Ui.tabela(modeloEstoque);
+    private final javax.swing.table.DefaultTableModel modeloOperador =
+            Ui.modeloTabela("Operador", "Comissão", "Vendas", "Total vendido", "Comissão a pagar");
+    private final JTable tabelaOperador = Ui.tabela(modeloOperador);
     private final javax.swing.table.DefaultTableModel modeloAuditoria =
             Ui.modeloTabela("Data/Hora", "Usuário", "Ação", "Entidade", "ID", "Detalhe");
     private final JTable tabelaAuditoria = Ui.tabela(modeloAuditoria);
@@ -119,6 +123,7 @@ public class PainelRelatorios extends JPanel {
         abas.addTab("Vendas", new JScrollPane(tabelaVendas));
         abas.addTab("Mais vendidos", new JScrollPane(tabelaTop));
         abas.addTab("Estoque baixo", new JScrollPane(tabelaEstoque));
+        abas.addTab("Por operador", new JScrollPane(tabelaOperador));
         if (eAdmin()) {
             abas.addTab("Auditoria", new JScrollPane(tabelaAuditoria));
         }
@@ -220,6 +225,22 @@ public class PainelRelatorios extends JPanel {
             List<ProdutoEstoque> baixo = aplicacao.getRelatorios().estoqueBaixo();
             modeloEstoque.setRowCount(0);
             baixo.forEach(p -> modeloEstoque.addRow(new Object[]{p.nome(), p.estoque(), Ui.moeda(p.precoVenda())}));
+
+            List<ResumoOperador> porOperador = aplicacao.getRelatorios().resumoPorOperador(de, ate);
+            modeloOperador.setRowCount(0);
+            for (ResumoOperador operador : porOperador) {
+                modeloOperador.addRow(new Object[]{
+                        operador.nome(),
+                        operador.comissaoPercentual().stripTrailingZeros().toPlainString() + "%",
+                        operador.vendas(),
+                        Ui.moeda(operador.totalVendido()),
+                        Ui.moeda(operador.comissao())
+                });
+            }
+            if (!porOperador.isEmpty()) {
+                modeloOperador.addRow(new Object[]{"Total", "", "", "",
+                        Ui.moeda(aplicacao.getRelatorios().comissaoTotal(de, ate))});
+            }
 
             if (eAdmin()) {
                 preencherAuditoria(aplicacao.getAuditoria().listar(de, ate));

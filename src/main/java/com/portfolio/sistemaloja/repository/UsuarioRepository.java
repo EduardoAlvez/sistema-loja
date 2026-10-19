@@ -16,7 +16,7 @@ import java.util.Optional;
 public class UsuarioRepository {
 
     private static final String SELECT_BASE = """
-            SELECT id, nome, login, senha_hash, sal, perfil, ativo FROM usuarios""";
+            SELECT id, nome, login, senha_hash, sal, perfil, ativo, comissao_percentual FROM usuarios""";
 
     private final ConexaoFonte fonte;
 
@@ -88,30 +88,41 @@ public class UsuarioRepository {
     public Usuario salvar(Usuario usuario) {
         String sql;
         if (usuario.getId() == null) {
-            sql = "INSERT INTO usuarios (nome, login, senha_hash, sal, perfil, ativo) VALUES (?, ?, ?, ?, ?, ?)";
+            sql = "INSERT INTO usuarios (nome, login, senha_hash, sal, perfil, ativo, comissao_percentual) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?)";
         } else if (usuario.getSenhaHash() != null) {
-            sql = "UPDATE usuarios SET nome = ?, login = ?, senha_hash = ?, sal = ?, perfil = ?, ativo = ? WHERE id = ?";
+            sql = "UPDATE usuarios SET nome = ?, login = ?, senha_hash = ?, sal = ?, perfil = ?, ativo = ?, "
+                    + "comissao_percentual = ? WHERE id = ?";
         } else {
-            sql = "UPDATE usuarios SET nome = ?, login = ?, perfil = ?, ativo = ? WHERE id = ?";
+            sql = "UPDATE usuarios SET nome = ?, login = ?, perfil = ?, ativo = ?, comissao_percentual = ? "
+                    + "WHERE id = ?";
         }
         try (Connection conexao = fonte.getConnection();
              PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            if (usuario.getId() == null || usuario.getSenhaHash() != null) {
+            if (usuario.getId() == null) {
                 preparada.setString(1, usuario.getNome());
                 preparada.setString(2, usuario.getLogin());
                 preparada.setString(3, usuario.getSenhaHash());
                 preparada.setString(4, usuario.getSal());
                 preparada.setString(5, usuario.getPerfil().name());
                 preparada.setBoolean(6, usuario.isAtivo());
-                if (usuario.getId() != null) {
-                    preparada.setLong(7, usuario.getId());
-                }
+                preparada.setBigDecimal(7, usuario.getComissaoPercentual());
+            } else if (usuario.getSenhaHash() != null) {
+                preparada.setString(1, usuario.getNome());
+                preparada.setString(2, usuario.getLogin());
+                preparada.setString(3, usuario.getSenhaHash());
+                preparada.setString(4, usuario.getSal());
+                preparada.setString(5, usuario.getPerfil().name());
+                preparada.setBoolean(6, usuario.isAtivo());
+                preparada.setBigDecimal(7, usuario.getComissaoPercentual());
+                preparada.setLong(8, usuario.getId());
             } else {
                 preparada.setString(1, usuario.getNome());
                 preparada.setString(2, usuario.getLogin());
                 preparada.setString(3, usuario.getPerfil().name());
                 preparada.setBoolean(4, usuario.isAtivo());
-                preparada.setLong(5, usuario.getId());
+                preparada.setBigDecimal(5, usuario.getComissaoPercentual());
+                preparada.setLong(6, usuario.getId());
             }
             preparada.executeUpdate();
             if (usuario.getId() == null) {
@@ -136,6 +147,7 @@ public class UsuarioRepository {
                 resultado.getBoolean("ativo"));
         usuario.setSenhaHash(resultado.getString("senha_hash"));
         usuario.setSal(resultado.getString("sal"));
+        usuario.setComissaoPercentual(resultado.getBigDecimal("comissao_percentual"));
         return usuario;
     }
 }

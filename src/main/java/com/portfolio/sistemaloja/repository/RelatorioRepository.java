@@ -49,6 +49,38 @@ public class RelatorioRepository {
         return lista;
     }
 
+    public List<ResumoOperador> resumoPorOperador(LocalDate inicio, LocalDate fim) {
+        String sql = """
+                SELECT u.id, u.nome, u.comissao_percentual, COUNT(v.id) AS qtd,
+                       COALESCE(SUM(v.total), 0) AS total,
+                       COALESCE(SUM(v.total * u.comissao_percentual / 100), 0) AS comissao
+                  FROM usuarios u
+                  JOIN vendas v ON v.usuario_id = u.id
+                 WHERE v.status = 'CONCLUIDA' AND v.data_hora >= ? AND v.data_hora < ?
+                 GROUP BY u.id, u.nome, u.comissao_percentual
+                 ORDER BY total DESC, u.nome""";
+        List<ResumoOperador> lista = new ArrayList<>();
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setObject(1, inicio);
+            preparada.setObject(2, fim.plusDays(1));
+            try (ResultSet resultado = preparada.executeQuery()) {
+                while (resultado.next()) {
+                    lista.add(new ResumoOperador(
+                            resultado.getLong("id"),
+                            resultado.getString("nome"),
+                            resultado.getBigDecimal("comissao_percentual"),
+                            resultado.getInt("qtd"),
+                            resultado.getBigDecimal("total"),
+                            resultado.getBigDecimal("comissao")));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao gerar relatório por operador", e);
+        }
+        return lista;
+    }
+
     public List<VendaDoDia> faturamentoPorDia(LocalDate inicio, LocalDate fim) {
         String sql = """
                 SELECT CAST(data_hora AS DATE) AS dia, COUNT(*) AS qtd, COALESCE(SUM(total), 0) AS total

@@ -1,0 +1,1 @@
+ALTER TABLE usuarios ADD COLUMN comissao_percentual DECIMAL(5,2) NOT NULL DEFAULT 0;

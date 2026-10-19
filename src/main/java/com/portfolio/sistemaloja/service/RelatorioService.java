@@ -4,6 +4,7 @@ import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
+import com.portfolio.sistemaloja.repository.ResumoOperador;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
 import com.portfolio.sistemaloja.repository.VendaRepository;
 
@@ -81,6 +82,21 @@ public class RelatorioService {
 
     public List<ProdutoEstoque> estoqueBaixo() {
         return relatorios.estoqueBaixo(ESTOQUE_CRITICO);
+    }
+
+    public List<ResumoOperador> resumoPorOperador(LocalDate inicio, LocalDate fim) {
+        if (inicio.isAfter(fim)) {
+            throw new ValidacaoException("A data inicial deve ser anterior à final.");
+        }
+        return relatorios.resumoPorOperador(inicio, fim);
+    }
+
+    public BigDecimal comissaoTotal(LocalDate inicio, LocalDate fim) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (ResumoOperador operador : resumoPorOperador(inicio, fim)) {
+            total = total.add(operador.comissao());
+        }
+        return total;
     }
 
     public record ResumoDashboard(int vendas, BigDecimal faturamento, BigDecimal ticketMedio,
