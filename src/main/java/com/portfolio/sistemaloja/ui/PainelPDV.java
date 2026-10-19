@@ -35,6 +35,7 @@ import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.service.CaixaService;
 import com.portfolio.sistemaloja.service.ValidacaoException;
 
 public class PainelPDV extends JPanel {
@@ -56,6 +57,7 @@ public class PainelPDV extends JPanel {
     private final JButton botaoCaixa = new JButton("Abrir caixa");
     private final JButton botaoSangria = new JButton("Sangria");
     private final JButton botaoSuprimento = new JButton("Suprimento");
+    private final JButton botaoFecharCaixa = new JButton("Fechar caixa");
 
     private final javax.swing.table.DefaultTableModel modeloProdutos =
             Ui.modeloTabela("Código", "Produto", "Estoque", "Preço");
@@ -111,6 +113,8 @@ public class PainelPDV extends JPanel {
         linhaCliente.add(botaoSangria);
         botaoSuprimento.addActionListener(e -> movimentarCaixa(TipoLancamentoCaixa.SUPRIMENTO));
         linhaCliente.add(botaoSuprimento);
+        botaoFecharCaixa.addActionListener(e -> fecharCaixa());
+        linhaCliente.add(botaoFecharCaixa);
         linhaCliente.add(Ui.rotulo("Cliente:"));
         cliente.setPreferredSize(new Dimension(240, cliente.getPreferredSize().height));
         linhaCliente.add(cliente);
@@ -217,6 +221,7 @@ public class PainelPDV extends JPanel {
         Caixa aberto = aplicacao.getCaixa().caixaAberto().orElse(null);
         botaoSangria.setEnabled(aberto != null);
         botaoSuprimento.setEnabled(aberto != null);
+        botaoFecharCaixa.setEnabled(aberto != null);
         if (aberto == null) {
             statusCaixa.setForeground(Ui.COR_ALERTA);
             statusCaixa.setText("Caixa fechado");
@@ -270,6 +275,53 @@ public class PainelPDV extends JPanel {
             Caixa atualizado = aplicacao.getCaixa().caixaAberto().orElse(aberto);
             Ui.info(this, tipo.getDescricao() + " registrado(a). Saldo em espécie: "
                     + Ui.moeda(aplicacao.getCaixa().saldoEspecie(atualizado)));
+        } catch (ValidacaoException e) {
+            Ui.erro(this, e.getMessage());
+        }
+    }
+
+    private void fecharCaixa() {
+        Caixa aberto = aplicacao.getCaixa().caixaAberto().orElse(null);
+        if (aberto == null) {
+            Ui.erro(this, "Não há caixa aberto para fechar.");
+            return;
+        }
+        CaixaService.Resumo resumo = aplicacao.getCaixa().resumo(aberto);
+        StringBuilder texto = new StringBuilder();
+        texto.append("Resumo do caixa (aberto em ").append(Ui.dataHora(aberto.getDataAbertura())).append(")\n");
+        texto.append("Vendas no turno: ").append(resumo.quantidadeVendas())
+                .append(" - total ").append(Ui.moeda(resumo.totalVendas())).append('\n');
+        resumo.porForma().forEach((forma, valor) ->
+                texto.append("  ").append(forma.getDescricao()).append(": ")
+                        .append(Ui.moeda(valor)).append('\n'));
+        texto.append("Fundo inicial: ").append(Ui.moeda(resumo.fundoInicial())).append('\n');
+        texto.append("Suprimentos: ").append(Ui.moeda(resumo.suprimentos())).append('\n');
+        texto.append("Sangrias: ").append(Ui.moeda(resumo.sangrias())).append('\n');
+        texto.append("Saldo esperado em espécie: ").append(Ui.moeda(resumo.saldoEsperado())).append('\n');
+
+        String informado = javax.swing.JOptionPane.showInputDialog(this,
+                texto + "\nValor em espécie contado no caixa:",
+                resumo.saldoEsperado().toPlainString());
+        if (informado == null) {
+            return;
+        }
+        String observacao = javax.swing.JOptionPane.showInputDialog(this, "Observação do fechamento (opcional):", "");
+        if (observacao == null) {
+            return;
+        }
+        if (!Ui.confirma(this, "Confirma o fechamento do caixa?")) {
+            return;
+        }
+        try {
+            CaixaService.Resumo fechado = aplicacao.getCaixa().fechar(parseMoeda(informado), observacao, usuario);
+            StringBuilder relatorio = new StringBuilder(texto);
+            relatorio.append("Informado: ").append(Ui.moeda(fechado.valorInformado())).append('\n');
+            BigDecimal diferenca = fechado.diferenca();
+            relatorio.append("Diferença: ").append(Ui.moeda(diferenca))
+                    .append(diferenca.compareTo(BigDecimal.ZERO) == 0 ? " (sem diferença)"
+                            : diferenca.compareTo(BigDecimal.ZERO) > 0 ? " (sobra)" : " (falta)");
+            atualizarStatusCaixa();
+            Ui.info(this, relatorio.toString());
         } catch (ValidacaoException e) {
             Ui.erro(this, e.getMessage());
         }

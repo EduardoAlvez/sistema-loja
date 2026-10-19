@@ -2,6 +2,7 @@ package com.portfolio.sistemaloja.service;
 
 import com.portfolio.sistemaloja.model.Caixa;
 import com.portfolio.sistemaloja.model.CaixaLancamento;
+import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.CaixaRepository;
@@ -11,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class CaixaService {
@@ -95,6 +97,56 @@ public class CaixaService {
 
     public List<CaixaLancamento> lancamentos(Caixa caixa) {
         return caixas.listarLancamentos(caixa.getId());
+    }
+
+    public Resumo resumo(Caixa caixa) {
+        return resumo(caixa, null);
+    }
+
+    public Resumo resumo(Caixa caixa, BigDecimal valorInformado) {
+        List<CaixaLancamento> lancamentos = caixas.listarLancamentos(caixa.getId());
+        BigDecimal suprimentos = somar(lancamentos, TipoLancamentoCaixa.SUPRIMENTO);
+        BigDecimal sangrias = somar(lancamentos, TipoLancamentoCaixa.SANGRIA);
+        Map<FormaPagamento, BigDecimal> porForma = vendas.totaisPorFormaApos(caixa.getDataAbertura());
+        BigDecimal dinheiro = porForma.getOrDefault(FormaPagamento.DINHEIRO, BigDecimal.ZERO);
+        BigDecimal saldoEsperado = caixa.getValorAbertura().add(dinheiro)
+                .add(suprimentos).subtract(sangrias);
+        BigDecimal informado = valorInformado == null ? saldoEsperado : valorInformado;
+        return new Resumo(vendas.quantidadeApos(caixa.getDataAbertura()),
+                porForma.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add),
+                porForma, caixa.getValorAbertura(), suprimentos, sangrias, saldoEsperado,
+                informado, informado.subtract(saldoEsperado), lancamentos);
+    }
+
+    public Resumo fechar(BigDecimal valorInformado, String observacao, Usuario usuario) {
+        if (usuario == null) {
+            throw new ValidacaoException("É necessário estar autenticado para fechar o caixa.");
+        }
+        Caixa aberto = caixas.buscarAberto()
+                .orElseThrow(() -> new ValidacaoException("Não há caixa aberto para fechar."));
+        Resumo previsto = resumo(aberto);
+        BigDecimal informado = valorInformado == null ? previsto.saldoEsperado() : valorInformado;
+        if (informado.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidacaoException("O valor informado de fechamento não pode ser negativo.");
+        }
+        caixas.fechar(aberto.getId(), informado, usuario.getId(), observacao);
+        LOG.info("Caixa {} fechado por {} com valor {}", aberto.getId(), usuario.getLogin(), informado);
+        auditoria.registrar("CAIXA_FECHADO", "CAIXA", aberto.getId(),
+                "informado " + informado.toPlainString() + " esperado " + previsto.saldoEsperado().toPlainString());
+        return resumo(aberto, informado);
+    }
+
+    private BigDecimal somar(List<CaixaLancamento> lancamentos, TipoLancamentoCaixa tipo) {
+        return lancamentos.stream()
+                .filter(lancamento -> lancamento.getTipo() == tipo)
+                .map(CaixaLancamento::getValor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public record Resumo(int quantidadeVendas, BigDecimal totalVendas,
+                         Map<FormaPagamento, BigDecimal> porForma, BigDecimal fundoInicial,
+                         BigDecimal suprimentos, BigDecimal sangrias, BigDecimal saldoEsperado,
+                         BigDecimal valorInformado, BigDecimal diferenca, List<CaixaLancamento> lancamentos) {
     }
 
     public Caixa buscarPorId(long id) {

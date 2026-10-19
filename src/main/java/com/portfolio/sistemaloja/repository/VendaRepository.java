@@ -14,7 +14,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class VendaRepository {
@@ -252,16 +254,37 @@ public class VendaRepository {
     }
 
     public BigDecimal totalEmDinheiroApos(String dataHoraInicio) {
-        String sql = "SELECT COALESCE(SUM(total), 0) FROM vendas WHERE status = 'CONCLUIDA' "
-                + "AND forma_pagamento = 'DINHEIRO' AND data_hora >= ?";
+        return totaisPorFormaApos(dataHoraInicio).getOrDefault(FormaPagamento.DINHEIRO, BigDecimal.ZERO);
+    }
+
+    public Map<FormaPagamento, BigDecimal> totaisPorFormaApos(String dataHoraInicio) {
+        String sql = "SELECT forma_pagamento, COALESCE(SUM(total), 0) FROM vendas "
+                + "WHERE status = 'CONCLUIDA' AND data_hora >= ? GROUP BY forma_pagamento";
+        Map<FormaPagamento, BigDecimal> totais = new EnumMap<>(FormaPagamento.class);
         try (Connection conexao = fonte.getConnection();
              PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setObject(1, java.sql.Timestamp.valueOf(dataHoraInicio.replace('T', ' ')));
             try (ResultSet resultado = preparada.executeQuery()) {
-                return resultado.next() ? resultado.getBigDecimal(1) : BigDecimal.ZERO;
+                while (resultado.next()) {
+                    totais.put(FormaPagamento.valueOf(resultado.getString(1)), resultado.getBigDecimal(2));
+                }
             }
         } catch (SQLException e) {
-            throw new RepositorioException("Falha ao somar vendas em dinheiro", e);
+            throw new RepositorioException("Falha ao somar vendas por forma de pagamento", e);
+        }
+        return totais;
+    }
+
+    public int quantidadeApos(String dataHoraInicio) {
+        String sql = "SELECT COUNT(*) FROM vendas WHERE status = 'CONCLUIDA' AND data_hora >= ?";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setObject(1, java.sql.Timestamp.valueOf(dataHoraInicio.replace('T', ' ')));
+            try (ResultSet resultado = preparada.executeQuery()) {
+                return resultado.next() ? resultado.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao contar vendas do turno", e);
         }
     }
 

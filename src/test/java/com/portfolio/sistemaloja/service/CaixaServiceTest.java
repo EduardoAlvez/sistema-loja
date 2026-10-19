@@ -13,7 +13,6 @@ import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -139,5 +138,79 @@ class CaixaServiceTest {
         assertEquals(TipoLancamentoCaixa.SANGRIA, lancamentos.get(1).getTipo());
         assertEquals("Operador Caixa", lancamentos.get(0).getUsuarioNome());
         assertEquals("troco", lancamentos.get(0).getObservacao());
+    }
+
+    @Test
+    void resumoDoTurnoDetalhaVendasPorFormaDePagamento() {
+        Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda dinheiro = new Venda();
+        dinheiro.setUsuarioId(operador.getId());
+        dinheiro.setFormaPagamento(FormaPagamento.DINHEIRO);
+        dinheiro.setValorPago(new BigDecimal("20.00"));
+        dinheiro.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda()));
+        app.getVendas().registrar(dinheiro);
+        Venda pix = new Venda();
+        pix.setUsuarioId(operador.getId());
+        pix.setFormaPagamento(FormaPagamento.PIX);
+        pix.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 2, agua.getPrecoVenda()));
+        app.getVendas().registrar(pix);
+
+        CaixaService.Resumo resumo = app.getCaixa().resumo(caixa);
+
+        assertEquals(2, resumo.quantidadeVendas());
+        assertEquals(0, new BigDecimal("15.00").compareTo(resumo.totalVendas()));
+        assertEquals(0, new BigDecimal("10.00").compareTo(resumo.porForma().get(FormaPagamento.DINHEIRO)));
+        assertEquals(0, new BigDecimal("5.00").compareTo(resumo.porForma().get(FormaPagamento.PIX)));
+        assertEquals(0, new BigDecimal("110.00").compareTo(resumo.saldoEsperado()));
+    }
+
+    @Test
+    void fechamentoRegistraValorStatusEDiferenca() {
+        Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+        app.getCaixa().lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("30.00"), "cofre", operador);
+
+        CaixaService.Resumo fechado = app.getCaixa().fechar(new BigDecimal("65.00"), "conferido", operador);
+
+        assertEquals(0, new BigDecimal("70.00").compareTo(fechado.saldoEsperado()));
+        assertEquals(0, new BigDecimal("65.00").compareTo(fechado.valorInformado()));
+        assertEquals(0, new BigDecimal("-5.00").compareTo(fechado.diferenca()));
+        assertTrue(app.getCaixa().caixaAberto().isEmpty());
+        assertEquals(StatusCaixa.FECHADO, app.getCaixa().buscarPorId(caixa.getId()).getStatus());
+        assertEquals("conferido", app.getCaixa().buscarPorId(caixa.getId()).getObservacao());
+    }
+
+    @Test
+    void fechamentoSemInformarValorUsaOSaldoEsperado() {
+        Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+
+        CaixaService.Resumo fechado = app.getCaixa().fechar(null, null, operador);
+
+        assertEquals(0, BigDecimal.ZERO.compareTo(fechado.diferenca()));
+        assertEquals(0, new BigDecimal("100.00").compareTo(fechado.valorInformado()));
+        assertEquals(StatusCaixa.FECHADO, app.getCaixa().buscarPorId(caixa.getId()).getStatus());
+    }
+
+    @Test
+    void naoPermiteFecharSemCaixaAberto() {
+        ValidacaoException erro = assertThrows(ValidacaoException.class,
+                () -> app.getCaixa().fechar(new BigDecimal("10.00"), null, operador));
+        assertTrue(erro.getMessage().contains("Não há caixa aberto"));
+    }
+
+    @Test
+    void naoPermiteFecharComValorNegativo() {
+        app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+        assertThrows(ValidacaoException.class,
+                () -> app.getCaixa().fechar(new BigDecimal("-1.00"), null, operador));
+        assertTrue(app.getCaixa().caixaAberto().isPresent());
+    }
+
+    @Test
+    void naoPermiteFecharDuasVezes() {
+        app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+        app.getCaixa().fechar(null, null, operador);
+
+        assertThrows(ValidacaoException.class, () -> app.getCaixa().fechar(null, null, operador));
     }
 }

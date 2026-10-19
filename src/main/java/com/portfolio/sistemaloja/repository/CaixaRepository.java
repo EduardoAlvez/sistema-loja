@@ -6,6 +6,7 @@ import com.portfolio.sistemaloja.model.CaixaLancamento;
 import com.portfolio.sistemaloja.model.StatusCaixa;
 import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -54,6 +55,27 @@ public class CaixaRepository {
         String sql = SELECT_BASE + " WHERE c.status = ? ORDER BY c.id DESC";
         List<Caixa> abertos = consultar(sql, StatusCaixa.ABERTO.name());
         return abertos.isEmpty() ? Optional.empty() : Optional.of(abertos.get(0));
+    }
+
+    public Caixa fechar(long id, BigDecimal valorFechamento, Long usuarioFechamentoId, String observacao) {
+        String sql = "UPDATE caixas SET data_fechamento = CURRENT_TIMESTAMP, usuario_fechamento_id = ?, "
+                + "valor_fechamento = ?, status = ?, observacao = ? WHERE id = ? AND status = ?";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, usuarioFechamentoId);
+            preparada.setBigDecimal(2, valorFechamento);
+            preparada.setString(3, StatusCaixa.FECHADO.name());
+            preparada.setString(4, observacao);
+            preparada.setLong(5, id);
+            preparada.setString(6, StatusCaixa.ABERTO.name());
+            if (preparada.executeUpdate() == 0) {
+                throw new RepositorioException("O caixa já está fechado", null);
+            }
+            return buscarPorId(id)
+                    .orElseThrow(() -> new RepositorioException("Caixa não encontrado", null));
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao fechar o caixa", e);
+        }
     }
 
     public Optional<Caixa> buscarPorId(long id) {
