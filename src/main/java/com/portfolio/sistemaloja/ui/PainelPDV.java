@@ -6,23 +6,29 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.event.TableModelEvent;
 
@@ -61,6 +67,7 @@ public class PainelPDV extends JPanel {
     private final JButton botaoSangria = new JButton("Sangria");
     private final JButton botaoSuprimento = new JButton("Suprimento");
     private final JButton botaoFecharCaixa = new JButton("Fechar caixa");
+    private final Map<Integer, String> atalhos = new LinkedHashMap<>();
 
     private final javax.swing.table.DefaultTableModel modeloProdutos =
             Ui.modeloTabela("Código", "Produto", "Estoque", "Preço");
@@ -90,6 +97,7 @@ public class PainelPDV extends JPanel {
         add(montarCentro(), BorderLayout.CENTER);
         add(montarRodape(), BorderLayout.SOUTH);
         configurarEventos();
+        instalarAtalhos();
         recarregarClientes();
         recarregarProdutos();
         atualizarStatusCaixa();
@@ -203,17 +211,19 @@ public class PainelPDV extends JPanel {
 
         JPanel botoes = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         botoes.setOpaque(false);
-        JButton limpar = new JButton("Limpar carrinho");
+        JButton limpar = new JButton("Limpar carrinho [F8]");
         limpar.addActionListener(e -> limpar());
-        JButton dividir = new JButton("Pagamento dividido");
+        JButton dividir = new JButton("Pagamento dividido [F4]");
         dividir.addActionListener(e -> abrirPagamentoDividido());
-        JButton pausar = new JButton("Pausar venda");
+        JButton pausar = new JButton("Pausar venda [F5]");
         pausar.addActionListener(e -> pausarVenda());
-        JButton retomar = new JButton("Retomar venda");
+        JButton retomar = new JButton("Retomar venda [F6]");
         retomar.addActionListener(e -> retomarVenda());
-        JButton reimprimir = new JButton("Reimprimir cupom");
+        JButton reimprimir = new JButton("Reimprimir cupom [F7]");
         reimprimir.addActionListener(e -> reimprimirCupom());
-        JButton finalizar = new JButton("Finalizar venda");
+        JButton ajuda = new JButton("Atalhos");
+        ajuda.addActionListener(e -> mostrarAtalhos());
+        JButton finalizar = new JButton("Finalizar venda [F12]");
         finalizar.setBackground(Ui.COR_OK);
         finalizar.setForeground(Color.WHITE);
         finalizar.setFont(finalizar.getFont().deriveFont(Font.BOLD, 14f));
@@ -223,6 +233,7 @@ public class PainelPDV extends JPanel {
         botoes.add(pausar);
         botoes.add(retomar);
         botoes.add(reimprimir);
+        botoes.add(ajuda);
         botoes.add(finalizar);
 
         JPanel esquerda = new JPanel(new BorderLayout(10, 0));
@@ -395,6 +406,46 @@ public class PainelPDV extends JPanel {
                 calcularTroco();
             }
         });
+    }
+
+    public Map<Integer, String> atalhos() {
+        return java.util.Collections.unmodifiableMap(atalhos);
+    }
+
+    private void instalarAtalhos() {
+        ligar(KeyEvent.VK_F3, "F3 - Buscar produto", busca::requestFocusInWindow);
+        ligar(KeyEvent.VK_F4, "F4 - Pagamento dividido", this::abrirPagamentoDividido);
+        ligar(KeyEvent.VK_F5, "F5 - Pausar venda", this::pausarVenda);
+        ligar(KeyEvent.VK_F6, "F6 - Retomar venda", this::retomarVenda);
+        ligar(KeyEvent.VK_F7, "F7 - Reimprimir cupom", this::reimprimirCupom);
+        ligar(KeyEvent.VK_F8, "F8 - Limpar carrinho", this::limpar);
+        ligar(KeyEvent.VK_F9, "F9 - Sangria", () -> movimentarCaixa(TipoLancamentoCaixa.SANGRIA));
+        ligar(KeyEvent.VK_F10, "F10 - Suprimento", () -> movimentarCaixa(TipoLancamentoCaixa.SUPRIMENTO));
+        ligar(KeyEvent.VK_F11, "F11 - Abrir caixa", this::acaoCaixa);
+        ligar(KeyEvent.VK_F12, "F12 - Finalizar venda", this::finalizar);
+    }
+
+    private void ligar(int tecla, String descricao, Runnable acao) {
+        String nome = "atalho-" + tecla;
+        atalhos.put(tecla, descricao);
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(tecla, 0), nome);
+        getActionMap().put(nome, new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                acao.run();
+            }
+        });
+    }
+
+    private void mostrarAtalhos() {
+        StringBuilder texto = new StringBuilder("Atalhos do PDV:\n");
+        for (String descricao : atalhos.values()) {
+            texto.append(descricao).append('\n');
+        }
+        texto.append("Enter no campo de busca - Adicionar produto");
+        Ui.info(this, texto.toString());
     }
 
     private void adicionarPeloCampo() {
