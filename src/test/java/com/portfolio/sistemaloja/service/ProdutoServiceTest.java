@@ -7,10 +7,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProdutoServiceTest {
 
@@ -78,6 +81,50 @@ class ProdutoServiceTest {
 
         assertEquals(1, app.getProdutos().listar("Integral").size());
         assertEquals(0, app.getProdutos().listar("naoexiste").size());
+    }
+
+    @Test
+    void guardaEstoqueMinimoEApontaEstoqueBaixo() {
+        Produto justo = produtoNovo("Leite Integral 1L", "7891111111111", "3.00", "4.99", 4);
+        justo.setEstoqueMinimo(4);
+        app.getProdutos().salvar(justo);
+        Produto folgado = produtoNovo("Queijo Minas 500g", "7891222222222", "18.00", "24.90", 30);
+        folgado.setEstoqueMinimo(5);
+        app.getProdutos().salvar(folgado);
+
+        Produto lido = app.getProdutos().buscarPorCodigoBarras("7891111111111");
+        assertEquals(4, lido.getEstoqueMinimo());
+        assertTrue(lido.estoqueBaixo());
+        assertFalse(app.getProdutos().buscarPorCodigoBarras("7891222222222").estoqueBaixo());
+
+        List<String> baixos = app.getProdutos().listarComEstoqueBaixo().stream()
+                .map(Produto::getNome).toList();
+        assertTrue(baixos.contains("Leite Integral 1L"), baixos.toString());
+        assertFalse(baixos.contains("Queijo Minas 500g"), baixos.toString());
+    }
+
+    @Test
+    void filtraProdutosPorCategoria() {
+        Long bebidas = app.getProdutos().salvarCategoria("Bebidas").getId();
+        Produto suco = produtoNovo("Suco de Uva 1L", "7891333333333", "4.00", "7.50", 10);
+        suco.setCategoriaId(bebidas);
+        app.getProdutos().salvar(suco);
+        app.getProdutos().salvar(produtoNovo("Biscoito Recheado", "7891444444444", "2.00", "3.50", 10));
+
+        List<String> nomes = app.getProdutos().listar("", bebidas).stream()
+                .map(Produto::getNome).toList();
+        assertTrue(nomes.contains("Suco de Uva 1L"), nomes.toString());
+        assertFalse(nomes.contains("Biscoito Recheado"), nomes.toString());
+
+        assertEquals(1, app.getProdutos().listar("Suco", bebidas).size());
+        assertEquals(0, app.getProdutos().listar("Biscoito", bebidas).size());
+    }
+
+    @Test
+    void rejeitaEstoqueMinimoNegativo() {
+        Produto produto = produtoNovo("Inválido", "7891555555555", "5.00", "10.00", 10);
+        produto.setEstoqueMinimo(-1);
+        assertThrows(ValidacaoException.class, () -> app.getProdutos().salvar(produto));
     }
 
     private Produto produtoNovo(String nome, String codigo, String custo, String venda, int estoque) {

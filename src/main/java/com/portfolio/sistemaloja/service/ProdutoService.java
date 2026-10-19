@@ -31,6 +31,14 @@ public class ProdutoService {
         return produtos.listar(termo);
     }
 
+    public List<Produto> listar(String termo, Long categoriaId) {
+        return produtos.listar(termo, categoriaId);
+    }
+
+    public List<Produto> listarComEstoqueBaixo() {
+        return produtos.listarComEstoqueBaixo();
+    }
+
     public List<Produto> listarAtivos() {
         return produtos.listarAtivos();
     }
@@ -216,6 +224,9 @@ public class ProdutoService {
         }
         if (produto.getEstoque() < 0) {
             throw new ValidacaoException("Estoque não pode ser negativo.");
+        }
+        if (produto.getEstoqueMinimo() < 0) {
+            throw new ValidacaoException("Estoque mínimo não pode ser negativo.");
         }
     }
 }

@@ -16,7 +16,7 @@ public class ProdutoRepository {
 
     private static final String SELECT_BASE = """
             SELECT p.id, p.codigo_barras, p.nome, p.categoria_id, c.nome AS categoria_nome,
-                   p.preco_custo, p.preco_venda, p.estoque, p.ativo
+                   p.preco_custo, p.preco_venda, p.estoque, p.estoque_minimo, p.ativo
               FROM produtos p
               LEFT JOIN categorias c ON c.id = p.categoria_id""";
 
@@ -27,15 +27,25 @@ public class ProdutoRepository {
     }
 
     public List<Produto> listar(String termo) {
-        String sql = SELECT_BASE
-                + " WHERE (p.nome LIKE ? OR p.codigo_barras LIKE ?)"
-                + " ORDER BY p.nome";
+        return listar(termo, null);
+    }
+
+    public List<Produto> listar(String termo, Long categoriaId) {
+        StringBuilder sql = new StringBuilder(SELECT_BASE)
+                .append(" WHERE (p.nome LIKE ? OR p.codigo_barras LIKE ?)");
+        if (categoriaId != null) {
+            sql.append(" AND p.categoria_id = ?");
+        }
+        sql.append(" ORDER BY p.nome");
         List<Produto> produtos = new ArrayList<>();
         try (Connection conexao = fonte.getConnection();
-             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+             PreparedStatement preparada = conexao.prepareStatement(sql.toString())) {
             String filtro = "%" + (termo == null ? "" : termo.strip()) + "%";
             preparada.setString(1, filtro);
             preparada.setString(2, filtro);
+            if (categoriaId != null) {
+                preparada.setLong(3, categoriaId);
+            }
             try (ResultSet resultado = preparada.executeQuery()) {
                 while (resultado.next()) {
                     produtos.add(mapear(resultado));
@@ -43,6 +53,23 @@ public class ProdutoRepository {
             }
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao listar produtos", e);
+        }
+        return produtos;
+    }
+
+    public List<Produto> listarComEstoqueBaixo() {
+        String sql = SELECT_BASE
+                + " WHERE p.ativo = TRUE AND p.estoque <= p.estoque_minimo"
+                + " ORDER BY p.estoque, p.nome";
+        List<Produto> produtos = new ArrayList<>();
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql);
+             ResultSet resultado = preparada.executeQuery()) {
+            while (resultado.next()) {
+                produtos.add(mapear(resultado));
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao listar produtos com estoque baixo", e);
         }
         return produtos;
     }
@@ -114,7 +141,7 @@ public class ProdutoRepository {
              PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preencher(preparada, produto);
             if (produto.getId() != null) {
-                preparada.setLong(8, produto.getId());
+                preparada.setLong(9, produto.getId());
             }
             preparada.executeUpdate();
             if (produto.getId() == null) {
@@ -152,13 +179,13 @@ public class ProdutoRepository {
     }
 
     private String insercao() {
-        return "INSERT INTO produtos (codigo_barras, nome, categoria_id, preco_custo, preco_venda, estoque, ativo) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        return "INSERT INTO produtos (codigo_barras, nome, categoria_id, preco_custo, preco_venda, estoque, ativo, estoque_minimo) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     }
 
     private String atualizacao() {
         return "UPDATE produtos SET codigo_barras = ?, nome = ?, categoria_id = ?, preco_custo = ?, "
-                + "preco_venda = ?, estoque = ?, ativo = ? WHERE id = ?";
+                + "preco_venda = ?, estoque = ?, ativo = ?, estoque_minimo = ? WHERE id = ?";
     }
 
     private void preencher(PreparedStatement preparada, Produto produto) throws SQLException {
@@ -173,6 +200,7 @@ public class ProdutoRepository {
         preparada.setBigDecimal(5, produto.getPrecoVenda());
         preparada.setInt(6, produto.getEstoque());
         preparada.setBoolean(7, produto.isAtivo());
+        preparada.setInt(8, produto.getEstoqueMinimo());
     }
 
     private Produto mapear(ResultSet resultado) throws SQLException {
@@ -188,6 +216,7 @@ public class ProdutoRepository {
                 resultado.getInt("estoque"),
                 resultado.getBoolean("ativo"));
         produto.setCategoriaNome(resultado.getString("categoria_nome"));
+        produto.setEstoqueMinimo(resultado.getInt("estoque_minimo"));
         return produto;
     }
 }

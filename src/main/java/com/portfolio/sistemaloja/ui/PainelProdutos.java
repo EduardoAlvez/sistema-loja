@@ -14,7 +14,10 @@ import java.util.Locale;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
@@ -22,6 +25,7 @@ import javax.swing.JTextField;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.Categoria;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.service.ProdutoService;
 
@@ -34,10 +38,16 @@ public class PainelProdutos extends JPanel {
 
     private static final Logger LOG = LogManager.getLogger(PainelProdutos.class);
 
+    private static final String TODAS = "Todas as categorias";
+
     private final transient Aplicacao aplicacao;
     private final JTextField busca = new JTextField(24);
+    private final JComboBox<Object> filtroCategoria = new JComboBox<>();
+    private final JCheckBox apenasEstoqueBaixo = new JCheckBox("Somente estoque baixo");
+    private final JLabel alerta = new JLabel();
+    private boolean ajustandoFiltro;
     private final javax.swing.table.DefaultTableModel modelo =
-            Ui.modeloTabela("Código", "Produto", "Categoria", "Custo", "Venda", "Margem", "Estoque", "Situação");
+            Ui.modeloTabela("Código", "Produto", "Categoria", "Custo", "Venda", "Margem", "Estoque", "Mín.", "Situação");
     private final JTable tabela = Ui.tabela(modelo);
     private List<Produto> linhas = List.of();
 
@@ -74,7 +84,7 @@ public class PainelProdutos extends JPanel {
         excluir.addActionListener(e -> excluir());
 
         JButton atualizar = new JButton("Atualizar");
-        atualizar.addActionListener(e -> atualizar());
+        atualizar.addActionListener(e -> aposSalvar());
 
         JButton importar = new JButton("Importar CSV");
         importar.setToolTipText("Importa produtos de um arquivo CSV (UTF-8, separador ;)");
@@ -106,13 +116,87 @@ public class PainelProdutos extends JPanel {
             }
         });
 
+        recarregarCategorias();
+        filtroCategoria.setToolTipText("Mostra apenas os produtos da categoria escolhida");
+        filtroCategoria.addActionListener(e -> {
+            if (!ajustandoFiltro) {
+                atualizar();
+            }
+        });
+        apenasEstoqueBaixo.setOpaque(false);
+        apenasEstoqueBaixo.setToolTipText("Mostra apenas produtos no limite do estoque mínimo");
+        apenasEstoqueBaixo.addItemListener(e -> atualizar());
+        linhaBusca.add(Ui.rotulo("Categoria:"));
+        linhaBusca.add(filtroCategoria);
+        linhaBusca.add(apenasEstoqueBaixo);
+        linhaBusca.add(alerta);
+
         topo.add(titulo, BorderLayout.NORTH);
         topo.add(linhaBusca, BorderLayout.CENTER);
         return topo;
     }
 
+    private void recarregarCategorias() {
+        ajustandoFiltro = true;
+        try {
+            Long atual = categoriaSelecionada();
+            filtroCategoria.removeAllItems();
+            filtroCategoria.addItem(TODAS);
+            for (Categoria categoria : aplicacao.getProdutos().listarCategorias()) {
+                filtroCategoria.addItem(categoria);
+            }
+            selecionarCategoria(atual);
+        } finally {
+            ajustandoFiltro = false;
+        }
+    }
+
+    private void aposSalvar() {
+        recarregarCategorias();
+        atualizar();
+    }
+
+    private Long categoriaSelecionada() {
+        Object item = filtroCategoria.getSelectedItem();
+        return item instanceof Categoria categoria ? categoria.getId() : null;
+    }
+
+    public void selecionarCategoria(Long categoriaId) {
+        for (int i = 0; i < filtroCategoria.getItemCount(); i++) {
+            Object item = filtroCategoria.getItemAt(i);
+            if (item instanceof Categoria categoria && categoria.getId().equals(categoriaId)) {
+                filtroCategoria.setSelectedIndex(i);
+                return;
+            }
+        }
+        filtroCategoria.setSelectedIndex(0);
+    }
+
+    public void somenteEstoqueBaixo(boolean valor) {
+        apenasEstoqueBaixo.setSelected(valor);
+    }
+
+    public int totalLinhas() {
+        return modelo.getRowCount();
+    }
+
+    public Object valor(int linha, int coluna) {
+        return modelo.getValueAt(linha, coluna);
+    }
+
+    public String situacao(int linha) {
+        return String.valueOf(modelo.getValueAt(linha, 8));
+    }
+
+    public String textoAlerta() {
+        return alerta.getText();
+    }
+
     public final void atualizar() {
-        linhas = aplicacao.getProdutos().listar(busca.getText());
+        linhas = aplicacao.getProdutos().listar(busca.getText(), categoriaSelecionada());
+        if (apenasEstoqueBaixo.isSelected()) {
+            linhas = linhas.stream().filter(Produto::estoqueBaixo).toList();
+        }
         modelo.setRowCount(0);
         for (Produto produto : linhas) {
             modelo.addRow(new Object[]{
@@ -123,9 +207,24 @@ public class PainelProdutos extends JPanel {
                     Ui.moeda(produto.getPrecoVenda()),
                     Ui.moeda(produto.calcularLucro()),
                     produto.getEstoque(),
-                    produto.isAtivo() ? "Ativo" : "Inativo"
+                    produto.getEstoqueMinimo(),
+                    situacaoDe(produto)
             });
         }
+        atualizarAlerta();
+    }
+
+    private String situacaoDe(Produto produto) {
+        if (!produto.isAtivo()) {
+            return "Inativo";
+        }
+        return produto.estoqueBaixo() ? "Estoque baixo" : "Ativo";
+    }
+
+    private void atualizarAlerta() {
+        int baixos = aplicacao.getProdutos().listarComEstoqueBaixo().size();
+        alerta.setText(baixos == 0 ? "" : baixos + " produto(s) com estoque baixo");
+        alerta.setForeground(Ui.COR_ALERTA);
     }
 
     private void importarCsv() {
@@ -206,7 +305,7 @@ public class PainelProdutos extends JPanel {
             alvo = new Produto(null, "", "", null, BigDecimal.ZERO, BigDecimal.ZERO, 0, true);
         }
         DialogoProduto dialogo = new DialogoProduto(
-                javax.swing.SwingUtilities.getWindowAncestor(this), aplicacao, alvo, this::atualizar);
+                javax.swing.SwingUtilities.getWindowAncestor(this), aplicacao, alvo, this::aposSalvar);
         dialogo.setVisible(true);
     }
 

@@ -13,6 +13,7 @@ public class Produto {
     private BigDecimal precoCusto;
     private BigDecimal precoVenda;
     private int estoque;
+    private int estoqueMinimo;
     private boolean ativo;
 
     public Produto() {
@@ -92,6 +93,18 @@ public class Produto {
 
     public void setEstoque(int estoque) {
         this.estoque = estoque;
+    }
+
+    public int getEstoqueMinimo() {
+        return estoqueMinimo;
+    }
+
+    public void setEstoqueMinimo(int estoqueMinimo) {
+        this.estoqueMinimo = estoqueMinimo;
+    }
+
+    public boolean estoqueBaixo() {
+        return estoque <= estoqueMinimo;
     }
 
     public boolean isAtivo() {

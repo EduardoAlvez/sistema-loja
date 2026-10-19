@@ -36,6 +36,7 @@ public class DialogoProduto extends JDialog {
     private final JTextField custo = new JTextField(10);
     private final JTextField venda = new JTextField(10);
     private final JTextField estoque = new JTextField(6);
+    private final JTextField estoqueMinimo = new JTextField(6);
     private final JCheckBox ativo = new JCheckBox("Produto ativo");
 
     public DialogoProduto(java.awt.Window pai, Aplicacao aplicacao, Produto produto, Runnable aoSalvar) {
@@ -89,9 +90,10 @@ public class DialogoProduto extends JDialog {
         formulario.add(painelVenda, gbc);
 
         adicionar(formulario, gbc, 5, "Estoque *", estoque);
+        adicionar(formulario, gbc, 6, "Estoque mínimo", estoqueMinimo);
 
         gbc.gridx = 1;
-        gbc.gridy = 6;
+        gbc.gridy = 7;
         formulario.add(ativo, gbc);
 
         for (Categoria c : aplicacao.getProdutos().listarCategorias()) {
@@ -129,6 +131,7 @@ public class DialogoProduto extends JDialog {
         custo.setText(String.valueOf(produto.getPrecoCusto()));
         venda.setText(String.valueOf(produto.getPrecoVenda()));
         estoque.setText(String.valueOf(produto.getEstoque()));
+        estoqueMinimo.setText(String.valueOf(produto.getEstoqueMinimo()));
         ativo.setSelected(produto.isAtivo());
         if (produto.getCategoriaId() != null) {
             for (int i = 0; i < categoria.getItemCount(); i++) {
@@ -147,6 +150,8 @@ public class DialogoProduto extends JDialog {
             produto.setPrecoCusto(new BigDecimal(custo.getText().strip().replace(',', '.')));
             produto.setPrecoVenda(new BigDecimal(venda.getText().strip().replace(',', '.')));
             produto.setEstoque(Integer.parseInt(estoque.getText().strip()));
+            produto.setEstoqueMinimo(estoqueMinimo.getText().isBlank()
+                    ? 0 : Integer.parseInt(estoqueMinimo.getText().strip()));
             produto.setAtivo(ativo.isSelected());
 
             String nova = novaCategoria.getText().strip();
