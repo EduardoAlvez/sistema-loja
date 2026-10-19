@@ -6,6 +6,7 @@ import com.portfolio.sistemaloja.repository.AuditoriaRepository;
 import com.portfolio.sistemaloja.repository.CaixaRepository;
 import com.portfolio.sistemaloja.repository.CategoriaRepository;
 import com.portfolio.sistemaloja.repository.ClienteRepository;
+import com.portfolio.sistemaloja.repository.DevolucaoRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
@@ -16,6 +17,7 @@ import com.portfolio.sistemaloja.service.AuditoriaService;
 import com.portfolio.sistemaloja.service.CaixaService;
 import com.portfolio.sistemaloja.service.ClienteService;
 import com.portfolio.sistemaloja.service.CupomService;
+import com.portfolio.sistemaloja.service.DevolucaoService;
 import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.PausaService;
 import com.portfolio.sistemaloja.service.ProdutoService;
@@ -33,6 +35,7 @@ public class Aplicacao {
     private final CaixaService caixa;
     private final PausaService pausas;
     private final CupomService cupom;
+    private final DevolucaoService devolucoes;
     private final UsuarioService usuarios;
     private final RelatorioService relatorios;
     private final ExportacaoService exportacao;
@@ -46,6 +49,7 @@ public class Aplicacao {
         VendaRepository vendaRepository = new VendaRepository(fonte);
         CaixaRepository caixaRepository = new CaixaRepository(fonte);
         VendaPausadaRepository vendaPausadaRepository = new VendaPausadaRepository(fonte);
+        DevolucaoRepository devolucaoRepository = new DevolucaoRepository(fonte);
         UsuarioRepository usuarioRepository = new UsuarioRepository(fonte);
         RelatorioRepository relatorioRepository = new RelatorioRepository(fonte);
         AuditoriaRepository auditoriaRepository = new AuditoriaRepository(fonte);
@@ -58,6 +62,7 @@ public class Aplicacao {
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria);
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();
+        this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria);
         this.usuarios = new UsuarioService(usuarioRepository, auditoria);
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
         this.exportacao = new ExportacaoService();
@@ -90,6 +95,10 @@ public class Aplicacao {
 
     public CupomService getCupom() {
         return cupom;
+    }
+
+    public DevolucaoService getDevolucoes() {
+        return devolucoes;
     }
 
     public UsuarioService getUsuarios() {

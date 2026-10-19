@@ -1,5 +1,6 @@
 package com.portfolio.sistemaloja.model;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 public class Cliente {
@@ -10,6 +11,7 @@ public class Cliente {
     private String telefone;
     private String email;
     private boolean ativo;
+    private BigDecimal credito = BigDecimal.ZERO;
 
     public Cliente() {
     }
@@ -69,6 +71,14 @@ public class Cliente {
 
     public void setAtivo(boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public BigDecimal getCredito() {
+        return credito;
+    }
+
+    public void setCredito(BigDecimal credito) {
+        this.credito = credito == null ? BigDecimal.ZERO : credito;
     }
 
     @Override

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -35,8 +36,11 @@ import javax.swing.event.TableModelEvent;
 import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.Caixa;
 import com.portfolio.sistemaloja.model.Cliente;
+import com.portfolio.sistemaloja.model.Devolucao;
+import com.portfolio.sistemaloja.model.DevolucaoItem;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
@@ -127,6 +131,9 @@ public class PainelPDV extends JPanel {
         linhaCliente.add(botaoSuprimento);
         botaoFecharCaixa.addActionListener(e -> fecharCaixa());
         linhaCliente.add(botaoFecharCaixa);
+        JButton devolucao = new JButton("Devolução");
+        devolucao.addActionListener(e -> abrirDevolucao());
+        linhaCliente.add(devolucao);
         linhaCliente.add(Ui.rotulo("Cliente:"));
         cliente.setPreferredSize(new Dimension(240, cliente.getPreferredSize().height));
         linhaCliente.add(cliente);
@@ -446,6 +453,51 @@ public class PainelPDV extends JPanel {
         }
         texto.append("Enter no campo de busca - Adicionar produto");
         Ui.info(this, texto.toString());
+    }
+
+    private void abrirDevolucao() {
+        String numero = javax.swing.JOptionPane.showInputDialog(this,
+                "Número da venda a devolver (ex.: V000001):", "");
+        if (numero == null || numero.isBlank()) {
+            return;
+        }
+        Optional<Venda> encontrada = aplicacao.getDevolucoes().buscarVendaPorNumero(numero);
+        if (encontrada.isEmpty()) {
+            Ui.erro(this, "Venda não encontrada: " + numero.strip());
+            return;
+        }
+        Venda venda = encontrada.get();
+        if (venda.getStatus() != StatusVenda.CONCLUIDA) {
+            Ui.erro(this, "Somente vendas concluídas podem ser devolvidas.");
+            return;
+        }
+        PainelDevolucao painel = new PainelDevolucao(venda, aplicacao.getDevolucoes()::jaDevolvido);
+        int opcao = javax.swing.JOptionPane.showConfirmDialog(this, painel,
+                "Devolução parcial - " + venda.getNumero(), javax.swing.JOptionPane.OK_CANCEL_OPTION,
+                javax.swing.JOptionPane.PLAIN_MESSAGE);
+        if (opcao != javax.swing.JOptionPane.OK_OPTION) {
+            return;
+        }
+        try {
+            Devolucao devolucao = aplicacao.getDevolucoes().devolver(venda.getId(),
+                    painel.itensParaDevolucao(), painel.creditoNoCliente(), null, usuario);
+            Ui.info(this, descreverDevolucao(devolucao));
+        } catch (ValidacaoException e) {
+            Ui.erro(this, e.getMessage());
+        }
+    }
+
+    private String descreverDevolucao(Devolucao devolucao) {
+        StringBuilder texto = new StringBuilder("DEVOLUÇÃO - ").append(devolucao.getVendaNumero()).append("\n\n");
+        for (DevolucaoItem item : devolucao.getItens()) {
+            texto.append(String.format("%s%n  %d x %s  =  %s%n", item.getProdutoNome(), item.getQuantidade(),
+                    Ui.moeda(item.getValorUnitario()), Ui.moeda(item.getSubtotal())));
+        }
+        texto.append("\nTotal devolvido: ").append(Ui.moeda(devolucao.getValor())).append('\n');
+        if (devolucao.isCreditoCliente()) {
+            texto.append("Crédito no cliente: ").append(devolucao.getClienteNome()).append('\n');
+        }
+        return texto.toString();
     }
 
     private void adicionarPeloCampo() {

@@ -15,7 +15,7 @@ import java.util.Optional;
 public class ClienteRepository {
 
     private static final String SELECT_BASE = """
-            SELECT id, nome, cpf, telefone, email, ativo FROM clientes""";
+            SELECT id, nome, cpf, telefone, email, ativo, credito FROM clientes""";
 
     private final ConexaoFonte fonte;
 
@@ -127,12 +127,14 @@ public class ClienteRepository {
     }
 
     private Cliente mapear(ResultSet resultado) throws SQLException {
-        return new Cliente(
+        Cliente cliente = new Cliente(
                 resultado.getLong("id"),
                 resultado.getString("nome"),
                 resultado.getString("cpf"),
                 resultado.getString("telefone"),
                 resultado.getString("email"),
                 resultado.getBoolean("ativo"));
+        cliente.setCredito(resultado.getBigDecimal("credito"));
+        return cliente;
     }
 }

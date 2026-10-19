@@ -183,6 +183,22 @@ public class VendaRepository {
         }
     }
 
+    public Optional<Venda> buscarPorNumero(String numero) {
+        String sql = "SELECT id FROM vendas WHERE numero = ?";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setString(1, numero);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (resultado.next()) {
+                    return buscarPorId(resultado.getLong(1));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao buscar a venda pelo número", e);
+        }
+        return Optional.empty();
+    }
+
     public Optional<Venda> ultimaDoUsuario(long usuarioId) {
         String sql = "SELECT MAX(id) FROM vendas WHERE usuario_id = ?";
         try (Connection conexao = fonte.getConnection();
