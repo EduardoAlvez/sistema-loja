@@ -312,6 +312,7 @@ sistema-loja/
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
 - [x] 164 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] Release `v1.1.0` com jar para download
 
 ---
 

@@ -26,5 +26,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sistema-loja
-          path: target/sistema-loja-1.0.0.jar
+          path: target/sistema-loja-*.jar
           if-no-files-found: error
