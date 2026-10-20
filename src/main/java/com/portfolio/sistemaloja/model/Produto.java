@@ -1,7 +1,13 @@
 package com.portfolio.sistemaloja.model;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class Produto {
 
@@ -15,6 +21,12 @@ public class Produto {
     private int estoque;
     private int estoqueMinimo;
     private boolean ativo;
+    private BigDecimal precoPromocional;
+    private LocalDate promoInicio;
+    private LocalDate promoFim;
+    private Set<DayOfWeek> promoDias = EnumSet.noneOf(DayOfWeek.class);
+    private LocalTime promoHoraInicio;
+    private LocalTime promoHoraFim;
 
     public Produto() {
     }
@@ -113,6 +125,56 @@ public class Produto {
 
     public void setAtivo(boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public BigDecimal getPrecoPromocional() {
+        return precoPromocional;
+    }
+
+    public void setPrecoPromocional(BigDecimal precoPromocional) {
+        this.precoPromocional = precoPromocional;
+    }
+
+    public LocalDate getPromoInicio() {
+        return promoInicio;
+    }
+
+    public void setPromoInicio(LocalDate promoInicio) {
+        this.promoInicio = promoInicio;
+    }
+
+    public LocalDate getPromoFim() {
+        return promoFim;
+    }
+
+    public void setPromoFim(LocalDate promoFim) {
+        this.promoFim = promoFim;
+    }
+
+    public Set<DayOfWeek> getPromoDias() {
+        return Collections.unmodifiableSet(promoDias);
+    }
+
+    public void setPromoDias(Set<DayOfWeek> promoDias) {
+        this.promoDias = promoDias == null || promoDias.isEmpty()
+                ? EnumSet.noneOf(DayOfWeek.class)
+                : EnumSet.copyOf(promoDias);
+    }
+
+    public LocalTime getPromoHoraInicio() {
+        return promoHoraInicio;
+    }
+
+    public void setPromoHoraInicio(LocalTime promoHoraInicio) {
+        this.promoHoraInicio = promoHoraInicio;
+    }
+
+    public LocalTime getPromoHoraFim() {
+        return promoHoraFim;
+    }
+
+    public void setPromoHoraFim(LocalTime promoHoraFim) {
+        this.promoHoraFim = promoHoraFim;
     }
 
     public BigDecimal calcularLucro() {

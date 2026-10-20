@@ -7,11 +7,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.EnumSet;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -125,6 +130,65 @@ class ProdutoServiceTest {
         Produto produto = produtoNovo("Inválido", "7891555555555", "5.00", "10.00", 10);
         produto.setEstoqueMinimo(-1);
         assertThrows(ValidacaoException.class, () -> app.getProdutos().salvar(produto));
+    }
+
+    @Test
+    void guardaPromocaoCompletaEParcial() {
+        Produto completo = produtoNovo("Cerveja 600ml", "7891666666666", "4.00", "12.00", 24);
+        completo.setPrecoPromocional(new BigDecimal("8.90"));
+        completo.setPromoInicio(LocalDate.of(2026, 10, 1));
+        completo.setPromoFim(LocalDate.of(2026, 10, 31));
+        completo.setPromoDias(EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY));
+        completo.setPromoHoraInicio(LocalTime.of(18, 0));
+        completo.setPromoHoraFim(LocalTime.of(20, 0));
+        app.getProdutos().salvar(completo);
+
+        Produto lido = app.getProdutos().buscarPorCodigoBarras("7891666666666");
+        assertEquals(0, new BigDecimal("8.90").compareTo(lido.getPrecoPromocional()));
+        assertEquals(LocalDate.of(2026, 10, 1), lido.getPromoInicio());
+        assertEquals(LocalDate.of(2026, 10, 31), lido.getPromoFim());
+        assertEquals(EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY), lido.getPromoDias());
+        assertEquals(LocalTime.of(18, 0), lido.getPromoHoraInicio());
+        assertEquals(LocalTime.of(20, 0), lido.getPromoHoraFim());
+
+        Produto parcial = produtoNovo("Refrigerante 2L", "7891777777777", "3.00", "9.00", 10);
+        parcial.setPrecoPromocional(new BigDecimal("7.50"));
+        app.getProdutos().salvar(parcial);
+
+        Produto lidoParcial = app.getProdutos().buscarPorCodigoBarras("7891777777777");
+        assertEquals(0, new BigDecimal("7.50").compareTo(lidoParcial.getPrecoPromocional()));
+        assertNull(lidoParcial.getPromoInicio());
+        assertNull(lidoParcial.getPromoFim());
+        assertTrue(lidoParcial.getPromoDias().isEmpty());
+        assertNull(lidoParcial.getPromoHoraInicio());
+        assertNull(lidoParcial.getPromoHoraFim());
+    }
+
+    @Test
+    void atualizaPromocaoELimpaCampos() {
+        Produto produto = produtoNovo("Cha Gelado 1L", "7891888888888", "2.00", "6.00", 8);
+        produto.setPrecoPromocional(new BigDecimal("4.50"));
+        produto.setPromoDias(EnumSet.of(DayOfWeek.SATURDAY));
+        produto.setPromoHoraInicio(LocalTime.of(10, 0));
+        produto.setPromoHoraFim(LocalTime.of(12, 0));
+        app.getProdutos().salvar(produto);
+
+        produto.setPrecoPromocional(new BigDecimal("4.00"));
+        app.getProdutos().salvar(produto);
+        assertEquals(0, new BigDecimal("4.00").compareTo(
+                app.getProdutos().buscarPorCodigoBarras("7891888888888").getPrecoPromocional()));
+
+        produto.setPrecoPromocional(null);
+        produto.setPromoDias(null);
+        produto.setPromoHoraInicio(null);
+        produto.setPromoHoraFim(null);
+        app.getProdutos().salvar(produto);
+
+        Produto lido = app.getProdutos().buscarPorCodigoBarras("7891888888888");
+        assertNull(lido.getPrecoPromocional());
+        assertTrue(lido.getPromoDias().isEmpty());
+        assertNull(lido.getPromoHoraInicio());
+        assertNull(lido.getPromoHoraFim());
     }
 
     private Produto produtoNovo(String nome, String codigo, String custo, String venda, int estoque) {

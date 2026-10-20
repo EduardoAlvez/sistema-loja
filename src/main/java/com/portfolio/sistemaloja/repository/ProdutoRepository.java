@@ -4,19 +4,29 @@ import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.Produto;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Types;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public class ProdutoRepository {
 
     private static final String SELECT_BASE = """
             SELECT p.id, p.codigo_barras, p.nome, p.categoria_id, c.nome AS categoria_nome,
-                   p.preco_custo, p.preco_venda, p.estoque, p.estoque_minimo, p.ativo
+                   p.preco_custo, p.preco_venda, p.estoque, p.estoque_minimo, p.ativo,
+                   p.preco_promocional, p.promo_inicio, p.promo_fim, p.promo_dias,
+                   p.promo_hora_inicio, p.promo_hora_fim
               FROM produtos p
               LEFT JOIN categorias c ON c.id = p.categoria_id""";
 
@@ -141,7 +151,7 @@ public class ProdutoRepository {
              PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preencher(preparada, produto);
             if (produto.getId() != null) {
-                preparada.setLong(9, produto.getId());
+                preparada.setLong(15, produto.getId());
             }
             preparada.executeUpdate();
             if (produto.getId() == null) {
@@ -179,13 +189,16 @@ public class ProdutoRepository {
     }
 
     private String insercao() {
-        return "INSERT INTO produtos (codigo_barras, nome, categoria_id, preco_custo, preco_venda, estoque, ativo, estoque_minimo) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        return "INSERT INTO produtos (codigo_barras, nome, categoria_id, preco_custo, preco_venda, "
+                + "estoque, ativo, estoque_minimo, preco_promocional, promo_inicio, promo_fim, promo_dias, "
+                + "promo_hora_inicio, promo_hora_fim) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     }
 
     private String atualizacao() {
         return "UPDATE produtos SET codigo_barras = ?, nome = ?, categoria_id = ?, preco_custo = ?, "
-                + "preco_venda = ?, estoque = ?, ativo = ?, estoque_minimo = ? WHERE id = ?";
+                + "preco_venda = ?, estoque = ?, ativo = ?, estoque_minimo = ?, preco_promocional = ?, "
+                + "promo_inicio = ?, promo_fim = ?, promo_dias = ?, promo_hora_inicio = ?, "
+                + "promo_hora_fim = ? WHERE id = ?";
     }
 
     private void preencher(PreparedStatement preparada, Produto produto) throws SQLException {
@@ -201,6 +214,33 @@ public class ProdutoRepository {
         preparada.setInt(6, produto.getEstoque());
         preparada.setBoolean(7, produto.isAtivo());
         preparada.setInt(8, produto.getEstoqueMinimo());
+        preparada.setBigDecimal(9, produto.getPrecoPromocional());
+        if (produto.getPromoInicio() == null) {
+            preparada.setNull(10, Types.DATE);
+        } else {
+            preparada.setObject(10, produto.getPromoInicio());
+        }
+        if (produto.getPromoFim() == null) {
+            preparada.setNull(11, Types.DATE);
+        } else {
+            preparada.setObject(11, produto.getPromoFim());
+        }
+        String dias = textoDias(produto.getPromoDias());
+        if (dias.isEmpty()) {
+            preparada.setNull(12, Types.VARCHAR);
+        } else {
+            preparada.setString(12, dias);
+        }
+        if (produto.getPromoHoraInicio() == null) {
+            preparada.setNull(13, Types.TIME);
+        } else {
+            preparada.setObject(13, produto.getPromoHoraInicio());
+        }
+        if (produto.getPromoHoraFim() == null) {
+            preparada.setNull(14, Types.TIME);
+        } else {
+            preparada.setObject(14, produto.getPromoHoraFim());
+        }
     }
 
     private Produto mapear(ResultSet resultado) throws SQLException {
@@ -217,6 +257,52 @@ public class ProdutoRepository {
                 resultado.getBoolean("ativo"));
         produto.setCategoriaNome(resultado.getString("categoria_nome"));
         produto.setEstoqueMinimo(resultado.getInt("estoque_minimo"));
+        produto.setPrecoPromocional(resultado.getBigDecimal("preco_promocional"));
+        produto.setPromoInicio(data(resultado, "promo_inicio"));
+        produto.setPromoFim(data(resultado, "promo_fim"));
+        produto.setPromoDias(dias(resultado.getString("promo_dias")));
+        produto.setPromoHoraInicio(hora(resultado, "promo_hora_inicio"));
+        produto.setPromoHoraFim(hora(resultado, "promo_hora_fim"));
         return produto;
+    }
+
+    private static LocalDate data(ResultSet resultado, String coluna) throws SQLException {
+        Date valor = resultado.getDate(coluna);
+        return valor == null ? null : valor.toLocalDate();
+    }
+
+    private static LocalTime hora(ResultSet resultado, String coluna) throws SQLException {
+        Time valor = resultado.getTime(coluna);
+        return valor == null ? null : valor.toLocalTime();
+    }
+
+    private static Set<DayOfWeek> dias(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return EnumSet.noneOf(DayOfWeek.class);
+        }
+        EnumSet<DayOfWeek> dias = EnumSet.noneOf(DayOfWeek.class);
+        for (String parte : texto.split(",")) {
+            int valor;
+            try {
+                valor = Integer.parseInt(parte.strip());
+            } catch (NumberFormatException e) {
+                throw new RepositorioException("Dia de promocao invalido no banco: " + parte, e);
+            }
+            if (valor < 1 || valor > 7) {
+                throw new RepositorioException("Dia de promocao fora de 1..7 no banco: " + valor);
+            }
+            dias.add(DayOfWeek.of(valor));
+        }
+        return dias;
+    }
+
+    private static String textoDias(Set<DayOfWeek> dias) {
+        if (dias == null || dias.isEmpty()) {
+            return "";
+        }
+        return dias.stream()
+                .sorted()
+                .map(dia -> String.valueOf(dia.getValue()))
+                .collect(java.util.stream.Collectors.joining(","));
     }
 }
