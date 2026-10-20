@@ -31,6 +31,8 @@ import com.portfolio.sistemaloja.service.RelatorioService;
 import com.portfolio.sistemaloja.service.UsuarioService;
 import com.portfolio.sistemaloja.service.VendaService;
 
+import java.time.Clock;
+
 public class Aplicacao {
 
     private final Sessao sessao = new Sessao();
@@ -51,6 +53,10 @@ public class Aplicacao {
     private final ProdutoRepository produtoRepository;
 
     public Aplicacao(ConexaoFonte fonte) {
+        this(fonte, Clock.systemDefaultZone());
+    }
+
+    public Aplicacao(ConexaoFonte fonte, Clock relogio) {
         ProdutoRepository produtoRepository = new ProdutoRepository(fonte);
         CategoriaRepository categoriaRepository = new CategoriaRepository(fonte);
         ClienteRepository clienteRepository = new ClienteRepository(fonte);
@@ -66,7 +72,8 @@ public class Aplicacao {
         this.auth = new AuthService(usuarioRepository, sessao, auditoria);
         this.produtos = new ProdutoService(produtoRepository, categoriaRepository, auditoria);
         this.clientes = new ClienteService(clienteRepository, auditoria);
-        this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository, auditoria);
+        this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
+                auditoria, relogio);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria);
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();

@@ -12,6 +12,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -372,6 +376,99 @@ class VendaServiceTest {
         app.getVendas().registrar(novaVenda(agua, 1, FormaPagamento.PIX, null));
 
         assertTrue(app.getVendas().ultimaDoOperador(admin.getId()).isEmpty());
+    }
+
+    @Test
+    void aplicaPromocaoVigenteSemConsumirOLimiteDoOperador() {
+        Aplicacao promo = appNoHorario(LocalDateTime.of(2026, 10, 20, 12, 0));
+        Usuario caixa = promo.getAuth().autenticar("operador", "caixa123");
+        Produto agua = promo.getProdutos().buscarPorCodigoBarras("7891000100104");
+        agua.setPrecoPromocional(new BigDecimal("1.50"));
+        agua.setPromoInicio(LocalDate.of(2026, 10, 1));
+        agua.setPromoFim(LocalDate.of(2026, 10, 31));
+        promo.getProdutos().salvar(agua);
+
+        Venda venda = new Venda();
+        venda.setUsuarioId(caixa.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda()));
+
+        Venda registrada = promo.getVendas().registrar(venda);
+
+        assertEquals(0, new BigDecimal("1.50").compareTo(
+                registrada.getItens().get(0).getPrecoUnitario()));
+        assertEquals(0, new BigDecimal("6.00").compareTo(registrada.getTotal()));
+    }
+
+    @Test
+    void foraDaVigenciaGravaOPrecoCheio() {
+        Aplicacao promo = appNoHorario(LocalDateTime.of(2026, 10, 20, 12, 0));
+        Usuario caixa = promo.getAuth().autenticar("operador", "caixa123");
+        Produto agua = promo.getProdutos().buscarPorCodigoBarras("7891000100104");
+        agua.setPrecoPromocional(new BigDecimal("1.50"));
+        agua.setPromoInicio(LocalDate.of(2026, 11, 1));
+        agua.setPromoFim(LocalDate.of(2026, 11, 30));
+        promo.getProdutos().salvar(agua);
+
+        Venda venda = new Venda();
+        venda.setUsuarioId(caixa.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda()));
+
+        Venda registrada = promo.getVendas().registrar(venda);
+
+        assertEquals(0, new BigDecimal("2.50").compareTo(
+                registrada.getItens().get(0).getPrecoUnitario()));
+        assertEquals(0, new BigDecimal("10.00").compareTo(registrada.getTotal()));
+    }
+
+    @Test
+    void limiteDoPerfilUsaOPrecoPromocionalComoBase() {
+        Aplicacao promo = appNoHorario(LocalDateTime.of(2026, 10, 20, 12, 0));
+        Usuario caixa = promo.getAuth().autenticar("operador", "caixa123");
+        Produto agua = promo.getProdutos().buscarPorCodigoBarras("7891000100104");
+        agua.setPrecoPromocional(new BigDecimal("1.50"));
+        agua.setPromoInicio(LocalDate.of(2026, 10, 1));
+        agua.setPromoFim(LocalDate.of(2026, 10, 31));
+        promo.getProdutos().salvar(agua);
+
+        Venda venda = new Venda();
+        venda.setUsuarioId(caixa.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda()));
+        venda.setDesconto(new BigDecimal("0.70"));
+
+        ValidacaoException erro = assertThrows(ValidacaoException.class,
+                () -> promo.getVendas().registrar(venda));
+        assertTrue(erro.getMessage().contains("10%"), erro.getMessage());
+    }
+
+    @Test
+    void promocaoRecalculaOItemAntesDeValidarODesconto() {
+        Aplicacao promo = appNoHorario(LocalDateTime.of(2026, 10, 20, 12, 0));
+        Usuario caixa = promo.getAuth().autenticar("operador", "caixa123");
+        Produto agua = promo.getProdutos().buscarPorCodigoBarras("7891000100104");
+        agua.setPrecoPromocional(new BigDecimal("1.50"));
+        agua.setPromoInicio(LocalDate.of(2026, 10, 1));
+        agua.setPromoFim(LocalDate.of(2026, 10, 31));
+        promo.getProdutos().salvar(agua);
+
+        Venda venda = new Venda();
+        venda.setUsuarioId(caixa.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        VendaItem item = new VendaItem(agua.getId(), agua.getNome(), 1, agua.getPrecoVenda());
+        item.setDesconto(new BigDecimal("2.00"));
+        venda.adicionarItem(item);
+
+        ValidacaoException erro = assertThrows(ValidacaoException.class,
+                () -> promo.getVendas().registrar(venda));
+        assertTrue(erro.getMessage().contains("subtotal"), erro.getMessage());
+    }
+
+    private Aplicacao appNoHorario(LocalDateTime momento) {
+        ZoneId zona = ZoneId.systemDefault();
+        return BancoTeste.criar("vendaPromo" + System.nanoTime(),
+                Clock.fixed(momento.atZone(zona).toInstant(), zona));
     }
 
     private Venda novaVenda(Produto produto, int quantidade, FormaPagamento pagamento, BigDecimal pago) {

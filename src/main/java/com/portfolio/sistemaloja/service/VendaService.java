@@ -15,10 +15,13 @@ import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 public class VendaService {
@@ -29,13 +32,20 @@ public class VendaService {
     private final ProdutoRepository produtos;
     private final UsuarioRepository usuarios;
     private final AuditoriaService auditoria;
+    private final Clock relogio;
 
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
                         AuditoriaService auditoria) {
+        this(vendas, produtos, usuarios, auditoria, Clock.systemDefaultZone());
+    }
+
+    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
+                        AuditoriaService auditoria, Clock relogio) {
         this.vendas = vendas;
         this.produtos = produtos;
         this.usuarios = usuarios;
         this.auditoria = auditoria;
+        this.relogio = Objects.requireNonNull(relogio, "relogio");
     }
 
     public Venda registrar(Venda venda) {
@@ -46,11 +56,13 @@ public class VendaService {
         if (itens.isEmpty()) {
             throw new ValidacaoException("Adicione pelo menos um item à venda.");
         }
+        Map<Long, Produto> catalogo = carregarProdutos(itens);
+        aplicarPrecoVigente(itens, catalogo, LocalDateTime.now(relogio));
         validarDescontos(venda, itens);
         validarLimiteDescontoPorPerfil(venda, itens);
         venda.getItens().clear();
         itens.forEach(venda::adicionarItem);
-        validarEstoque(venda);
+        validarEstoque(venda, catalogo);
         finalizarPagamento(venda);
         venda.setStatus(StatusVenda.CONCLUIDA);
         venda.setNumero(vendas.proximoNumero());
@@ -150,11 +162,32 @@ public class VendaService {
         }
     }
 
-    private void validarEstoque(Venda venda) {
-        for (VendaItem item : venda.getItens()) {
+    private Map<Long, Produto> carregarProdutos(List<VendaItem> itens) {
+        Map<Long, Produto> catalogo = new LinkedHashMap<>();
+        for (VendaItem item : itens) {
+            if (catalogo.containsKey(item.getProdutoId())) {
+                continue;
+            }
             Produto produto = produtos.buscarPorId(item.getProdutoId())
                     .orElseThrow(() -> new ValidacaoException(
                             "Produto " + item.getProdutoNome() + " não existe mais."));
+            catalogo.put(produto.getId(), produto);
+        }
+        return catalogo;
+    }
+
+    private void aplicarPrecoVigente(List<VendaItem> itens, Map<Long, Produto> catalogo,
+            LocalDateTime momento) {
+        for (VendaItem item : itens) {
+            Produto produto = catalogo.get(item.getProdutoId());
+            item.setProdutoNome(produto.getNome());
+            item.setPrecoUnitario(produto.precoVigente(momento));
+        }
+    }
+
+    private void validarEstoque(Venda venda, Map<Long, Produto> catalogo) {
+        for (VendaItem item : venda.getItens()) {
+            Produto produto = catalogo.get(item.getProdutoId());
             if (!produto.isAtivo()) {
                 throw new ValidacaoException("O produto " + produto.getNome() + " está inativo.");
             }
@@ -162,8 +195,6 @@ public class VendaService {
                 throw new ValidacaoException("Estoque insuficiente para " + produto.getNome()
                         + ". Disponível: " + produto.getEstoque() + ".");
             }
-            item.setProdutoNome(produto.getNome());
-            item.setPrecoUnitario(produto.getPrecoVenda());
         }
         venda.recalcularTotal();
     }
