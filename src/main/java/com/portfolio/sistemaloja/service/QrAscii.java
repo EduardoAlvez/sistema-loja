@@ -41,6 +41,13 @@ public final class QrAscii {
         return texto.toString();
     }
 
+    public static int modulos(String conteudo) {
+        if (conteudo == null || conteudo.isBlank()) {
+            throw new ValidacaoException("Conteúdo vazio para gerar o QR Code.");
+        }
+        return matriz(conteudo).getWidth();
+    }
+
     static ByteMatrix matriz(String conteudo) {
         Map<EncodeHintType, Object> dicas = new EnumMap<>(EncodeHintType.class);
         dicas.put(EncodeHintType.CHARACTER_SET, "UTF-8");
