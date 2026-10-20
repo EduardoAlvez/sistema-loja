@@ -824,10 +824,10 @@ public class PainelPDV extends JPanel {
             Ui.info(this, "Nenhuma venda registrada por você ainda.");
             return;
         }
-        String conteudo = aplicacao.getCupomTermico().formatar(ultima.get());
         java.awt.Window janela = SwingUtilities.getWindowAncestor(this);
         Frame pai = janela instanceof Frame frame ? frame : null;
-        new DialogoCupomTermico(pai, conteudo).setVisible(true);
+        new DialogoCupomTermico(pai, ultima.get(), aplicacao.getCupomTermico(),
+                aplicacao.getImpressao()).setVisible(true);
     }
 
     private void reimprimirCupom() {

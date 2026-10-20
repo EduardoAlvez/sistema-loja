@@ -64,8 +64,25 @@ class ImpressaoCupomServiceTest {
     }
 
     @Test
-    void listaAsImpressorasDisponiveis() {
+    void geraOsBytesParaSalvarEmBin() {
         CupomEscPosService cupom = new CupomEscPosService(new CupomTermicoService(CONFIG));
+        ImpressaoCupomService servico = new ImpressaoCupomService(cupom, impressoras);
+
+        byte[] dados = servico.bytes(venda);
+
+        assertEquals(0x1B, dados[0]);
+        assertEquals(0x40, dados[1]);
+        assertEquals(0x1B, dados[2]);
+        assertEquals(0x74, dados[3]);
+        assertEquals(0x02, dados[4]);
+        assertEquals(0x1D, dados[dados.length - 3]);
+        assertEquals(0x56, dados[dados.length - 2]);
+        assertEquals(0x01, dados[dados.length - 1]);
+        assertEquals(0, impressoras.buscar("POS-80").total());
+    }
+
+    @Test
+    void listaAsImpressorasDisponiveis() {        CupomEscPosService cupom = new CupomEscPosService(new CupomTermicoService(CONFIG));
         ImpressaoCupomService servico = new ImpressaoCupomService(cupom, impressoras);
 
         assertEquals(List.of("POS-80", "Cozinha"), servico.impressoras());

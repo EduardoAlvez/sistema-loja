@@ -46,7 +46,7 @@ regras de negócio e testes automatizados.
 - **Pausa e retomada** de venda em andamento (o carrinho fica guardado com a forma de pagamento)
 - **Reimpressão do último cupom** do operador logado
 - Seleção de cliente opcional e **cupom não fiscal** gerado no fim da venda
-- **Cupom térmico de 80mm** com **QR Code PIX** (BR Code oficial, com valor e CRC16) e opção de salvar em `.txt`
+- **Cupom térmico de 80mm** com **QR Code PIX** (BR Code oficial, com valor e CRC16), opção de salvar em `.txt` e **impressão ESC/POS** (corte, negrito e gaveta) pela fila do sistema
 - **Devolução parcial** com crédito no cliente e estorno de estoque
 - Baixa de estoque **transacional** (commit/rollback) e validação de estoque antes de vender
 - **Atalhos F3 a F12**: buscar, dividir, pausar, retomar, reimprimir, limpar, sangria, suprimento,
@@ -188,15 +188,36 @@ O QR Code do cupom térmico usa a chave PIX configurada por variável de ambient
 | `PIX_NOME` | `-Dpix.nome` | `LOJA EXEMPLO LTDA` |
 | `PIX_CIDADE` | `-Dpix.cidade` | `SAO PAULO` |
 
+### Impressora térmica ESC/POS (opcional)
+
+O botão **Cupom 80mm (PIX)** abre o diálogo com a prévia de texto e permite **Salvar .bin**
+(bytes ESC/POS prontos) ou **Imprimir** direto na fila de impressão do sistema. Não é preciso
+instalar driver do fabricante: cadastre a impressora no Windows como **Generic / Text Only**
+(porta USB ou de rede) e selecione essa fila no diálogo.
+
+| Variável | Propriedade | Padrão |
+|----------|-------------|--------|
+| `IMPRESSORA_NOME` | `-Dimpressora.nome` | vazio (primeira fila instalada) |
+| `IMPRESSORA_CODEPAGE` | `-Dimpressora.codepage` | `2` (Cp850); use `16` para Windows-1252 |
+| `IMPRESSORA_QR_MODULO` | `-Dimpressora.qr.modulo` | `4` (1 a 16, quanto maior o QR, maior o cupom) |
+
+- Acentos saem conforme a **codepage** escolhida: se aparecerem trocados, alterne entre `2` e `16`.
+- O corte é o **último comando** do cupom; a **gaveta** abre antes do corte quando o pagamento
+  inclui dinheiro (inclusive no pagamento dividido).
+- Sem impressora instalada, use **Salvar .bin** e envie em modo bruto:
+  `copy /b "cupom-80mm.bin" \\localhost\NOME_DA_FILA`.
+- Em rede, confirme que a fila aponta para a porta **9100** da impressora (ou use o nome compartilhado).
+
 ### Testes
 
 ```bash
 mvn test
 ```
 
-**164 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**204 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
-e QR Code decodificado no teste, a exportação em PDF/Excel, o gráfico, o CSV de produtos,
+e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
+corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
 as migrações do Flyway e a trilha de auditoria — rodam sobre **H2 em modo MySQL**, ou seja,
 não dependem do Docker.
 
@@ -223,6 +244,7 @@ Projeto em **quatro camadas**, com dependência sempre de cima para baixo:
 |--------|--------|------------------|
 | UI | `ui` | `TelaLogin`, `TelaPrincipal` com abas, painéis e diálogos |
 | Serviço | `service` | `VendaService`, `ProdutoService`, `ClienteService`, `CaixaService`, `PausaService`, `DevolucaoService`, `UsuarioService`, `CupomService`, `CupomTermicoService` (+ `PixPayload`, `QrAscii`), `RelatorioService`, `AuthService`, `AuditoriaService`, `Cpf` |
+| Impressão | `impressao` | `EscPos`, `CupomEscPosService`, `ImpressaoCupomService`, `ImpressoraConfig`, `ImpressorasSpool` (+ `ImpressoraSpool`) |
 | Repositório | `repository` | `ProdutoRepository`, `VendaRepository`, `VendaPausadaRepository`, `DevolucaoRepository`, `CaixaRepository`, `ClienteRepository`, `UsuarioRepository`, `CategoriaRepository`, `RelatorioRepository`, `AuditoriaRepository` |
 | Modelo | `model` | `Produto`, `Cliente`, `Venda`, `VendaItem`, `VendaPagamento`, `Caixa`, `Devolucao`, `Usuario`, enums |
 | Infra | `db` | `Banco` (fonte de conexão), `Migrador` (Flyway + seed), `Senhas` |
@@ -245,6 +267,7 @@ sistema-loja/
 │   │   │   ├── Sessao.java                  # Usuário logado (contexto da auditoria)
 │   │   │   ├── db/                          # Banco, Migrador (Flyway), Senhas, ConexaoFonte
 │   │   │   ├── grafico/                     # GraficoFaturamento: render com Graphics2D
+│   │   │   ├── impressao/                   # ESC/POS, QR nativo, spooler e impressora falsa
 │   │   │   ├── model/                       # Produto, Cliente, Venda, Usuario, enums
 │   │   │   ├── repository/                  # Repositórios JDBC + records de relatório
 │   │   │   ├── service/                     # Regras de negócio e validações
@@ -252,7 +275,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V11 (esquema, caixa, PIX, estoque mínimo...)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 164 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 204 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -268,6 +291,7 @@ sistema-loja/
 - **Log4j2** (logs em arquivo com rotação e no console)
 - **H2** no modo MySQL (banco dos testes)
 - **ZXing core 3.5** (QR Code PIX do cupom térmico, gerado como texto para impressão)
+- **`javax.print`** da JDK (envio dos bytes ESC/POS para a fila do sistema, sem driver do fabricante)
 - **Apache POI 5.5** (exportação em `.xlsx`) + **OpenPDF 3** (exportação em PDF)
 - **JUnit 5** + Maven Surefire
 - **Maven Shade** (jar executável único)
@@ -288,6 +312,9 @@ sistema-loja/
 - **PIX BR Code na mão**: `PixPayload` monta o payload EMV campo a campo (incluindo o
   **CRC16-CCITT**), `QrAscii` desenha a matriz do QR Code e o `CupomTermicoService` monta o
   cupom de 80 colunas — tudo testável, com o QR **decodificado de volta** nos testes.
+- **Impressão ESC/POS em bytes**: `EscPos` emite os comandos (codepage, negrito, alinhamento,
+  QR nativo `GS ( k`, gaveta e corte) e `ImpressoraSpool` envia o array pelo `javax.print`;
+  `ImpressoraMemoria` guarda os trabalhos nos testes, sem hardware.
 - **Auditoria fora da transação**: os services gravam na trilha com `try/catch` próprio —
   se a gravação falhar, o erro vai para o log e a operação principal não é afetada.
 - **Erros da interface com stack trace**: `Ui.erro(..., causa)` loga a exceção completa antes
@@ -337,13 +364,13 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 164 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 204 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
 **Onda 1 — baixo esforço, alto valor**
 
-- [ ] Impressora ESC/POS (corte, negrito e comando de abrir gaveta) com impressora falsa nos testes
+- [x] Impressora ESC/POS (corte, negrito e comando de abrir gaveta) com impressora falsa nos testes
 - [ ] Promoções com vigência e preço por dia/horário (happy hour)
 - [ ] Fidelidade por pontos, com resgate como desconto na venda
 - [ ] Autorização de supervisor por PIN (desconto acima da alçada, cancelamento e sangria)

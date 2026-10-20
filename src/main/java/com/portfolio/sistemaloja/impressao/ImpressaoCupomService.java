@@ -20,10 +20,19 @@ public class ImpressaoCupomService {
     }
 
     public void imprimir(Venda venda, String nomeImpressora) {
+        exigirVenda(venda);
+        ImpressoraCupom impressora = impressoras.selecionar(nomeImpressora);
+        impressora.imprimir(cupom.formatar(venda));
+    }
+
+    public byte[] bytes(Venda venda) {
+        exigirVenda(venda);
+        return cupom.formatar(venda);
+    }
+
+    private static void exigirVenda(Venda venda) {
         if (venda == null) {
             throw new ValidacaoException("Informe a venda para imprimir o cupom.");
         }
-        ImpressoraCupom impressora = impressoras.selecionar(nomeImpressora);
-        impressora.imprimir(cupom.formatar(venda));
     }
 }
