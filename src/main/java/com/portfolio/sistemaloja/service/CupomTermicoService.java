@@ -8,6 +8,8 @@ import com.portfolio.sistemaloja.model.VendaPagamento;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class CupomTermicoService {
@@ -25,43 +27,13 @@ public class CupomTermicoService {
 
     public String formatar(Venda venda) {
         StringBuilder texto = new StringBuilder();
-        texto.append("=".repeat(LARGURA)).append('\n');
-        texto.append(centralizar(pix.nomeRecebedor())).append('\n');
-        texto.append(centralizar("CUPOM NAO FISCAL - 80mm")).append('\n');
-        texto.append("=".repeat(LARGURA)).append('\n');
-        texto.append("Venda: ").append(nulo(venda.getNumero())).append('\n');
-        texto.append("Data: ").append(nulo(venda.getDataHora())).append('\n');
-        texto.append("Cliente: ").append(truncar(nulo(venda.getClienteNome()), 39)).append('\n');
-        texto.append("Operador: ").append(truncar(nulo(venda.getUsuarioNome()), 38)).append('\n');
-        texto.append("-".repeat(LARGURA)).append('\n');
-        texto.append(String.format("%-22s%3s%10s%10s%n", "PRODUTO", "QTD", "UNIT", "TOTAL"));
-        for (VendaItem item : venda.getItens()) {
-            texto.append(String.format("%-22s%3d%10s%10s%n",
-                    truncar(item.getProdutoNome(), 22), item.getQuantidade(),
-                    VALOR.format(item.getPrecoUnitario()), VALOR.format(item.getSubtotal())));
+        for (String linha : linhas(venda)) {
+            texto.append(linha).append('\n');
         }
-        texto.append("-".repeat(LARGURA)).append('\n');
-        if (venda.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
-            texto.append(linhaValor("Desconto", venda.getDesconto()));
-        }
-        texto.append(linhaValor("TOTAL", venda.getTotal()));
-        if (venda.isPagamentoDividido()) {
-            texto.append("Pagamento dividido:\n");
-            for (VendaPagamento parcela : venda.getPagamentos()) {
-                texto.append(linhaValor("  " + parcela.getFormaPagamento().getDescricao(), parcela.getValor()));
-            }
-        } else {
-            texto.append(linhaValor("  " + venda.getFormaPagamento().getDescricao(), venda.getTotal()));
-        }
-        if (venda.getTroco().compareTo(BigDecimal.ZERO) > 0) {
-            texto.append(linhaValor("Troco", venda.getTroco()));
-        }
-
-        BigDecimal valorPix = valorPix(venda);
-        if (valorPix.compareTo(BigDecimal.ZERO) > 0) {
+        String payload = payloadPix(venda);
+        if (payload != null) {
             texto.append("-".repeat(LARGURA)).append('\n');
             texto.append(centralizar("PIX - QR CODE")).append('\n');
-            String payload = PixPayload.gerar(pix, valorPix, venda.getNumero());
             for (String linha : quebrar(payload, LARGURA)) {
                 texto.append(linha).append('\n');
             }
@@ -70,6 +42,62 @@ public class CupomTermicoService {
         }
         texto.append("=".repeat(LARGURA)).append('\n');
         return texto.toString();
+    }
+
+    public List<String> linhas(Venda venda) {
+        List<String> linhas = new ArrayList<>();
+        linhas.add("=".repeat(LARGURA));
+        linhas.add(centralizar(pix.nomeRecebedor()));
+        linhas.add(centralizar("CUPOM NAO FISCAL - 80mm"));
+        linhas.add("=".repeat(LARGURA));
+        linhas.add("Venda: " + nulo(venda.getNumero()));
+        linhas.add("Data: " + nulo(venda.getDataHora()));
+        linhas.add("Cliente: " + truncar(nulo(venda.getClienteNome()), 39));
+        linhas.add("Operador: " + truncar(nulo(venda.getUsuarioNome()), 38));
+        linhas.add("-".repeat(LARGURA));
+        linhas.add(String.format("%-22s%3s%10s%10s", "PRODUTO", "QTD", "UNIT", "TOTAL"));
+        for (VendaItem item : venda.getItens()) {
+            linhas.add(String.format("%-22s%3d%10s%10s",
+                    truncar(item.getProdutoNome(), 22), item.getQuantidade(),
+                    VALOR.format(item.getPrecoUnitario()), VALOR.format(item.getSubtotal())));
+        }
+        linhas.add("-".repeat(LARGURA));
+        if (venda.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
+            linhas.add(linhaValor("Desconto", venda.getDesconto()));
+        }
+        linhas.add(linhaValor("TOTAL", venda.getTotal()));
+        if (venda.isPagamentoDividido()) {
+            linhas.add("Pagamento dividido:");
+            for (VendaPagamento parcela : venda.getPagamentos()) {
+                linhas.add(linhaValor("  " + parcela.getFormaPagamento().getDescricao(), parcela.getValor()));
+            }
+        } else {
+            linhas.add(linhaValor("  " + venda.getFormaPagamento().getDescricao(), venda.getTotal()));
+        }
+        if (venda.getTroco().compareTo(BigDecimal.ZERO) > 0) {
+            linhas.add(linhaValor("Troco", venda.getTroco()));
+        }
+        return linhas;
+    }
+
+    public String payloadPix(Venda venda) {
+        BigDecimal valor = valorPix(venda);
+        if (valor.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        return PixPayload.gerar(pix, valor, venda.getNumero());
+    }
+
+    public boolean pagamentoEmDinheiro(Venda venda) {
+        if (venda.isPagamentoDividido()) {
+            for (VendaPagamento parcela : venda.getPagamentos()) {
+                if (parcela.getFormaPagamento() == FormaPagamento.DINHEIRO) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return venda.getFormaPagamento() == FormaPagamento.DINHEIRO;
     }
 
     public BigDecimal valorPix(Venda venda) {
@@ -91,7 +119,7 @@ public class CupomTermicoService {
         if (espacos < 1) {
             espacos = 1;
         }
-        return rotulo + " ".repeat(espacos) + numero + "\n";
+        return rotulo + " ".repeat(espacos) + numero;
     }
 
     static String centralizar(String texto) {
@@ -104,8 +132,8 @@ public class CupomTermicoService {
         return texto.length() <= limite ? texto : texto.substring(0, limite);
     }
 
-    static java.util.List<String> quebrar(String texto, int largura) {
-        java.util.List<String> linhas = new java.util.ArrayList<>();
+    public static List<String> quebrar(String texto, int largura) {
+        List<String> linhas = new ArrayList<>();
         for (int inicio = 0; inicio < texto.length(); inicio += largura) {
             linhas.add(texto.substring(inicio, Math.min(inicio + largura, texto.length())));
         }
