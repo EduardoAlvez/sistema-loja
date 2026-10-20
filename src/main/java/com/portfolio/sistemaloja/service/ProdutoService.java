@@ -6,6 +6,7 @@ import com.portfolio.sistemaloja.repository.CategoriaRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -41,6 +42,16 @@ public class ProdutoService {
 
     public List<Produto> listarAtivos() {
         return produtos.listarAtivos();
+    }
+
+    public BigDecimal precoVigente(Produto produto, LocalDateTime momento) {
+        if (produto == null) {
+            throw new ValidacaoException("Informe o produto para consultar o preço.");
+        }
+        if (momento == null) {
+            throw new ValidacaoException("Informe a data e hora para consultar o preço.");
+        }
+        return produto.precoVigente(momento);
     }
 
     public List<Categoria> listarCategorias() {
@@ -227,6 +238,41 @@ public class ProdutoService {
         }
         if (produto.getEstoqueMinimo() < 0) {
             throw new ValidacaoException("Estoque mínimo não pode ser negativo.");
+        }
+        validarPromocao(produto);
+    }
+
+    private void validarPromocao(Produto produto) {
+        boolean temPreco = produto.getPrecoPromocional() != null;
+        boolean temAgendamento = produto.getPromoInicio() != null
+                || produto.getPromoFim() != null
+                || !produto.getPromoDias().isEmpty()
+                || produto.getPromoHoraInicio() != null
+                || produto.getPromoHoraFim() != null;
+        if (!temPreco) {
+            if (temAgendamento) {
+                throw new ValidacaoException(
+                        "Informe o preço promocional ou limpe a programação da promoção.");
+            }
+            return;
+        }
+        if (produto.getPrecoPromocional().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidacaoException("Preço promocional deve ser maior que zero.");
+        }
+        if (produto.getPrecoPromocional().compareTo(produto.getPrecoVenda()) >= 0) {
+            throw new ValidacaoException("Preço promocional deve ser menor que o preço de venda.");
+        }
+        if (produto.getPromoInicio() != null && produto.getPromoFim() != null
+                && produto.getPromoFim().isBefore(produto.getPromoInicio())) {
+            throw new ValidacaoException("Fim da promoção não pode ser antes do início.");
+        }
+        boolean temInicio = produto.getPromoHoraInicio() != null;
+        boolean temFim = produto.getPromoHoraFim() != null;
+        if (temInicio != temFim) {
+            throw new ValidacaoException("Informe o horário de início e de fim da promoção.");
+        }
+        if (temInicio && !produto.getPromoHoraInicio().isBefore(produto.getPromoHoraFim())) {
+            throw new ValidacaoException("Horário inicial da promoção deve ser anterior ao final.");
         }
     }
 }

@@ -3,6 +3,7 @@ package com.portfolio.sistemaloja.model;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -182,6 +183,47 @@ public class Produto {
             return BigDecimal.ZERO;
         }
         return precoVenda.subtract(precoCusto);
+    }
+
+    public boolean promocaoVigente(LocalDateTime momento) {
+        if (momento == null || precoPromocional == null || precoPromocional.signum() <= 0) {
+            return false;
+        }
+        if (precoVenda != null && precoPromocional.compareTo(precoVenda) >= 0) {
+            return false;
+        }
+        if (promoInicio != null && promoFim != null && promoFim.isBefore(promoInicio)) {
+            return false;
+        }
+        LocalDate data = momento.toLocalDate();
+        if (promoInicio != null && data.isBefore(promoInicio)) {
+            return false;
+        }
+        if (promoFim != null && data.isAfter(promoFim)) {
+            return false;
+        }
+        if (!promoDias.isEmpty() && !promoDias.contains(data.getDayOfWeek())) {
+            return false;
+        }
+        boolean temInicio = promoHoraInicio != null;
+        boolean temFim = promoHoraFim != null;
+        if (temInicio != temFim) {
+            return false;
+        }
+        if (temInicio && !promoHoraInicio.isBefore(promoHoraFim)) {
+            return false;
+        }
+        if (temInicio) {
+            LocalTime hora = momento.toLocalTime();
+            if (hora.isBefore(promoHoraInicio) || hora.isAfter(promoHoraFim)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public BigDecimal precoVigente(LocalDateTime momento) {
+        return promocaoVigente(momento) ? precoPromocional : precoVenda;
     }
 
     @Override

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.EnumSet;
 import java.util.List;
@@ -189,6 +190,114 @@ class ProdutoServiceTest {
         assertTrue(lido.getPromoDias().isEmpty());
         assertNull(lido.getPromoHoraInicio());
         assertNull(lido.getPromoHoraFim());
+    }
+
+    @Test
+    void precoVigenteRespeitaAsDatasDaPromocao() {
+        Produto produto = produtoComPromocao("7891999999999", "10.00", "8.00");
+        produto.setPromoInicio(LocalDate.of(2026, 10, 10));
+        produto.setPromoFim(LocalDate.of(2026, 10, 20));
+        app.getProdutos().salvar(produto);
+
+        assertPreco("10.00", produto, LocalDateTime.of(2026, 10, 9, 23, 59));
+        assertPreco("8.00", produto, LocalDateTime.of(2026, 10, 10, 0, 0));
+        assertPreco("8.00", produto, LocalDateTime.of(2026, 10, 20, 23, 59));
+        assertPreco("10.00", produto, LocalDateTime.of(2026, 10, 21, 0, 0));
+        assertFalse(produto.promocaoVigente(LocalDateTime.of(2026, 10, 9, 12, 0)));
+        assertTrue(produto.promocaoVigente(LocalDateTime.of(2026, 10, 10, 12, 0)));
+    }
+
+    @Test
+    void precoVigenteRespeitaOsDiasDaSemana() {
+        Produto produto = produtoComPromocao("7892000000000", "10.00", "8.00");
+        produto.setPromoDias(EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY));
+        app.getProdutos().salvar(produto);
+
+        assertPreco("8.00", produto, LocalDateTime.of(2026, 10, 19, 12, 0));
+        assertPreco("10.00", produto, LocalDateTime.of(2026, 10, 20, 12, 0));
+        assertPreco("8.00", produto, LocalDateTime.of(2026, 10, 23, 12, 0));
+    }
+
+    @Test
+    void precoVigenteRespeitaOHorarioComBordasInclusivas() {
+        Produto produto = produtoComPromocao("7892111111111", "10.00", "8.00");
+        produto.setPromoHoraInicio(LocalTime.of(18, 0));
+        produto.setPromoHoraFim(LocalTime.of(20, 0));
+        app.getProdutos().salvar(produto);
+
+        LocalDate dia = LocalDate.of(2026, 10, 20);
+        assertPreco("10.00", produto, dia.atTime(17, 59));
+        assertPreco("8.00", produto, dia.atTime(18, 0));
+        assertPreco("8.00", produto, dia.atTime(20, 0));
+        assertPreco("10.00", produto, dia.atTime(20, 1));
+    }
+
+    @Test
+    void semDiasESemHorarioValeODiaInteiro() {
+        Produto produto = produtoComPromocao("7892222222222", "10.00", "8.00");
+        produto.setPromoInicio(LocalDate.of(2026, 10, 1));
+        produto.setPromoFim(LocalDate.of(2026, 10, 31));
+        app.getProdutos().salvar(produto);
+
+        assertPreco("8.00", produto, LocalDateTime.of(2026, 10, 20, 0, 0));
+        assertPreco("8.00", produto, LocalDateTime.of(2026, 10, 20, 23, 59));
+    }
+
+    @Test
+    void semPromocaoUsaOPrecoCheio() {
+        Produto produto = produtoNovo("Sem promoção", "7892333333333", "4.00", "10.00", 5);
+        app.getProdutos().salvar(produto);
+
+        assertPreco("10.00", produto, LocalDateTime.of(2026, 10, 20, 12, 0));
+        assertFalse(produto.promocaoVigente(LocalDateTime.of(2026, 10, 20, 12, 0)));
+    }
+
+    @Test
+    void promocaoInvalidaCaiNoPrecoCheio() {
+        Produto produto = produtoNovo("Promoção inválida", "7892444444444", "4.00", "10.00", 5);
+        produto.setPrecoPromocional(new BigDecimal("12.00"));
+
+        assertPreco("10.00", produto, LocalDateTime.of(2026, 10, 20, 12, 0));
+        assertFalse(produto.promocaoVigente(LocalDateTime.of(2026, 10, 20, 12, 0)));
+    }
+
+    @Test
+    void validaOsCamposDaPromocao() {
+        Produto maiorQueOVenda = produtoComPromocao("7892555555555", "10.00", "10.00");
+        assertThrows(ValidacaoException.class, () -> app.getProdutos().salvar(maiorQueOVenda));
+
+        Produto precoZerado = produtoComPromocao("7892666666666", "10.00", "0");
+        assertThrows(ValidacaoException.class, () -> app.getProdutos().salvar(precoZerado));
+
+        Produto datasInvertidas = produtoComPromocao("7892777777777", "10.00", "8.00");
+        datasInvertidas.setPromoInicio(LocalDate.of(2026, 10, 20));
+        datasInvertidas.setPromoFim(LocalDate.of(2026, 10, 10));
+        assertThrows(ValidacaoException.class, () -> app.getProdutos().salvar(datasInvertidas));
+
+        Produto soInicio = produtoComPromocao("7892888888888", "10.00", "8.00");
+        soInicio.setPromoHoraInicio(LocalTime.of(18, 0));
+        assertThrows(ValidacaoException.class, () -> app.getProdutos().salvar(soInicio));
+
+        Produto horasIguais = produtoComPromocao("7892999999999", "10.00", "8.00");
+        horasIguais.setPromoHoraInicio(LocalTime.of(20, 0));
+        horasIguais.setPromoHoraFim(LocalTime.of(18, 0));
+        assertThrows(ValidacaoException.class, () -> app.getProdutos().salvar(horasIguais));
+
+        Produto semPrecoComData = produtoNovo("Sem preço", "7893000000000", "4.00", "10.00", 5);
+        semPrecoComData.setPromoInicio(LocalDate.of(2026, 10, 1));
+        assertThrows(ValidacaoException.class, () -> app.getProdutos().salvar(semPrecoComData));
+    }
+
+    private void assertPreco(String esperado, Produto produto, LocalDateTime momento) {
+        assertEquals(0, new BigDecimal(esperado).compareTo(
+                app.getProdutos().precoVigente(produto, momento)),
+                "preço em " + momento);
+    }
+
+    private Produto produtoComPromocao(String codigo, String venda, String promocional) {
+        Produto produto = produtoNovo("Promocional", codigo, "4.00", venda, 10);
+        produto.setPrecoPromocional(new BigDecimal(promocional));
+        return produto;
     }
 
     private Produto produtoNovo(String nome, String codigo, String custo, String venda, int estoque) {
