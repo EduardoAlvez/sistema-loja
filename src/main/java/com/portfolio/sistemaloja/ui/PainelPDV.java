@@ -13,6 +13,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -75,7 +76,7 @@ public class PainelPDV extends JPanel {
     private final Map<Integer, String> atalhos = new LinkedHashMap<>();
 
     private final javax.swing.table.DefaultTableModel modeloProdutos =
-            Ui.modeloTabela("Código", "Produto", "Estoque", "Preço");
+            Ui.modeloTabela("Código", "Produto", "Estoque", "Preço", "Promoção");
     private final JTable tabelaProdutos = Ui.tabela(modeloProdutos);
     private List<Produto> produtos = List.of();
 
@@ -110,6 +111,22 @@ public class PainelPDV extends JPanel {
 
     public void focarBusca() {
         SwingUtilities.invokeLater(busca::requestFocusInWindow);
+    }
+
+    int produtosListados() {
+        return modeloProdutos.getRowCount();
+    }
+
+    Object produtoListado(int linha, int coluna) {
+        return modeloProdutos.getValueAt(linha, coluna);
+    }
+
+    int itensNoCarrinho() {
+        return carrinho.size();
+    }
+
+    Object itemDoCarrinho(int linha, int coluna) {
+        return modeloCarrinho.getValueAt(linha, coluna);
     }
 
     private JPanel montarTopo() {
@@ -545,10 +562,11 @@ public class PainelPDV extends JPanel {
         return produtos.get(tabelaProdutos.convertRowIndexToModel(linha));
     }
 
-    private void adicionarProduto(Produto produto) {
+    void adicionarProduto(Produto produto) {
         if (produto == null) {
             return;
         }
+        BigDecimal preco = aplicacao.getProdutos().precoVigente(produto, LocalDateTime.now());
         for (VendaItem item : carrinho) {
             if (item.getProdutoId().equals(produto.getId())) {
                 if (produto.getEstoque() <= item.getQuantidade()) {
@@ -556,6 +574,7 @@ public class PainelPDV extends JPanel {
                             + ". Disponível: " + produto.getEstoque() + ".");
                     return;
                 }
+                item.setPrecoUnitario(preco);
                 item.setQuantidade(item.getQuantidade() + 1);
                 sincronizarCarrinho();
                 return;
@@ -565,7 +584,7 @@ public class PainelPDV extends JPanel {
             Ui.erro(this, "Produto sem estoque: " + produto.getNome());
             return;
         }
-        carrinho.add(new VendaItem(produto.getId(), produto.getNome(), 1, produto.getPrecoVenda()));
+        carrinho.add(new VendaItem(produto.getId(), produto.getNome(), 1, preco));
         sincronizarCarrinho();
     }
 
@@ -863,12 +882,16 @@ public class PainelPDV extends JPanel {
     private void recarregarProdutos() {
         produtos = aplicacao.getProdutos().listar(busca.getText());
         modeloProdutos.setRowCount(0);
+        LocalDateTime agora = LocalDateTime.now();
         for (Produto produto : produtos) {
+            BigDecimal preco = aplicacao.getProdutos().precoVigente(produto, agora);
+            boolean promocao = preco.compareTo(produto.getPrecoVenda()) < 0;
             modeloProdutos.addRow(new Object[]{
                     produto.getCodigoBarras(),
                     produto.getNome(),
                     produto.getEstoque(),
-                    Ui.moeda(produto.getPrecoVenda())
+                    Ui.moeda(preco),
+                    promocao ? "Ativa" : ""
             });
         }
         if (!produtos.isEmpty()) {
