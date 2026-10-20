@@ -24,6 +24,12 @@ class EscPosTest {
     void selecionaCodepageCp850() {
         assertEquals("1b7402", hex(new EscPos().codepage(2).bytes()));
         assertThrows(ValidacaoException.class, () -> new EscPos().codepage(-1));
+        assertThrows(ValidacaoException.class, () -> new EscPos().codepage(3));
+    }
+
+    @Test
+    void selecionaCodepageWindows1252() {
+        assertEquals("1b741080", hex(new EscPos().codepage(16).texto("€").bytes()));
     }
 
     @Test

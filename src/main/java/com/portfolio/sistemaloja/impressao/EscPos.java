@@ -8,27 +8,36 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
+import java.util.Map;
 
 public class EscPos {
 
     public static final int LARGURA = 48;
     public static final int MODULO_QR_PADRAO = 4;
 
-    private static final Charset CP850 = Charset.forName("Cp850");
+    public static final int PAGINA_CP850 = 2;
+    public static final int PAGINA_CP1252 = 16;
+
+    private static final Map<Integer, Charset> PAGINAS = Map.of(
+            PAGINA_CP850, Charset.forName("Cp850"),
+            PAGINA_CP1252, Charset.forName("windows-1252"));
     private static final int LARGURA_MAXIMA_DOTS = 576;
     private static final int QUIET_ZONE_MODULOS = 8;
     private static final int MAXIMO_BYTES_QR = 7089;
 
     private final ByteArrayOutputStream saida = new ByteArrayOutputStream();
+    private Charset charset = PAGINAS.get(PAGINA_CP850);
 
     public EscPos iniciar() {
         return comando(0x1B, 0x40);
     }
 
     public EscPos codepage(int pagina) {
-        if (pagina < 0 || pagina > 255) {
-            throw new ValidacaoException("Pagina de codigo deve ficar entre 0 e 255.");
+        Charset selecionada = PAGINAS.get(pagina);
+        if (selecionada == null) {
+            throw new ValidacaoException("Pagina de codigo " + pagina + " nao suportada. Use 2 (Cp850) ou 16 (Cp1252).");
         }
+        charset = selecionada;
         return comando(0x1B, 0x74, pagina);
     }
 
@@ -121,20 +130,20 @@ public class EscPos {
         return this;
     }
 
-    private static byte[] codificar(String texto) {
-        if (CP850.newEncoder().canEncode(texto)) {
-            return texto.getBytes(CP850);
+    private byte[] codificar(String texto) {
+        if (charset.newEncoder().canEncode(texto)) {
+            return texto.getBytes(charset);
         }
         StringBuilder resultado = new StringBuilder(texto.length());
         for (int i = 0; i < texto.length(); ) {
             int codigo = texto.codePointAt(i);
             String caractere = new String(Character.toChars(codigo));
-            if (CP850.newEncoder().canEncode(caractere)) {
+            if (charset.newEncoder().canEncode(caractere)) {
                 resultado.append(caractere);
             } else {
                 String semAcento = Normalizer.normalize(caractere, Normalizer.Form.NFD)
                         .replaceAll("\\p{M}", "");
-                if (!semAcento.isEmpty() && CP850.newEncoder().canEncode(semAcento)) {
+                if (!semAcento.isEmpty() && charset.newEncoder().canEncode(semAcento)) {
                     resultado.append(semAcento);
                 } else {
                     resultado.append('?');
@@ -142,6 +151,6 @@ public class EscPos {
             }
             i += Character.charCount(codigo);
         }
-        return resultado.toString().getBytes(CP850);
+        return resultado.toString().getBytes(charset);
     }
 }

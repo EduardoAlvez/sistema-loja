@@ -6,25 +6,35 @@ import com.portfolio.sistemaloja.service.ValidacaoException;
 
 public class CupomEscPosService {
 
-    public static final int CODEPAGE_CP850 = 2;
+    public static final int CODEPAGE_CP850 = EscPos.PAGINA_CP850;
 
     private final CupomTermicoService texto;
+    private final int codepage;
     private final int moduloQr;
 
     public CupomEscPosService(CupomTermicoService texto) {
-        this(texto, EscPos.MODULO_QR_PADRAO);
+        this(texto, CODEPAGE_CP850, EscPos.MODULO_QR_PADRAO);
+    }
+
+    public CupomEscPosService(CupomTermicoService texto, ImpressoraConfig config) {
+        this(texto, config.codepage(), config.moduloQr());
     }
 
     public CupomEscPosService(CupomTermicoService texto, int moduloQr) {
+        this(texto, CODEPAGE_CP850, moduloQr);
+    }
+
+    private CupomEscPosService(CupomTermicoService texto, int codepage, int moduloQr) {
         if (moduloQr < 1 || moduloQr > 16) {
             throw new ValidacaoException("Modulo do QR deve ficar entre 1 e 16.");
         }
         this.texto = texto;
+        this.codepage = codepage;
         this.moduloQr = moduloQr;
     }
 
     public byte[] formatar(Venda venda) {
-        EscPos cupom = new EscPos().iniciar().codepage(CODEPAGE_CP850);
+        EscPos cupom = new EscPos().iniciar().codepage(codepage);
         for (String linha : texto.linhas(venda)) {
             cupom.linha(linha);
         }

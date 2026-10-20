@@ -1,6 +1,10 @@
 package com.portfolio.sistemaloja;
 
 import com.portfolio.sistemaloja.db.ConexaoFonte;
+import com.portfolio.sistemaloja.impressao.CupomEscPosService;
+import com.portfolio.sistemaloja.impressao.ImpressaoCupomService;
+import com.portfolio.sistemaloja.impressao.ImpressoraConfig;
+import com.portfolio.sistemaloja.impressao.ImpressorasSpool;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.AuditoriaRepository;
 import com.portfolio.sistemaloja.repository.CaixaRepository;
@@ -39,6 +43,7 @@ public class Aplicacao {
     private final CupomService cupom;
     private final DevolucaoService devolucoes;
     private final CupomTermicoService cupomTermico;
+    private final ImpressaoCupomService impressao;
     private final UsuarioService usuarios;
     private final RelatorioService relatorios;
     private final ExportacaoService exportacao;
@@ -67,6 +72,10 @@ public class Aplicacao {
         this.cupom = new CupomService();
         this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria);
         this.cupomTermico = new CupomTermicoService(ConfiguracaoPix.padrao());
+        ImpressoraConfig impressoraConfig = ImpressoraConfig.padrao();
+        this.impressao = new ImpressaoCupomService(
+                new CupomEscPosService(this.cupomTermico, impressoraConfig),
+                new ImpressorasSpool());
         this.usuarios = new UsuarioService(usuarioRepository, auditoria);
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
         this.exportacao = new ExportacaoService();
@@ -107,6 +116,10 @@ public class Aplicacao {
 
     public CupomTermicoService getCupomTermico() {
         return cupomTermico;
+    }
+
+    public ImpressaoCupomService getImpressao() {
+        return impressao;
     }
 
     public UsuarioService getUsuarios() {

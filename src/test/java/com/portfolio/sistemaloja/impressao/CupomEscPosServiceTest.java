@@ -146,6 +146,14 @@ class CupomEscPosServiceTest {
         assertTrue(hex(comModulo6.formatar(venda)).contains("1d286b0300314306"));
     }
 
+    @Test
+    void usaACodepageDaConfiguracao() {
+        CupomEscPosService cp1252 = new CupomEscPosService(texto, new ImpressoraConfig("", 16, 4));
+        Venda venda = registrar(FormaPagamento.PIX, 4);
+
+        assertTrue(hex(cp1252.formatar(venda)).startsWith("1b401b7410"));
+    }
+
     private Venda registrar(FormaPagamento forma, int quantidade) {
         Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
         Venda venda = new Venda();
