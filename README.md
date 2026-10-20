@@ -47,6 +47,8 @@ regras de negócio e testes automatizados.
 - **Reimpressão do último cupom** do operador logado
 - Seleção de cliente opcional e **cupom não fiscal** gerado no fim da venda
 - **Cupom térmico de 80mm** com **QR Code PIX** (BR Code oficial, com valor e CRC16), opção de salvar em `.txt` e **impressão ESC/POS** (corte, negrito e gaveta) pela fila do sistema
+- **Promoções com vigência**: preço promocional por período, dia da semana e horário
+  (happy hour), aplicado automaticamente no carrinho
 - **Devolução parcial** com crédito no cliente e estorno de estoque
 - Baixa de estoque **transacional** (commit/rollback) e validação de estoque antes de vender
 - **Atalhos F3 a F12**: buscar, dividir, pausar, retomar, reimprimir, limpar, sangria, suprimento,
@@ -60,7 +62,8 @@ regras de negócio e testes automatizados.
 
 ### Cadastros
 - **Produtos**: código de barras único, categoria, preço de custo/venda, margem calculada,
-  estoque, **estoque mínimo** e situação ativo/inativo
+  estoque, **estoque mínimo**, situação ativo/inativo e **promoção** com preço, vigência,
+  dias da semana e faixa de horário
 - **Alerta de estoque mínimo**: aviso com a quantidade de itens críticos e destaque na tabela,
   com filtro **“Somente estoque baixo”** e **filtro por categoria**
 - **Importação/exportação em CSV** (UTF-8 com BOM, separador `;`): valida linha a linha,
@@ -90,8 +93,8 @@ regras de negócio e testes automatizados.
 - **Logs** em `logs/sistema-loja.log` (rotação 5 MB × 3) e console via **Log4j2**:
   erros inesperados da interface guardam a stack trace completa, junto de ações como
   login, vendas, cancelamentos e exportações
-- **Migrações de banco com Flyway** (`V1` a `V11`: esquema, auditoria, desconto, caixa,
-  pagamentos, vendas pausadas, devoluções, comissão e estoque mínimo), com histórico
+- **Migrações de banco com Flyway** (`V1` a `V12`: esquema, auditoria, desconto, caixa,
+  pagamentos, vendas pausadas, devoluções, comissão, estoque mínimo e promoções), com histórico
   consultável e `baseline` automático para bancos já existentes
 - **Trilha de auditoria** (tabela `auditoria`, append-only): login ok/falha, venda
   registrada/cancelada, devolução, produto/cliente salvos, comissão definida e usuário
@@ -208,18 +211,36 @@ instalar driver do fabricante: cadastre a impressora no Windows como **Generic /
   `copy /b "cupom-80mm.bin" \\localhost\NOME_DA_FILA`.
 - Em rede, confirme que a fila aponta para a porta **9100** da impressora (ou use o nome compartilhado).
 
+### Promoções
+
+O cadastro de produto aceita um **preço promocional** com critérios opcionais:
+
+- **Vigência**: data de início e fim, ambas inclusivas; vazio = sem limite.
+- **Dias da semana**: nenhum marcado = todos os dias.
+- **Horário**: início e fim no mesmo dia (`18:00` a `20:00`); vazio = dia inteiro.
+
+Regras aplicadas na venda:
+
+- O PDV mostra **Ativa** na coluna Promoção e coloca o **preço vigente** no carrinho; ao
+  re-adicionar o mesmo produto, o preço é recalculado.
+- O preço promocional é preço de loja e **não consome o limite de desconto manual** do perfil;
+  o limite é calculado sobre o preço vigente.
+- Cadastro inconsistente (preço promocional maior ou igual ao de venda, datas invertidas,
+  apenas um horário, promoção sem preço) é recusado.
+- O **CSV de produtos continua com 7 colunas**; promoções são editadas na tela de cadastro.
+
 ### Testes
 
 ```bash
 mvn test
 ```
 
-**204 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**219 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
-as migrações do Flyway e a trilha de auditoria — rodam sobre **H2 em modo MySQL**, ou seja,
-não dependem do Docker.
+as **promoções com vigência, dias e horários**, as migrações do Flyway e a trilha de auditoria —
+rodam sobre **H2 em modo MySQL**, ou seja, não dependem do Docker.
 
 ---
 
@@ -273,9 +294,9 @@ sistema-loja/
 │   │   │   ├── service/                     # Regras de negócio e validações
 │   │   │   └── ui/                          # Classes Swing (telas, painéis, diálogos)
 │   │   └── resources/
-│   │       ├── db/migration/                # V1 a V11 (esquema, caixa, PIX, estoque mínimo...)
+│   │       ├── db/migration/                # V1 a V12 (esquema, caixa, PIX, estoque mínimo, promoções...)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 204 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 219 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -306,7 +327,7 @@ sistema-loja/
   ou seja, a proteção contra corrida entre caixas está no próprio banco.
 - **Cancelamento devolve estoque**: mesma transação, e a venda fica registrada com status `CANCELADA`
   para manter a trilha de auditoria (nunca é apagada).
-- **Migrações versionadas**: esquema no Flyway (`V1` esquema inicial até `V11` estoque mínimo);
+- **Migrações versionadas**: esquema no Flyway (`V1` esquema inicial até `V12` promoções);
   bancos já existentes recebem `baselineOnMigrate`, então o histórico nasce sem reaplicar DDL.
   O seed continua idempotente (só roda se a tabela `usuarios` estiver vazia).
 - **PIX BR Code na mão**: `PixPayload` monta o payload EMV campo a campo (incluindo o
@@ -364,14 +385,14 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 204 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 219 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
 **Onda 1 — baixo esforço, alto valor**
 
 - [x] Impressora ESC/POS (corte, negrito e comando de abrir gaveta) com impressora falsa nos testes
-- [ ] Promoções com vigência e preço por dia/horário (happy hour)
+- [x] Promoções com vigência e preço por dia/horário (happy hour)
 - [ ] Fidelidade por pontos, com resgate como desconto na venda
 - [ ] Autorização de supervisor por PIN (desconto acima da alçada, cancelamento e sangria)
 - [ ] Conferência cega no fechamento de caixa, com a divergência registrada
