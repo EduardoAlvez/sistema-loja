@@ -1,5 +1,6 @@
 package com.portfolio.sistemaloja.service;
 
+import com.portfolio.sistemaloja.model.FidelidadeMovimento;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.StatusVenda;
@@ -8,6 +9,7 @@ import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.model.VendaPagamento;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
+import com.portfolio.sistemaloja.repository.RepositorioException;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaRepository;
 import org.apache.logging.log4j.LogManager;
@@ -32,6 +34,7 @@ public class VendaService {
     private final ProdutoRepository produtos;
     private final UsuarioRepository usuarios;
     private final AuditoriaService auditoria;
+    private final FidelidadeService fidelidade;
     private final Clock relogio;
 
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
@@ -41,11 +44,17 @@ public class VendaService {
 
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
                         AuditoriaService auditoria, Clock relogio) {
+        this(vendas, produtos, usuarios, auditoria, relogio, null);
+    }
+
+    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
+                        AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade) {
         this.vendas = vendas;
         this.produtos = produtos;
         this.usuarios = usuarios;
         this.auditoria = auditoria;
         this.relogio = Objects.requireNonNull(relogio, "relogio");
+        this.fidelidade = fidelidade;
     }
 
     public Venda registrar(Venda venda) {
@@ -58,6 +67,7 @@ public class VendaService {
         }
         Map<Long, Produto> catalogo = carregarProdutos(itens);
         aplicarPrecoVigente(itens, catalogo, LocalDateTime.now(relogio));
+        aplicarResgatePontos(venda, itens);
         validarDescontos(venda, itens);
         validarLimiteDescontoPorPerfil(venda, itens);
         venda.getItens().clear();
@@ -66,11 +76,21 @@ public class VendaService {
         finalizarPagamento(venda);
         venda.setStatus(StatusVenda.CONCLUIDA);
         venda.setNumero(vendas.proximoNumero());
-        Venda registrada = vendas.registrar(venda);
+        List<FidelidadeMovimento> movimentos = movimentosDaVenda(venda);
+        Venda registrada = registrarComMovimentos(venda, movimentos);
         LOG.info("Venda registrada: numero {} total {} forma {}",
                 registrada.getNumero(), registrada.getTotal(), registrada.getFormaPagamento());
         auditoria.registrar("VENDA_REGISTRADA", "VENDA", registrada.getId(),
                 "numero " + registrada.getNumero() + " total " + registrada.getTotal());
+        if (registrada.getPontosResgatados() > 0) {
+            auditoria.registrar("PONTOS_RESGATADOS", "CLIENTE", registrada.getClienteId(),
+                    "Resgate de " + registrada.getPontosResgatados() + " ponto(s) na venda "
+                            + registrada.getNumero());
+        }
+        if (registrada.getPontosCreditados() > 0) {
+            auditoria.registrar("PONTOS_CREDITADOS", "CLIENTE", registrada.getClienteId(),
+                    registrada.getPontosCreditados() + " ponto(s) pela venda " + registrada.getNumero());
+        }
         return registrada;
     }
 
@@ -160,6 +180,77 @@ public class VendaService {
                     + " excede o limite de " + percentual + "% do perfil "
                     + usuario.getPerfil().getDescricao() + ".");
         }
+    }
+
+    private void aplicarResgatePontos(Venda venda, List<VendaItem> itens) {
+        int pontos = venda.getPontosResgatados();
+        if (pontos < 0) {
+            throw new ValidacaoException("A quantidade de pontos resgatados não pode ser negativa.");
+        }
+        if (pontos == 0) {
+            venda.setValorPontos(BigDecimal.ZERO);
+            return;
+        }
+        if (fidelidade == null) {
+            throw new ValidacaoException("O resgate de pontos não está disponível.");
+        }
+        if (venda.getClienteId() == null) {
+            throw new ValidacaoException("Selecione o cliente para resgatar pontos.");
+        }
+        int saldo = fidelidade.saldo(venda.getClienteId());
+        if (pontos > saldo) {
+            throw new ValidacaoException("Saldo de pontos insuficiente. O cliente tem " + saldo + " ponto(s).");
+        }
+        BigDecimal valor = fidelidade.valorDosPontos(pontos);
+        BigDecimal desconto = venda.getDesconto() == null ? BigDecimal.ZERO : venda.getDesconto();
+        BigDecimal somaItens = itens.stream()
+                .map(VendaItem::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (desconto.add(valor).compareTo(somaItens) >= 0) {
+            throw new ValidacaoException("O resgate de pontos não pode zerar o total da venda.");
+        }
+        venda.setValorPontos(valor);
+        venda.setDesconto(desconto.add(valor));
+    }
+
+    private List<FidelidadeMovimento> movimentosDaVenda(Venda venda) {
+        List<FidelidadeMovimento> movimentos = new ArrayList<>();
+        if (fidelidade == null || venda.getClienteId() == null) {
+            return movimentos;
+        }
+        if (venda.getPontosResgatados() > 0) {
+            movimentos.add(fidelidade.debito(venda.getClienteId(), null, venda.getPontosResgatados(),
+                    "Resgate de pontos na venda " + venda.getNumero()));
+        }
+        int credito = fidelidade.calcularCredito(venda.getTotal());
+        venda.setPontosCreditados(credito);
+        if (credito > 0) {
+            movimentos.add(fidelidade.credito(venda.getClienteId(), null, credito,
+                    "Venda " + venda.getNumero()));
+        }
+        return movimentos;
+    }
+
+    private Venda registrarComMovimentos(Venda venda, List<FidelidadeMovimento> movimentos) {
+        try {
+            return vendas.registrar(venda, movimentos);
+        } catch (RepositorioException erro) {
+            if (saldoInsuficiente(erro)) {
+                throw new ValidacaoException("Saldo de pontos insuficiente para o resgate.");
+            }
+            throw erro;
+        }
+    }
+
+    private boolean saldoInsuficiente(RepositorioException erro) {
+        Throwable causa = erro.getCause();
+        while (causa != null) {
+            if (causa.getMessage() != null && causa.getMessage().contains("Saldo de pontos insuficiente")) {
+                return true;
+            }
+            causa = causa.getCause();
+        }
+        return false;
     }
 
     private Map<Long, Produto> carregarProdutos(List<VendaItem> itens) {

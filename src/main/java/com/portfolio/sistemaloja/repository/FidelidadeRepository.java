@@ -31,8 +31,13 @@ public class FidelidadeRepository {
     }
 
     public void aplicarMovimentos(Connection conexao, List<FidelidadeMovimento> movimentos) throws SQLException {
+        aplicarMovimentos(conexao, movimentos, null, null);
+    }
+
+    public void aplicarMovimentos(Connection conexao, List<FidelidadeMovimento> movimentos, Long vendaContexto,
+            Long devolucaoContexto) throws SQLException {
         for (FidelidadeMovimento movimento : movimentos) {
-            inserirExtrato(movimento, conexao);
+            inserirExtrato(movimento, conexao, vendaContexto, devolucaoContexto);
             atualizarSaldo(movimento, conexao);
         }
     }
@@ -87,20 +92,23 @@ public class FidelidadeRepository {
         }
     }
 
-    private void inserirExtrato(FidelidadeMovimento movimento, Connection conexao) throws SQLException {
+    private void inserirExtrato(FidelidadeMovimento movimento, Connection conexao, Long vendaContexto,
+            Long devolucaoContexto) throws SQLException {
+        Long vendaId = movimento.vendaId() != null ? movimento.vendaId() : vendaContexto;
+        Long devolucaoId = movimento.devolucaoId() != null ? movimento.devolucaoId() : devolucaoContexto;
         String sql = "INSERT INTO fidelidade_extrato (cliente_id, venda_id, devolucao_id, tipo, pontos, descricao) "
                 + "VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, movimento.clienteId());
-            if (movimento.vendaId() == null) {
+            if (vendaId == null) {
                 preparada.setObject(2, null);
             } else {
-                preparada.setLong(2, movimento.vendaId());
+                preparada.setLong(2, vendaId);
             }
-            if (movimento.devolucaoId() == null) {
+            if (devolucaoId == null) {
                 preparada.setObject(3, null);
             } else {
-                preparada.setLong(3, movimento.devolucaoId());
+                preparada.setLong(3, devolucaoId);
             }
             preparada.setString(4, movimento.tipo().name());
             preparada.setInt(5, movimento.pontos());

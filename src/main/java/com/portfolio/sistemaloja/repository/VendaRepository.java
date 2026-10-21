@@ -1,6 +1,7 @@
 package com.portfolio.sistemaloja.repository;
 
 import com.portfolio.sistemaloja.db.ConexaoFonte;
+import com.portfolio.sistemaloja.model.FidelidadeMovimento;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.Venda;
@@ -25,18 +26,24 @@ public class VendaRepository {
     private static final String SELECT_BASE = """
             SELECT v.id, v.numero, v.data_hora, v.cliente_id, cl.nome AS cliente_nome,
                    v.usuario_id, us.nome AS usuario_nome, v.forma_pagamento, v.desconto, v.total,
-                   v.valor_pago, v.troco, v.status
+                   v.valor_pago, v.troco, v.status, v.pontos_creditados, v.pontos_resgatados, v.valor_pontos
               FROM vendas v
               LEFT JOIN clientes cl ON cl.id = v.cliente_id
               LEFT JOIN usuarios us ON us.id = v.usuario_id""";
 
     private final ConexaoFonte fonte;
+    private final FidelidadeRepository fidelidade;
 
     public VendaRepository(ConexaoFonte fonte) {
         this.fonte = fonte;
+        this.fidelidade = new FidelidadeRepository(fonte);
     }
 
     public Venda registrar(Venda venda) {
+        return registrar(venda, List.of());
+    }
+
+    public Venda registrar(Venda venda, List<FidelidadeMovimento> movimentos) {
         try (Connection conexao = fonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
@@ -44,6 +51,7 @@ public class VendaRepository {
                 inserirItens(venda, conexao);
                 inserirPagamentos(venda, conexao);
                 baixarEstoque(venda, conexao);
+                fidelidade.aplicarMovimentos(conexao, movimentos, venda.getId(), null);
                 conexao.commit();
             } catch (SQLException e) {
                 conexao.rollback();
@@ -57,8 +65,8 @@ public class VendaRepository {
 
     private void inserirVenda(Venda venda, Connection conexao) throws SQLException {
         String sql = "INSERT INTO vendas (numero, data_hora, cliente_id, usuario_id, forma_pagamento, "
-                + "desconto, total, valor_pago, troco, status) "
-                + "VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?)";
+                + "desconto, total, valor_pago, troco, status, pontos_creditados, pontos_resgatados, valor_pontos) "
+                + "VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparada.setString(1, venda.getNumero());
             if (venda.getClienteId() == null) {
@@ -77,6 +85,9 @@ public class VendaRepository {
             preparada.setBigDecimal(7, venda.getValorPago());
             preparada.setBigDecimal(8, venda.getTroco());
             preparada.setString(9, venda.getStatus().name());
+            preparada.setInt(10, venda.getPontosCreditados());
+            preparada.setInt(11, venda.getPontosResgatados());
+            preparada.setBigDecimal(12, venda.getValorPontos());
             preparada.executeUpdate();
             try (ResultSet chaves = preparada.getGeneratedKeys()) {
                 if (chaves.next()) {
@@ -315,6 +326,9 @@ public class VendaRepository {
         venda.setValorPago(resultado.getBigDecimal("valor_pago"));
         venda.setTroco(resultado.getBigDecimal("troco"));
         venda.setStatus(StatusVenda.valueOf(resultado.getString("status")));
+        venda.setPontosCreditados(resultado.getInt("pontos_creditados"));
+        venda.setPontosResgatados(resultado.getInt("pontos_resgatados"));
+        venda.setValorPontos(resultado.getBigDecimal("valor_pontos"));
         return venda;
     }
 

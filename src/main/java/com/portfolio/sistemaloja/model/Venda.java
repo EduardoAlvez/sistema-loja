@@ -19,6 +19,9 @@ public class Venda {
     private BigDecimal valorPago = BigDecimal.ZERO;
     private BigDecimal troco = BigDecimal.ZERO;
     private StatusVenda status = StatusVenda.CONCLUIDA;
+    private int pontosResgatados;
+    private int pontosCreditados;
+    private BigDecimal valorPontos = BigDecimal.ZERO;
     private final List<VendaItem> itens = new ArrayList<>();
     private final List<VendaPagamento> pagamentos = new ArrayList<>();
 
@@ -124,6 +127,30 @@ public class Venda {
 
     public void setStatus(StatusVenda status) {
         this.status = status;
+    }
+
+    public int getPontosResgatados() {
+        return pontosResgatados;
+    }
+
+    public void setPontosResgatados(int pontosResgatados) {
+        this.pontosResgatados = pontosResgatados;
+    }
+
+    public int getPontosCreditados() {
+        return pontosCreditados;
+    }
+
+    public void setPontosCreditados(int pontosCreditados) {
+        this.pontosCreditados = pontosCreditados;
+    }
+
+    public BigDecimal getValorPontos() {
+        return valorPontos;
+    }
+
+    public void setValorPontos(BigDecimal valorPontos) {
+        this.valorPontos = valorPontos == null ? BigDecimal.ZERO : valorPontos;
     }
 
     public List<VendaItem> getItens() {

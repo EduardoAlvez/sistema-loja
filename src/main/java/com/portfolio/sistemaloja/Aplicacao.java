@@ -77,8 +77,10 @@ public class Aplicacao {
         this.auth = new AuthService(usuarioRepository, sessao, auditoria);
         this.produtos = new ProdutoService(produtoRepository, categoriaRepository, auditoria);
         this.clientes = new ClienteService(clienteRepository, auditoria);
+        this.fidelidadeRepository = new FidelidadeRepository(fonte);
+        this.fidelidade = new FidelidadeService(fidelidadeRepository, FidelidadeConfig.padrao());
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
-                auditoria, relogio);
+                auditoria, relogio, fidelidade);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria);
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();
@@ -92,8 +94,6 @@ public class Aplicacao {
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
         this.exportacao = new ExportacaoService();
         this.produtoRepository = produtoRepository;
-        this.fidelidadeRepository = new FidelidadeRepository(fonte);
-        this.fidelidade = new FidelidadeService(fidelidadeRepository, FidelidadeConfig.padrao());
     }
 
     public AuthService getAuth() {
