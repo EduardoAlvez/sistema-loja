@@ -42,6 +42,10 @@ regras de negócio e testes automatizados.
 - **Carrinho editável**: quantidade alterável na própria tabela, itens duplicados são somados
 - **4 formas de pagamento**: dinheiro, débito, crédito e PIX, com **cálculo de troco** em tempo real
 - **Desconto no total ou por item**, limitado pelo perfil do operador (10%) ou do administrador (50%)
+- **Fidelidade por pontos**: o cliente selecionado mostra o **saldo de pontos**, o operador digita
+  quantos pontos resgatar e o desconto entra no total na hora, respeitando o limite do perfil
+- **Crédito de pontos** por venda, **extrato de pontos** do cliente e **estorno** em devolução
+  parcial ou cancelamento
 - **Pagamento dividido**: a mesma venda pode ser paga em mais de uma forma, com troco só no dinheiro
 - **Pausa e retomada** de venda em andamento (o carrinho fica guardado com a forma de pagamento)
 - **Reimpressão do último cupom** do operador logado
@@ -70,6 +74,8 @@ regras de negócio e testes automatizados.
   importa o que é válido, reporta o que não é e grava **um único evento de auditoria**
 - **Clientes**: CPF com **validação real de dígitos verificadores**, e-mail, crédito de devolução,
   busca e exclusão
+- **Saldo de pontos** na listagem de clientes e **extrato de pontos** (créditos, resgates e estornos)
+  em diálogo próprio
 - **Usuários** (somente admin): criação com perfil, validação de senha e **comissão percentual**
 
 ### Relatórios
@@ -93,12 +99,12 @@ regras de negócio e testes automatizados.
 - **Logs** em `logs/sistema-loja.log` (rotação 5 MB × 3) e console via **Log4j2**:
   erros inesperados da interface guardam a stack trace completa, junto de ações como
   login, vendas, cancelamentos e exportações
-- **Migrações de banco com Flyway** (`V1` a `V12`: esquema, auditoria, desconto, caixa,
-  pagamentos, vendas pausadas, devoluções, comissão, estoque mínimo e promoções), com histórico
+- **Migrações de banco com Flyway** (`V1` a `V14`: esquema, auditoria, desconto, caixa,
+  pagamentos, vendas pausadas, devoluções, comissão, estoque mínimo, promoções e pontos), com histórico
   consultável e `baseline` automático para bancos já existentes
 - **Trilha de auditoria** (tabela `auditoria`, append-only): login ok/falha, venda
-  registrada/cancelada, devolução, produto/cliente salvos, comissão definida e usuário
-  criado — com usuário, data/hora e detalhe; nunca grava senha
+  registrada/cancelada, devolução, crédito/resgate/estorno de pontos, produto/cliente salvos,
+  comissão definida e usuário criado — com usuário, data/hora e detalhe; nunca grava senha
 
 ---
 
@@ -229,17 +235,40 @@ Regras aplicadas na venda:
   apenas um horário, promoção sem preço) é recusado.
 - O **CSV de produtos continua com 7 colunas**; promoções são editadas na tela de cadastro.
 
+### Fidelidade por pontos
+
+O cliente acumula **1 ponto por real** em cada venda e pode resgatar pontos como desconto no PDV.
+
+| Variável | Propriedade | Padrão |
+|----------|-------------|--------|
+| `FIDELIDADE_PONTOS_POR_REAL` | `-Dfidelidade.pontosPorReal` | `1` |
+| `FIDELIDADE_VALOR_PONTO` | `-Dfidelidade.valorPorPonto` | `0.05` |
+
+Regras aplicadas:
+
+- **Crédito**: `floor(total da venda × pontos por real)`, calculado sobre o total — nunca sobre o
+  valor pago (o troco não gera pontos).
+- **Resgate**: o PDV envia só a **quantidade de pontos**; o serviço converte para dinheiro e
+  soma em `venda.desconto`, então o resgate **respeita o limite de desconto do perfil**.
+- O resgate não pode zerar o total da venda e o saldo do cliente é debitado **na mesma transação**
+  da venda (o crédito da venda para no mesmo extrato).
+- **Devolução parcial**: estorna a parte proporcional dos pontos creditados, sem repetir o que já
+  foi estornado; **cancelar a venda** estorna todo o crédito e devolve os pontos resgatados.
+- Saldo e estornos ficam registrados no **extrato de pontos** (crédito, resgate, estorno de crédito
+  e devolução de resgate) e na **trilha de auditoria**.
+
 ### Testes
 
 ```bash
 mvn test
 ```
 
-**220 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**248 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
-as **promoções com vigência, dias e horários**, as migrações do Flyway e a trilha de auditoria —
+as **promoções com vigência, dias e horários**, a **fidelidade por pontos** (crédito, resgate,
+saldo, extrato e estornos), as migrações do Flyway e a trilha de auditoria —
 rodam sobre **H2 em modo MySQL**, ou seja, não dependem do Docker.
 
 ---
@@ -294,9 +323,9 @@ sistema-loja/
 │   │   │   ├── service/                     # Regras de negócio e validações
 │   │   │   └── ui/                          # Classes Swing (telas, painéis, diálogos)
 │   │   └── resources/
-│   │       ├── db/migration/                # V1 a V12 (esquema, caixa, PIX, estoque mínimo, promoções...)
+│   │       ├── db/migration/                # V1 a V14 (esquema, caixa, PIX, estoque mínimo, promoções, pontos)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 220 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 248 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -385,7 +414,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 220 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 248 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
@@ -393,7 +422,7 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 
 - [x] Impressora ESC/POS (corte, negrito e comando de abrir gaveta) com impressora falsa nos testes
 - [x] Promoções com vigência e preço por dia/horário (happy hour)
-- [ ] Fidelidade por pontos, com resgate como desconto na venda
+- [x] Fidelidade por pontos, com resgate como desconto na venda
 - [ ] Autorização de supervisor por PIN (desconto acima da alçada, cancelamento e sangria)
 - [ ] Conferência cega no fechamento de caixa, com a divergência registrada
 - [ ] Indicadores: vendas por hora, curva ABC, giro/ruptura, produtos sem movimentação, comparativo mensal
