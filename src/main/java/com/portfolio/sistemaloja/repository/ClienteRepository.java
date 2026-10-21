@@ -15,7 +15,7 @@ import java.util.Optional;
 public class ClienteRepository {
 
     private static final String SELECT_BASE = """
-            SELECT id, nome, cpf, telefone, email, ativo, credito FROM clientes""";
+            SELECT id, nome, cpf, telefone, email, ativo, credito, saldo_pontos FROM clientes""";
 
     private final ConexaoFonte fonte;
 
@@ -135,6 +135,7 @@ public class ClienteRepository {
                 resultado.getString("email"),
                 resultado.getBoolean("ativo"));
         cliente.setCredito(resultado.getBigDecimal("credito"));
+        cliente.setSaldoPontos(resultado.getInt("saldo_pontos"));
         return cliente;
     }
 }

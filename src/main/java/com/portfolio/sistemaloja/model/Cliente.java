@@ -12,6 +12,7 @@ public class Cliente {
     private String email;
     private boolean ativo;
     private BigDecimal credito = BigDecimal.ZERO;
+    private int saldoPontos;
 
     public Cliente() {
     }
@@ -79,6 +80,14 @@ public class Cliente {
 
     public void setCredito(BigDecimal credito) {
         this.credito = credito == null ? BigDecimal.ZERO : credito;
+    }
+
+    public int getSaldoPontos() {
+        return saldoPontos;
+    }
+
+    public void setSaldoPontos(int saldoPontos) {
+        this.saldoPontos = saldoPontos;
     }
 
     @Override

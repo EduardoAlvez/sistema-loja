@@ -11,6 +11,7 @@ import com.portfolio.sistemaloja.repository.CaixaRepository;
 import com.portfolio.sistemaloja.repository.CategoriaRepository;
 import com.portfolio.sistemaloja.repository.ClienteRepository;
 import com.portfolio.sistemaloja.repository.DevolucaoRepository;
+import com.portfolio.sistemaloja.repository.FidelidadeRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
@@ -25,6 +26,8 @@ import com.portfolio.sistemaloja.service.CupomService;
 import com.portfolio.sistemaloja.service.CupomTermicoService;
 import com.portfolio.sistemaloja.service.DevolucaoService;
 import com.portfolio.sistemaloja.service.ExportacaoService;
+import com.portfolio.sistemaloja.service.FidelidadeConfig;
+import com.portfolio.sistemaloja.service.FidelidadeService;
 import com.portfolio.sistemaloja.service.PausaService;
 import com.portfolio.sistemaloja.service.ProdutoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
@@ -51,6 +54,8 @@ public class Aplicacao {
     private final ExportacaoService exportacao;
     private final AuditoriaService auditoria;
     private final ProdutoRepository produtoRepository;
+    private final FidelidadeService fidelidade;
+    private final FidelidadeRepository fidelidadeRepository;
 
     public Aplicacao(ConexaoFonte fonte) {
         this(fonte, Clock.systemDefaultZone());
@@ -87,6 +92,8 @@ public class Aplicacao {
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
         this.exportacao = new ExportacaoService();
         this.produtoRepository = produtoRepository;
+        this.fidelidadeRepository = new FidelidadeRepository(fonte);
+        this.fidelidade = new FidelidadeService(fidelidadeRepository, FidelidadeConfig.padrao());
     }
 
     public AuthService getAuth() {
@@ -151,5 +158,13 @@ public class Aplicacao {
 
     public ProdutoRepository getProdutoRepository() {
         return produtoRepository;
+    }
+
+    public FidelidadeService getFidelidade() {
+        return fidelidade;
+    }
+
+    public FidelidadeRepository getFidelidadeRepository() {
+        return fidelidadeRepository;
     }
 }
