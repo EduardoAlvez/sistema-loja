@@ -73,16 +73,17 @@ public class DevolucaoService {
             throw new ValidacaoException("O valor da devolução deve ser maior que zero.");
         }
 
-        int pontosEstornados = 0;
+        int pontosSolicitados = 0;
         if (fidelidade != null && venda.getPontosCreditados() > 0) {
-            pontosEstornados = fidelidade.calcularEstorno(venda.getPontosCreditados(), venda.getTotal(),
+            pontosSolicitados = fidelidade.calcularEstorno(venda.getPontosCreditados(), venda.somaItensBrutos(),
                     devolucao.getValor());
         }
 
-        Devolucao registrada = devolucoes.salvar(devolucao, pontosEstornados);
+        Devolucao registrada = devolucoes.salvar(devolucao, pontosSolicitados);
         auditoria.registrar("DEVOLUCAO_VENDA", "venda", venda.getId(), "Devolução de "
                 + registrada.getQuantidadeItens() + " item(ns) no valor de R$ " + registrada.getValor()
                 + (creditoNoCliente ? " creditada no cliente" : " sem crédito"));
+        int pontosEstornados = registrada.getPontosEstornados();
         if (pontosEstornados > 0) {
             auditoria.registrar("PONTOS_ESTORNADOS", "CLIENTE", venda.getClienteId(),
                     pontosEstornados + " ponto(s) estornados na devolucao " + registrada.getId());

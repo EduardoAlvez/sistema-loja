@@ -99,7 +99,7 @@ regras de negócio e testes automatizados.
 - **Logs** em `logs/sistema-loja.log` (rotação 5 MB × 3) e console via **Log4j2**:
   erros inesperados da interface guardam a stack trace completa, junto de ações como
   login, vendas, cancelamentos e exportações
-- **Migrações de banco com Flyway** (`V1` a `V14`: esquema, auditoria, desconto, caixa,
+- **Migrações de banco com Flyway** (`V1` a `V15`: esquema, auditoria, desconto, caixa,
   pagamentos, vendas pausadas, devoluções, comissão, estoque mínimo, promoções e pontos), com histórico
   consultável e `baseline` automático para bancos já existentes
 - **Trilha de auditoria** (tabela `auditoria`, append-only): login ok/falha, venda
@@ -246,14 +246,18 @@ O cliente acumula **1 ponto por real** em cada venda e pode resgatar pontos como
 
 Regras aplicadas:
 
-- **Crédito**: `floor(total da venda × pontos por real)`, calculado sobre o total — nunca sobre o
-  valor pago (o troco não gera pontos).
+- **Crédito**: `floor(total da venda × pontos por real)`, calculado sobre o **total final** (já com
+  descontos e resgates) — nunca sobre o valor pago (o troco não gera pontos).
 - **Resgate**: o PDV envia só a **quantidade de pontos**; o serviço converte para dinheiro e
   soma em `venda.desconto`, então o resgate **respeita o limite de desconto do perfil**.
 - O resgate não pode zerar o total da venda e o saldo do cliente é debitado **na mesma transação**
   da venda (o crédito da venda para no mesmo extrato).
-- **Devolução parcial**: estorna a parte proporcional dos pontos creditados, sem repetir o que já
-  foi estornado; **cancelar a venda** estorna todo o crédito e devolve os pontos resgatados.
+- **Devolução parcial**: estorna a parte proporcional dos pontos creditados, calculada sobre a
+  **mercadoria devolvida** em relação à mercadoria vendida (devolver 25% da mercadoria estorna 25%
+  dos pontos), limitado ao que ainda não foi estornado; **cancelar a venda** estorna todo o crédito
+  e devolve os pontos resgatados.
+- A trilha de auditoria e o extrato registram os pontos **efetivamente** estornados, e a devolução
+  guarda o quanto estornou em `devolucoes.pontos_estornados`.
 - Saldo e estornos ficam registrados no **extrato de pontos** (crédito, resgate, estorno de crédito
   e devolução de resgate) e na **trilha de auditoria**.
 
@@ -263,7 +267,7 @@ Regras aplicadas:
 mvn test
 ```
 
-**248 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**253 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -323,9 +327,9 @@ sistema-loja/
 │   │   │   ├── service/                     # Regras de negócio e validações
 │   │   │   └── ui/                          # Classes Swing (telas, painéis, diálogos)
 │   │   └── resources/
-│   │       ├── db/migration/                # V1 a V14 (esquema, caixa, PIX, estoque mínimo, promoções, pontos)
+│   │       ├── db/migration/                # V1 a V15 (esquema, caixa, PIX, estoque mínimo, promoções, pontos)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 248 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 253 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -356,7 +360,7 @@ sistema-loja/
   ou seja, a proteção contra corrida entre caixas está no próprio banco.
 - **Cancelamento devolve estoque**: mesma transação, e a venda fica registrada com status `CANCELADA`
   para manter a trilha de auditoria (nunca é apagada).
-- **Migrações versionadas**: esquema no Flyway (`V1` esquema inicial até `V12` promoções);
+- **Migrações versionadas**: esquema no Flyway (`V1` esquema inicial até `V15` fidelidade);
   bancos já existentes recebem `baselineOnMigrate`, então o histórico nasce sem reaplicar DDL.
   O seed continua idempotente (só roda se a tabela `usuarios` estiver vazia).
 - **PIX BR Code na mão**: `PixPayload` monta o payload EMV campo a campo (incluindo o
@@ -414,7 +418,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 248 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 253 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 

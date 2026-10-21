@@ -169,7 +169,8 @@ public class VendaRepository {
         }
     }
 
-    public void cancelar(long vendaId) {
+    public int cancelar(long vendaId) {
+        int pontosEstornados = 0;
         try (Connection conexao = fonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
@@ -177,7 +178,7 @@ public class VendaRepository {
                         .orElseThrow(() -> new RepositorioException("Venda não encontrada", null));
                 if (venda.getStatus() == StatusVenda.CANCELADA) {
                     conexao.rollback();
-                    return;
+                    return 0;
                 }
                 devolverEstoque(venda, conexao);
                 try (PreparedStatement preparada =
@@ -186,7 +187,7 @@ public class VendaRepository {
                     preparada.setLong(2, vendaId);
                     preparada.executeUpdate();
                 }
-                estornarPontos(venda, conexao);
+                pontosEstornados = estornarPontos(venda, conexao);
                 conexao.commit();
             } catch (SQLException | RepositorioException e) {
                 conexao.rollback();
@@ -195,14 +196,16 @@ public class VendaRepository {
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao cancelar a venda", e);
         }
+        return pontosEstornados;
     }
 
-    private void estornarPontos(Venda venda, Connection conexao) throws SQLException {
+    private int estornarPontos(Venda venda, Connection conexao) throws SQLException {
         if (venda.getClienteId() == null) {
-            return;
+            return 0;
         }
+        int estornados = 0;
         if (venda.getPontosCreditados() > 0) {
-            fidelidade.estornarCredito(conexao, venda.getClienteId(), venda.getId(), null,
+            estornados = fidelidade.estornarCredito(conexao, venda.getClienteId(), venda.getId(), null,
                     venda.getPontosCreditados(), "Estorno de pontos da venda " + venda.getNumero());
         }
         if (venda.getPontosResgatados() > 0) {
@@ -211,6 +214,7 @@ public class VendaRepository {
                     "Devolucao dos pontos resgatados na venda " + venda.getNumero());
             fidelidade.aplicarMovimentos(conexao, List.of(estorno), null, null);
         }
+        return estornados;
     }
 
     public Optional<Venda> buscarPorNumero(String numero) {

@@ -65,6 +65,17 @@ class FidelidadeServiceTest {
     }
 
     @Test
+    void debitoRecusadoNaoDeixaMovimentoNoExtrato() {
+        app.getFidelidadeRepository().aplicarMovimentos(List.of(
+                app.getFidelidade().credito(cliente.getId(), 10L, 10, "Venda V000001")));
+
+        assertThrows(RepositorioException.class, () -> app.getFidelidadeRepository().aplicarMovimentos(List.of(
+                app.getFidelidade().debito(cliente.getId(), 11L, 20, "Resgate V000002"))));
+
+        assertEquals(1, app.getFidelidade().extrato(cliente.getId()).size());
+    }
+
+    @Test
     void estornoCreditoRetiraOsPontosDoSaldo() {
         app.getFidelidadeRepository().aplicarMovimentos(List.of(
                 app.getFidelidade().credito(cliente.getId(), 10L, 50, "Venda V000001")));

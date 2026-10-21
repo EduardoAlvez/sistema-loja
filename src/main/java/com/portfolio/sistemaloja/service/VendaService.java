@@ -100,12 +100,12 @@ public class VendaService {
         if (venda.getStatus() == StatusVenda.CANCELADA) {
             return;
         }
-        vendas.cancelar(vendaId);
+        int pontosEstornados = vendas.cancelar(vendaId);
         LOG.warn("Venda {} cancelada", vendaId);
         auditoria.registrar("VENDA_CANCELADA", "VENDA", vendaId, null);
-        if (venda.getClienteId() != null && venda.getPontosCreditados() > 0) {
+        if (venda.getClienteId() != null && pontosEstornados > 0) {
             auditoria.registrar("PONTOS_ESTORNADOS", "CLIENTE", venda.getClienteId(),
-                    venda.getPontosCreditados() + " ponto(s) estornados no cancelamento da venda "
+                    pontosEstornados + " ponto(s) estornados no cancelamento da venda "
                             + venda.getNumero());
         }
         if (venda.getClienteId() != null && venda.getPontosResgatados() > 0) {

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,18 +51,41 @@ class FidelidadeEstornoTest {
     }
 
     @Test
-    void devolucaoNaoEstornaMaisQueOsPontosCreditados() {
+    void devolucaoParcialEstornaProporcionalAMercadoriaVendida() {
         Venda registrada = app.getVendas().registrar(venda(admin, 4, new BigDecimal("5.00"), 0));
         assertEquals(5, app.getFidelidade().saldo(cliente.getId()));
 
         app.getDevolucoes().devolver(registrada.getId(), List.of(itemDevolvido(registrada, 1)), false, null, operador);
-        assertEquals(3, app.getFidelidade().saldo(cliente.getId()));
 
-        app.getDevolucoes().devolver(registrada.getId(), List.of(itemDevolvido(registrada, 1)), false, null, operador);
-        assertEquals(1, app.getFidelidade().saldo(cliente.getId()));
+        assertEquals(4, app.getFidelidade().saldo(cliente.getId()));
+    }
 
-        app.getDevolucoes().devolver(registrada.getId(), List.of(itemDevolvido(registrada, 1)), false, null, operador);
+    @Test
+    void devolucaoNaoEstornaMaisQueOsPontosCreditados() {
+        Venda registrada = app.getVendas().registrar(venda(admin, 4, new BigDecimal("5.00"), 0));
+        assertEquals(5, app.getFidelidade().saldo(cliente.getId()));
+
+        app.getDevolucoes().devolver(registrada.getId(), List.of(itemDevolvido(registrada, 4)), false, null, operador);
         assertEquals(0, app.getFidelidade().saldo(cliente.getId()));
+    }
+
+    @Test
+    void auditoriaRegistraOsPontosEstornadosEfetivos() {
+        creditar(100);
+        Venda registrada = app.getVendas().registrar(venda(admin, 4, BigDecimal.ZERO, 0));
+        assertEquals(110, app.getFidelidade().saldo(cliente.getId()));
+
+        app.getDevolucoes().devolver(registrada.getId(), List.of(itemDevolvido(registrada, 1)), false, null, operador);
+        assertEquals(108, app.getFidelidade().saldo(cliente.getId()));
+
+        app.getVendas().cancelar(registrada.getId());
+
+        assertEquals(100, app.getFidelidade().saldo(cliente.getId()));
+        String detalhe = app.getAuditoria().listar(LocalDate.now(), LocalDate.now()).stream()
+                .filter(evento -> "PONTOS_ESTORNADOS".equals(evento.acao()))
+                .filter(evento -> evento.detalhe() != null && evento.detalhe().contains("cancelamento"))
+                .findFirst().orElseThrow().detalhe();
+        assertTrue(detalhe.contains("8 ponto(s)"), detalhe);
     }
 
     @Test
@@ -94,7 +118,6 @@ class FidelidadeEstornoTest {
     @Test
     void pausaPreservaOsPontosResgatados() {
         Venda venda = venda(admin, 4, BigDecimal.ZERO, 20);
-        venda.setDesconto(new BigDecimal("1.00"));
         venda.setValorPontos(new BigDecimal("1.00"));
 
         VendaPausada pausada = app.getPausas().pausar(venda, "volto depois", admin);
@@ -102,6 +125,25 @@ class FidelidadeEstornoTest {
         assertEquals(20, pausada.getPontosResgatados());
         assertEquals(0, new BigDecimal("1.00").compareTo(pausada.getValorPontos()));
         assertEquals(20, pausada.paraVenda().getPontosResgatados());
+        assertEquals(0, new BigDecimal("9.00").compareTo(pausada.getTotal()));
+    }
+
+    @Test
+    void vendaPausadaRetomadaDescontaOsPontosUmaVez() {
+        creditar(100);
+        Venda venda = venda(admin, 4, BigDecimal.ZERO, 20);
+        venda.setValorPontos(new BigDecimal("1.00"));
+        VendaPausada pausada = app.getPausas().pausar(venda, "volto depois", admin);
+
+        Venda registrada = app.getVendas().registrar(pausada.paraVenda());
+
+        assertEquals(100 - 20 + 9, app.getFidelidade().saldo(cliente.getId()));
+        assertEquals(0, new BigDecimal("9.00").compareTo(registrada.getTotal()));
+        assertEquals(0, new BigDecimal("1.00").compareTo(registrada.getDesconto()));
+        long debitos = app.getFidelidade().extrato(cliente.getId()).stream()
+                .filter(movimento -> movimento.tipo() == TipoMovimentoFidelidade.DEBITO)
+                .count();
+        assertEquals(1, debitos);
     }
 
     private DevolucaoItem itemDevolvido(Venda venda, int quantidade) {

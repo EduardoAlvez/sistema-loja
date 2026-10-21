@@ -573,6 +573,9 @@ public class PainelPDV extends JPanel {
         if (devolucao.isCreditoCliente()) {
             texto.append("Crédito no cliente: ").append(devolucao.getClienteNome()).append('\n');
         }
+        if (devolucao.getPontosEstornados() > 0) {
+            texto.append("Pontos estornados: ").append(devolucao.getPontosEstornados()).append(" ponto(s)\n");
+        }
         return texto.toString();
     }
 
@@ -809,6 +812,7 @@ public class PainelPDV extends JPanel {
         venda.setFormaPagamento((FormaPagamento) pagamento.getSelectedItem());
         venda.setDesconto(parseMoeda(desconto.getText()));
         venda.setPontosResgatados(pontosResgatados());
+        venda.setValorPontos(valorDosPontosResgatados());
         venda.setValorPago(parseMoeda(valorPago.getText()));
         carrinho.forEach(venda::adicionarItem);
         pagamentosDivididos.forEach(venda::adicionarPagamento);
@@ -880,24 +884,25 @@ public class PainelPDV extends JPanel {
     }
 
     private void preencherComPausada(VendaPausada pausada) {
+        Venda retomada = pausada.paraVenda();
         limpar();
-        carrinho.addAll(pausada.getItens());
-        if (pausada.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
-            desconto.setText(pausada.getDesconto().toPlainString().replace('.', ','));
+        carrinho.addAll(retomada.getItens());
+        if (retomada.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
+            desconto.setText(retomada.getDesconto().toPlainString().replace('.', ','));
         }
-        if (pausada.getPontosResgatados() > 0) {
-            pontosResgate.setText(String.valueOf(pausada.getPontosResgatados()));
+        if (retomada.getPontosResgatados() > 0) {
+            pontosResgate.setText(String.valueOf(retomada.getPontosResgatados()));
         }
-        if (pausada.getClienteId() != null) {
+        if (retomada.getClienteId() != null) {
             for (int i = 0; i < cliente.getItemCount(); i++) {
                 Cliente item = cliente.getItemAt(i);
-                if (item != null && item.getId().equals(pausada.getClienteId())) {
+                if (item != null && item.getId().equals(retomada.getClienteId())) {
                     cliente.setSelectedIndex(i);
                     break;
                 }
             }
         }
-        pagamentosDivididos.addAll(pausada.getPagamentos());
+        pagamentosDivididos.addAll(retomada.getPagamentos());
         if (!pagamentosDivididos.isEmpty()) {
             statusPagamento.setText("Dividido em " + pagamentosDivididos.size() + " parcela(s)");
             pagamento.setEnabled(false);

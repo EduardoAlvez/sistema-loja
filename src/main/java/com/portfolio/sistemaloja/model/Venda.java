@@ -183,9 +183,18 @@ public class Venda {
     }
 
     public void recalcularTotal() {
-        BigDecimal somaItens = itens.stream()
+        total = somaItens().subtract(desconto == null ? BigDecimal.ZERO : desconto);
+    }
+
+    public BigDecimal somaItens() {
+        return itens.stream()
                 .map(VendaItem::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        total = somaItens.subtract(desconto == null ? BigDecimal.ZERO : desconto);
+    }
+
+    public BigDecimal somaItensBrutos() {
+        return itens.stream()
+                .map(VendaItem::getValorBruto)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

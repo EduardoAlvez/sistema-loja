@@ -7,5 +7,6 @@ public record ExtratoFidelidade(
         TipoMovimentoFidelidade tipo,
         int pontos,
         String descricao,
-        Long vendaId) {
+        Long vendaId,
+        Long devolucaoId) {
 }

@@ -26,7 +26,8 @@ public class DevolucaoRepository {
         return salvar(devolucao, 0);
     }
 
-    public Devolucao salvar(Devolucao devolucao, int pontosEstornados) {
+    public Devolucao salvar(Devolucao devolucao, int pontosSolicitados) {
+        int pontosEstornados = 0;
         try (Connection conexao = fonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
@@ -38,10 +39,11 @@ public class DevolucaoRepository {
                 if (devolucao.isCreditoCliente()) {
                     creditarCliente(devolucao, conexao);
                 }
-                if (pontosEstornados > 0 && devolucao.getClienteId() != null) {
-                    fidelidade.estornarCredito(conexao, devolucao.getClienteId(), devolucao.getVendaId(),
-                            devolucao.getId(), pontosEstornados,
+                if (pontosSolicitados > 0 && devolucao.getClienteId() != null) {
+                    pontosEstornados = fidelidade.estornarCredito(conexao, devolucao.getClienteId(),
+                            devolucao.getVendaId(), devolucao.getId(), pontosSolicitados,
                             "Estorno de pontos da devolucao " + devolucao.getId());
+                    registrarPontosEstornados(devolucao.getId(), pontosEstornados, conexao);
                 }
                 conexao.commit();
             } catch (SQLException e) {
@@ -56,7 +58,8 @@ public class DevolucaoRepository {
 
     public Devolucao buscarPorId(long id) {
         String sql = "SELECT d.id, d.venda_id, v.numero AS venda_numero, d.cliente_id, cl.nome AS cliente_nome, "
-                + "d.usuario_id, us.nome AS usuario_nome, d.data_hora, d.valor, d.credito_cliente, d.observacao "
+                + "d.usuario_id, us.nome AS usuario_nome, d.data_hora, d.valor, d.credito_cliente, d.observacao, "
+                + "d.pontos_estornados "
                 + "FROM devolucoes d "
                 + "LEFT JOIN vendas v ON v.id = d.venda_id "
                 + "LEFT JOIN clientes cl ON cl.id = d.cliente_id "
@@ -80,7 +83,8 @@ public class DevolucaoRepository {
 
     public List<Devolucao> listarPorVenda(long vendaId) {
         String sql = "SELECT d.id, d.venda_id, v.numero AS venda_numero, d.cliente_id, cl.nome AS cliente_nome, "
-                + "d.usuario_id, us.nome AS usuario_nome, d.data_hora, d.valor, d.credito_cliente, d.observacao "
+                + "d.usuario_id, us.nome AS usuario_nome, d.data_hora, d.valor, d.credito_cliente, d.observacao, "
+                + "d.pontos_estornados "
                 + "FROM devolucoes d "
                 + "LEFT JOIN vendas v ON v.id = d.venda_id "
                 + "LEFT JOIN clientes cl ON cl.id = d.cliente_id "
@@ -171,6 +175,16 @@ public class DevolucaoRepository {
         }
     }
 
+    private void registrarPontosEstornados(long devolucaoId, int pontosEstornados, Connection conexao)
+            throws SQLException {
+        String sql = "UPDATE devolucoes SET pontos_estornados = ? WHERE id = ?";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setInt(1, pontosEstornados);
+            preparada.setLong(2, devolucaoId);
+            preparada.executeUpdate();
+        }
+    }
+
     private void creditarCliente(Devolucao devolucao, Connection conexao) throws SQLException {
         String sql = "UPDATE clientes SET credito = credito + ? WHERE id = ?";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
@@ -220,6 +234,7 @@ public class DevolucaoRepository {
         devolucao.setDataHora(resultado.getString("data_hora"));
         devolucao.setValor(resultado.getBigDecimal("valor"));
         devolucao.setCreditoCliente(resultado.getBoolean("credito_cliente"));
+        devolucao.setPontosEstornados(resultado.getInt("pontos_estornados"));
         devolucao.setObservacao(resultado.getString("observacao"));
         return devolucao;
     }

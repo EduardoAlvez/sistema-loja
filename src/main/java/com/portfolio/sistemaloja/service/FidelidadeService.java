@@ -36,20 +36,19 @@ public class FidelidadeService {
     public BigDecimal valorDosPontos(int pontos) {
         return config.valorDosPontos(pontos);
     }
-
     public int calcularCredito(BigDecimal totalVenda) {
         return config.calcularPontos(totalVenda);
     }
 
-    public int calcularEstorno(int pontosCreditados, BigDecimal valorVenda, BigDecimal valorDevolvido) {
-        if (pontosCreditados <= 0 || valorVenda == null || valorVenda.compareTo(BigDecimal.ZERO) <= 0) {
+    public int calcularEstorno(int pontosCreditados, BigDecimal baseVenda, BigDecimal baseDevolucao) {
+        if (pontosCreditados <= 0 || baseVenda == null || baseVenda.compareTo(BigDecimal.ZERO) <= 0) {
             return 0;
         }
-        BigDecimal devolvido = valorDevolvido == null ? BigDecimal.ZERO : valorDevolvido;
+        BigDecimal devolvido = baseDevolucao == null ? BigDecimal.ZERO : baseDevolucao;
         if (devolvido.compareTo(BigDecimal.ZERO) <= 0) {
             return 0;
         }
-        BigDecimal fracao = devolvido.min(valorVenda).divide(valorVenda, 6, RoundingMode.HALF_UP);
+        BigDecimal fracao = devolvido.min(baseVenda).divide(baseVenda, 6, RoundingMode.HALF_UP);
         int estorno = BigDecimal.valueOf(pontosCreditados).multiply(fracao)
                 .setScale(0, RoundingMode.FLOOR).intValue();
         return Math.max(estorno, 0);

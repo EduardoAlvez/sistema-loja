@@ -34,8 +34,9 @@ public class CupomService {
             }
         }
         texto.append("--------------------------------\n");
-        if (venda.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
-            texto.append("Desconto: -").append(moeda(venda.getDesconto())).append('\n');
+        BigDecimal descontoSemPontos = venda.getDesconto().subtract(venda.getValorPontos());
+        if (descontoSemPontos.compareTo(BigDecimal.ZERO) > 0) {
+            texto.append("Desconto: -").append(moeda(descontoSemPontos)).append('\n');
         }
         texto.append("TOTAL: ").append(moeda(venda.getTotal())).append('\n');
         if (venda.getPontosResgatados() > 0) {

@@ -39,9 +39,9 @@ public record FidelidadeConfig(BigDecimal pontosPorReal, BigDecimal valorPorPont
 
     public BigDecimal valorDosPontos(int pontos) {
         if (pontos <= 0) {
-            return BigDecimal.ZERO.setScale(2);
+            return BigDecimal.ZERO.setScale(2, RoundingMode.DOWN);
         }
-        return valorPorPonto.multiply(BigDecimal.valueOf(pontos)).setScale(2, RoundingMode.HALF_UP);
+        return valorPorPonto.multiply(BigDecimal.valueOf(pontos)).setScale(2, RoundingMode.DOWN);
     }
 
     private static BigDecimal decimal(String propriedade, String variavel, BigDecimal padrao) {

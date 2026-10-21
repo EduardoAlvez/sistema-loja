@@ -133,7 +133,7 @@ public class VendaPausada {
         venda.setClienteId(clienteId);
         venda.setUsuarioId(usuarioId);
         venda.setFormaPagamento(formaPagamento);
-        venda.setDesconto(desconto);
+        venda.setDesconto(desconto.subtract(valorPontos));
         venda.setPontosResgatados(pontosResgatados);
         venda.setValorPontos(valorPontos);
         for (VendaItem item : itens) {

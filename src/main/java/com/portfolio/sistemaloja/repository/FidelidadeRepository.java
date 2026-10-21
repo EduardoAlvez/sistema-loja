@@ -24,7 +24,14 @@ public class FidelidadeRepository {
 
     public void aplicarMovimentos(List<FidelidadeMovimento> movimentos) {
         try (Connection conexao = fonte.getConnection()) {
-            aplicarMovimentos(conexao, movimentos);
+            try {
+                conexao.setAutoCommit(false);
+                aplicarMovimentos(conexao, movimentos);
+                conexao.commit();
+            } catch (SQLException e) {
+                conexao.rollback();
+                throw e;
+            }
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao registrar o movimento de fidelidade", e);
         }
@@ -37,8 +44,8 @@ public class FidelidadeRepository {
     public void aplicarMovimentos(Connection conexao, List<FidelidadeMovimento> movimentos, Long vendaContexto,
             Long devolucaoContexto) throws SQLException {
         for (FidelidadeMovimento movimento : movimentos) {
-            inserirExtrato(movimento, conexao, vendaContexto, devolucaoContexto);
             atualizarSaldo(movimento, conexao);
+            inserirExtrato(movimento, conexao, vendaContexto, devolucaoContexto);
         }
     }
 
@@ -56,22 +63,26 @@ public class FidelidadeRepository {
     }
 
     public List<ExtratoFidelidade> extrato(long clienteId, int limite) {
-        String sql = "SELECT data_hora, tipo, pontos, descricao, venda_id FROM fidelidade_extrato "
-                + "WHERE cliente_id = ? ORDER BY id DESC";
+        String sql = "SELECT data_hora, tipo, pontos, descricao, venda_id, devolucao_id FROM fidelidade_extrato "
+                + "WHERE cliente_id = ? ORDER BY id DESC LIMIT ?";
+        int registros = Math.max(limite, 0);
         List<ExtratoFidelidade> movimentos = new ArrayList<>();
         try (Connection conexao = fonte.getConnection();
              PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, clienteId);
+            preparada.setInt(2, registros);
             try (ResultSet resultado = preparada.executeQuery()) {
-                while (resultado.next() && movimentos.size() < limite) {
+                while (resultado.next()) {
                     Timestamp dataHora = resultado.getTimestamp("data_hora");
                     Long vendaId = resultado.getObject("venda_id", Long.class);
+                    Long devolucaoId = resultado.getObject("devolucao_id", Long.class);
                     movimentos.add(new ExtratoFidelidade(
                             dataHora == null ? null : dataHora.toLocalDateTime(),
                             TipoMovimentoFidelidade.valueOf(resultado.getString("tipo")),
                             resultado.getInt("pontos"),
                             resultado.getString("descricao"),
-                            vendaId));
+                            vendaId,
+                            devolucaoId));
                 }
             }
         } catch (SQLException e) {
@@ -154,12 +165,12 @@ public class FidelidadeRepository {
     }
 
     private void atualizarSaldo(FidelidadeMovimento movimento, Connection conexao) throws SQLException {
-        if (movimento.tipo() == TipoMovimentoFidelidade.DEBITO) {
-            debitarComSaldoSuficiente(movimento, conexao);
-            return;
-        }
-        if (movimento.tipo() == TipoMovimentoFidelidade.ESTORNO_CREDITO) {
-            debitar(movimento, conexao);
+        if (movimento.tipo().debitaSaldo()) {
+            if (movimento.tipo() == TipoMovimentoFidelidade.DEBITO) {
+                debitarComSaldoSuficiente(movimento, conexao);
+            } else {
+                debitar(movimento, conexao);
+            }
             return;
         }
         String sql = "UPDATE clientes SET saldo_pontos = saldo_pontos + ? WHERE id = ?";

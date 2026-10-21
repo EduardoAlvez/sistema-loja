@@ -68,7 +68,7 @@ public class DialogoExtratoFidelidade extends JDialog {
         for (ExtratoFidelidade movimento : movimentos) {
             modelo.addRow(new Object[]{
                     movimento.dataHora() == null ? "" : Ui.dataHora(movimento.dataHora().toString()),
-                    descricao(movimento.tipo()),
+                    descricao(movimento),
                     (movimento.tipo() == TipoMovimentoFidelidade.CREDITO
                             || movimento.tipo() == TipoMovimentoFidelidade.ESTORNO_DEBITO ? "+" : "-")
                             + movimento.pontos(),
@@ -77,18 +77,27 @@ public class DialogoExtratoFidelidade extends JDialog {
         }
     }
 
-    private String descricao(TipoMovimentoFidelidade tipo) {
-        switch (tipo) {
+    private String descricao(ExtratoFidelidade movimento) {
+        String texto;
+        switch (movimento.tipo()) {
             case CREDITO:
-                return "Crédito";
+                texto = "Crédito";
+                break;
             case DEBITO:
-                return "Resgate";
+                texto = "Resgate";
+                break;
             case ESTORNO_CREDITO:
-                return "Estorno de crédito";
+                texto = "Estorno de crédito";
+                break;
             case ESTORNO_DEBITO:
-                return "Devolução de resgate";
+                texto = "Devolução de resgate";
+                break;
             default:
-                return tipo.name();
+                texto = movimento.tipo().name();
         }
+        if (movimento.devolucaoId() != null) {
+            texto = texto + " (dev. #" + movimento.devolucaoId() + ")";
+        }
+        return texto;
     }
 }

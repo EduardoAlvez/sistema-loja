@@ -16,6 +16,7 @@ public class Devolucao {
     private String dataHora;
     private BigDecimal valor = BigDecimal.ZERO;
     private boolean creditoCliente;
+    private int pontosEstornados;
     private String observacao;
     private final List<DevolucaoItem> itens = new ArrayList<>();
 
@@ -97,6 +98,14 @@ public class Devolucao {
 
     public void setCreditoCliente(boolean creditoCliente) {
         this.creditoCliente = creditoCliente;
+    }
+
+    public int getPontosEstornados() {
+        return pontosEstornados;
+    }
+
+    public void setPontosEstornados(int pontosEstornados) {
+        this.pontosEstornados = pontosEstornados;
     }
 
     public String getObservacao() {

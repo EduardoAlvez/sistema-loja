@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CupomServiceTest {
@@ -67,6 +68,7 @@ class CupomServiceTest {
         String cupom = app.getCupom().formatar(registrada);
         assertTrue(cupom.contains("Pontos resgatados: 20"), cupom);
         assertTrue(cupom.contains("Pontos creditados:"), cupom);
+        assertFalse(cupom.contains("Desconto: -"), cupom);
     }
 
     @Test

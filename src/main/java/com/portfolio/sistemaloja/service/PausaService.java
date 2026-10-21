@@ -7,6 +7,7 @@ import com.portfolio.sistemaloja.repository.VendaPausadaRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class PausaService {
@@ -26,15 +27,17 @@ public class PausaService {
             throw new ValidacaoException("Adicione pelo menos um item antes de pausar a venda.");
         }
         venda.recalcularTotal();
+        BigDecimal valorPontos = venda.getValorPontos();
+        BigDecimal descontoTotal = venda.getDesconto().add(valorPontos);
         VendaPausada pausada = new VendaPausada();
         pausada.setClienteId(venda.getClienteId());
         pausada.setUsuarioId(venda.getUsuarioId() != null ? venda.getUsuarioId()
                 : usuario == null ? null : usuario.getId());
         pausada.setFormaPagamento(venda.getFormaPagamento());
-        pausada.setDesconto(venda.getDesconto());
-        pausada.setTotal(venda.getTotal());
+        pausada.setDesconto(descontoTotal);
+        pausada.setTotal(venda.somaItens().subtract(descontoTotal));
         pausada.setPontosResgatados(venda.getPontosResgatados());
-        pausada.setValorPontos(venda.getValorPontos());
+        pausada.setValorPontos(valorPontos);
         pausada.setObservacao(observacao);
         pausada.getItens().addAll(venda.getItens());
         pausada.getPagamentos().addAll(venda.getPagamentos());

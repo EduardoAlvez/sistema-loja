@@ -8,6 +8,10 @@ public enum TipoMovimentoFidelidade {
     ESTORNO_DEBITO;
 
     public boolean creditaSaldo() {
-        return this != DEBITO;
+        return this == CREDITO || this == ESTORNO_DEBITO;
+    }
+
+    public boolean debitaSaldo() {
+        return this == DEBITO || this == ESTORNO_CREDITO;
     }
 }
