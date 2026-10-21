@@ -38,6 +38,13 @@ public class CupomService {
             texto.append("Desconto: -").append(moeda(venda.getDesconto())).append('\n');
         }
         texto.append("TOTAL: ").append(moeda(venda.getTotal())).append('\n');
+        if (venda.getPontosResgatados() > 0) {
+            texto.append("Pontos resgatados: ").append(venda.getPontosResgatados())
+                    .append(" (").append(moeda(venda.getValorPontos())).append(")\n");
+        }
+        if (venda.getPontosCreditados() > 0) {
+            texto.append("Pontos creditados: ").append(venda.getPontosCreditados()).append('\n');
+        }
         if (venda.isPagamentoDividido()) {
             texto.append("Pagamento dividido:\n");
             for (VendaPagamento parcela : venda.getPagamentos()) {

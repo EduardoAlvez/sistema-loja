@@ -2,6 +2,7 @@ package com.portfolio.sistemaloja.ui;
 
 import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.BancoTeste;
+import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.Usuario;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PainelPDVTest {
@@ -67,6 +69,34 @@ class PainelPDVTest {
 
         painel.adicionarProduto(agua);
         assertEquals(Ui.moeda(agua.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
+    }
+
+    @Test
+    void mostraOSaldoDoClienteEAplicaOResgateNoTotal() {
+        Cliente cliente = app.getClientes().salvar(new Cliente(null, "Maria Souza", "52998224725", null,
+                null, true));
+        app.getFidelidadeRepository().aplicarMovimentos(List.of(
+                app.getFidelidade().credito(cliente.getId(), null, 100, "Credito de teste")));
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+
+        PainelPDV painel = new PainelPDV(app, operador);
+        painel.adicionarProduto(agua);
+        painel.selecionarCliente(cliente);
+
+        assertEquals("Saldo: 100 ponto(s)", painel.textoSaldoPontos());
+        assertTrue(painel.resgateDePontosHabilitado());
+
+        painel.informarPontos(20);
+
+        assertEquals(Ui.moeda(new BigDecimal("1.50")), painel.totalAtual());
+    }
+
+    @Test
+    void semClienteOResgateDePontosFicaDesabilitado() {
+        PainelPDV painel = new PainelPDV(app, operador);
+
+        assertFalse(painel.resgateDePontosHabilitado());
+        assertEquals(" ", painel.textoSaldoPontos());
     }
 
     @Test

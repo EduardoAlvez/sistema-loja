@@ -2,6 +2,7 @@ package com.portfolio.sistemaloja.service;
 
 import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.BancoTeste;
+import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.Usuario;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,6 +46,27 @@ class CupomServiceTest {
         assertTrue(cupom.contains("Pagamento: Dinheiro"), cupom);
         assertTrue(cupom.contains("Troco:"), cupom);
         assertTrue(cupom.contains("2,50"), cupom);
+    }
+
+    @Test
+    void cupomMostraOsPontosResgatadosECreditados() {
+        Cliente cliente = app.getClientes().salvar(new Cliente(null, "Maria Souza", "52998224725", null,
+                null, true));
+        app.getFidelidadeRepository().aplicarMovimentos(List.of(
+                app.getFidelidade().credito(cliente.getId(), null, 100, "Credito de teste")));
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = new Venda();
+        venda.setUsuarioId(operador.getId());
+        venda.setClienteId(cliente.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda()));
+        venda.setPontosResgatados(20);
+
+        Venda registrada = app.getVendas().registrar(venda);
+
+        String cupom = app.getCupom().formatar(registrada);
+        assertTrue(cupom.contains("Pontos resgatados: 20"), cupom);
+        assertTrue(cupom.contains("Pontos creditados:"), cupom);
     }
 
     @Test

@@ -64,7 +64,9 @@ public class PainelPDV extends JPanel {
     private final JComboBox<FormaPagamento> pagamento = new JComboBox<>(FormaPagamento.values());
     private final JTextField valorPago = new JTextField(12);
     private final JTextField desconto = new JTextField(8);
+    private final JTextField pontosResgate = new JTextField(5);
     private final JLabel statusPagamento = new JLabel(" ");
+    private final JLabel saldoPontos = new JLabel(" ");
     private final JLabel total = new JLabel("R$ 0,00");
     private final JLabel troco = new JLabel("R$ 0,00");
     private final JLabel statusEstoque = new JLabel(" ");
@@ -127,6 +129,33 @@ public class PainelPDV extends JPanel {
 
     Object itemDoCarrinho(int linha, int coluna) {
         return modeloCarrinho.getValueAt(linha, coluna);
+    }
+
+    String textoSaldoPontos() {
+        return saldoPontos.getText();
+    }
+
+    String totalAtual() {
+        return total.getText();
+    }
+
+    boolean resgateDePontosHabilitado() {
+        return pontosResgate.isEnabled();
+    }
+
+    void selecionarCliente(Cliente alvo) {
+        for (int i = 0; i < cliente.getItemCount(); i++) {
+            Cliente item = cliente.getItemAt(i);
+            if (item != null && item.getId().equals(alvo.getId())) {
+                cliente.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
+    void informarPontos(int pontos) {
+        pontosResgate.setText(pontos > 0 ? String.valueOf(pontos) : "");
+        atualizarTotais();
     }
 
     private JPanel montarTopo() {
@@ -223,11 +252,24 @@ public class PainelPDV extends JPanel {
             }
         });
         pagamentoPainel.add(desconto);
+        pagamentoPainel.add(Ui.rotulo("Pontos:"));
+        pontosResgate.setToolTipText("Pontos do cliente resgatados como desconto. "
+                + "Cada ponto vale " + Ui.moeda(aplicacao.getFidelidade().getConfig().valorPorPonto())
+                + ". Limite do seu perfil: " + usuario.getPerfil().getPercentualMaximoDesconto() + "%");
+        pontosResgate.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                atualizarTotais();
+            }
+        });
+        pagamentoPainel.add(pontosResgate);
         statusPagamento.setForeground(Ui.COR_PRINCIPAL);
 
-        JPanel statusLinha = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 2));
+        JPanel statusLinha = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 2));
         statusLinha.setOpaque(false);
         statusLinha.add(statusPagamento);
+        saldoPontos.setForeground(new Color(110, 118, 126));
+        statusLinha.add(saldoPontos);
         JPanel pagamentoColuna = new JPanel(new GridLayout(2, 1, 0, 2));
         pagamentoColuna.setOpaque(false);
         pagamentoColuna.add(pagamentoPainel);
@@ -445,6 +487,8 @@ public class PainelPDV extends JPanel {
                 calcularTroco();
             }
         });
+
+        cliente.addActionListener(e -> atualizarSaldoPontos());
     }
 
     public Map<Integer, String> atalhos() {
@@ -671,8 +715,39 @@ public class PainelPDV extends JPanel {
         if (descontoValor.compareTo(subtotal) > 0) {
             descontoValor = subtotal;
         }
-        total.setText(Ui.moeda(subtotal.subtract(descontoValor)));
+        BigDecimal totalVenda = subtotal.subtract(descontoValor).subtract(valorDosPontosResgatados());
+        if (totalVenda.compareTo(BigDecimal.ZERO) < 0) {
+            totalVenda = BigDecimal.ZERO;
+        }
+        total.setText(Ui.moeda(totalVenda));
         calcularTroco();
+    }
+
+    private int pontosResgatados() {
+        String texto = pontosResgate.getText().trim();
+        if (texto.isEmpty()) {
+            return 0;
+        }
+        try {
+            return Math.max(Integer.parseInt(texto), 0);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private BigDecimal valorDosPontosResgatados() {
+        return aplicacao.getFidelidade().valorDosPontos(pontosResgatados());
+    }
+
+    private void atualizarSaldoPontos() {
+        Cliente selecionado = (Cliente) cliente.getSelectedItem();
+        pontosResgate.setEnabled(selecionado != null);
+        if (selecionado == null) {
+            saldoPontos.setText(" ");
+            return;
+        }
+        int saldo = aplicacao.getFidelidade().saldo(selecionado.getId());
+        saldoPontos.setText("Saldo: " + saldo + " ponto(s)");
     }
 
     private void calcularTroco() {
@@ -733,6 +808,7 @@ public class PainelPDV extends JPanel {
         venda.setUsuarioId(usuario.getId());
         venda.setFormaPagamento((FormaPagamento) pagamento.getSelectedItem());
         venda.setDesconto(parseMoeda(desconto.getText()));
+        venda.setPontosResgatados(pontosResgatados());
         venda.setValorPago(parseMoeda(valorPago.getText()));
         carrinho.forEach(venda::adicionarItem);
         pagamentosDivididos.forEach(venda::adicionarPagamento);
@@ -809,6 +885,9 @@ public class PainelPDV extends JPanel {
         if (pausada.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
             desconto.setText(pausada.getDesconto().toPlainString().replace('.', ','));
         }
+        if (pausada.getPontosResgatados() > 0) {
+            pontosResgate.setText(String.valueOf(pausada.getPontosResgatados()));
+        }
         if (pausada.getClienteId() != null) {
             for (int i = 0; i < cliente.getItemCount(); i++) {
                 Cliente item = cliente.getItemAt(i);
@@ -877,8 +956,10 @@ public class PainelPDV extends JPanel {
         sincronizarCarrinho();
         valorPago.setText("");
         desconto.setText("");
+        pontosResgate.setText("");
         busca.setText("");
         ajustarValorPago();
+        atualizarSaldoPontos();
     }
 
     private void recarregarClientes() {
@@ -888,6 +969,7 @@ public class PainelPDV extends JPanel {
             cliente.addItem(c);
         }
         cliente.setSelectedIndex(cliente.getItemCount() > 0 ? 0 : -1);
+        atualizarSaldoPontos();
     }
 
     private void recarregarProdutos() {

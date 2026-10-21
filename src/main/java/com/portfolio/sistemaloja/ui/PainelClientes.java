@@ -22,7 +22,7 @@ public class PainelClientes extends JPanel {
     private final transient Aplicacao aplicacao;
     private final JTextField busca = new JTextField(24);
     private final javax.swing.table.DefaultTableModel modelo =
-            Ui.modeloTabela("Nome", "CPF", "Telefone", "E-mail", "Situação");
+            Ui.modeloTabela("Nome", "CPF", "Telefone", "E-mail", "Pontos", "Situação");
     private final JTable tabela = Ui.tabela(modelo);
     private List<Cliente> linhas = List.of();
 
@@ -58,9 +58,12 @@ public class PainelClientes extends JPanel {
         excluir.addActionListener(e -> excluir());
         JButton atualizar = new JButton("Atualizar");
         atualizar.addActionListener(e -> atualizar());
+        JButton extrato = new JButton("Extrato de pontos");
+        extrato.addActionListener(e -> abrirExtrato());
         acoes.add(novo);
         acoes.add(editar);
         acoes.add(excluir);
+        acoes.add(extrato);
         acoes.add(atualizar);
         titulo.add(acoes, BorderLayout.EAST);
 
@@ -91,6 +94,7 @@ public class PainelClientes extends JPanel {
                     cliente.getCpf(),
                     cliente.getTelefone(),
                     cliente.getEmail(),
+                    cliente.getSaldoPontos(),
                     cliente.isAtivo() ? "Ativo" : "Inativo"
             });
         }
@@ -111,6 +115,15 @@ public class PainelClientes extends JPanel {
             alvo.setAtivo(true);
         }
         new DialogoCliente(javax.swing.SwingUtilities.getWindowAncestor(this), aplicacao, alvo, this::atualizar)
+                .setVisible(true);
+    }
+
+    private void abrirExtrato() {
+        Cliente cliente = selecionado();
+        if (cliente == null) {
+            return;
+        }
+        new DialogoExtratoFidelidade(javax.swing.SwingUtilities.getWindowAncestor(this), aplicacao, cliente)
                 .setVisible(true);
     }
 
