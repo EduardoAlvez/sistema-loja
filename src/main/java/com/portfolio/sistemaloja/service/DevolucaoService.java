@@ -75,8 +75,9 @@ public class DevolucaoService {
 
         int pontosSolicitados = 0;
         if (fidelidade != null && venda.getPontosCreditados() > 0) {
+            BigDecimal devolvidoAcumulado = devolucoes.valorDevolvido(venda.getId()).add(devolucao.getValor());
             pontosSolicitados = fidelidade.calcularEstorno(venda.getPontosCreditados(), venda.somaItensBrutos(),
-                    devolucao.getValor());
+                    devolvidoAcumulado, venda.getPontosEstornados());
         }
 
         Devolucao registrada = devolucoes.salvar(devolucao, pontosSolicitados);

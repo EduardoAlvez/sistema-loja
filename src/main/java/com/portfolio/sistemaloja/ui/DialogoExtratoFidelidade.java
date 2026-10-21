@@ -69,9 +69,7 @@ public class DialogoExtratoFidelidade extends JDialog {
             modelo.addRow(new Object[]{
                     movimento.dataHora() == null ? "" : Ui.dataHora(movimento.dataHora().toString()),
                     descricao(movimento),
-                    (movimento.tipo() == TipoMovimentoFidelidade.CREDITO
-                            || movimento.tipo() == TipoMovimentoFidelidade.ESTORNO_DEBITO ? "+" : "-")
-                            + movimento.pontos(),
+                    (movimento.tipo().creditaSaldo() ? "+" : "-") + movimento.pontos(),
                     movimento.descricao()
             });
         }

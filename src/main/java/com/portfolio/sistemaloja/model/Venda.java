@@ -183,7 +183,9 @@ public class Venda {
     }
 
     public void recalcularTotal() {
-        total = somaItens().subtract(desconto == null ? BigDecimal.ZERO : desconto);
+        total = somaItens()
+                .subtract(desconto == null ? BigDecimal.ZERO : desconto)
+                .subtract(valorPontos == null ? BigDecimal.ZERO : valorPontos);
     }
 
     public BigDecimal somaItens() {

@@ -70,6 +70,26 @@ class FidelidadeEstornoTest {
     }
 
     @Test
+    void devolucoesParciaisAcumulamOEstornoProporcional() {
+        Venda registrada = app.getVendas().registrar(venda(admin, 4, new BigDecimal("5.00"), 0));
+        assertEquals(5, app.getFidelidade().saldo(cliente.getId()));
+
+        devolverUmItemPorVez(registrada, 3);
+
+        assertEquals(2, app.getFidelidade().saldo(cliente.getId()));
+    }
+
+    @Test
+    void devolucoesParciaisSomadasEstornamTodosOsPontosCreditados() {
+        Venda registrada = app.getVendas().registrar(venda(admin, 4, new BigDecimal("5.00"), 0));
+        assertEquals(5, app.getFidelidade().saldo(cliente.getId()));
+
+        devolverUmItemPorVez(registrada, 4);
+
+        assertEquals(0, app.getFidelidade().saldo(cliente.getId()));
+    }
+
+    @Test
     void auditoriaRegistraOsPontosEstornadosEfetivos() {
         creditar(100);
         Venda registrada = app.getVendas().registrar(venda(admin, 4, BigDecimal.ZERO, 0));
@@ -139,7 +159,8 @@ class FidelidadeEstornoTest {
 
         assertEquals(100 - 20 + 9, app.getFidelidade().saldo(cliente.getId()));
         assertEquals(0, new BigDecimal("9.00").compareTo(registrada.getTotal()));
-        assertEquals(0, new BigDecimal("1.00").compareTo(registrada.getDesconto()));
+        assertEquals(0, new BigDecimal("1.00").compareTo(registrada.getValorPontos()));
+        assertEquals(0, new BigDecimal("0.00").compareTo(registrada.getDesconto()));
         long debitos = app.getFidelidade().extrato(cliente.getId()).stream()
                 .filter(movimento -> movimento.tipo() == TipoMovimentoFidelidade.DEBITO)
                 .count();
@@ -149,6 +170,12 @@ class FidelidadeEstornoTest {
     private DevolucaoItem itemDevolvido(Venda venda, int quantidade) {
         VendaItem item = venda.getItens().get(0);
         return new DevolucaoItem(item.getId(), null, null, quantidade, null);
+    }
+
+    private void devolverUmItemPorVez(Venda venda, int vezes) {
+        for (int i = 0; i < vezes; i++) {
+            app.getDevolucoes().devolver(venda.getId(), List.of(itemDevolvido(venda, 1)), false, null, operador);
+        }
     }
 
     private void creditar(int pontos) {

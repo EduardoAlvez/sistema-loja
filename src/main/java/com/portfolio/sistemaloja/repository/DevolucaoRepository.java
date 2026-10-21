@@ -4,6 +4,7 @@ import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.Devolucao;
 import com.portfolio.sistemaloja.model.DevolucaoItem;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -117,6 +118,19 @@ public class DevolucaoRepository {
             }
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao somar as devoluções do item", e);
+        }
+    }
+
+    public BigDecimal valorDevolvido(long vendaId) {
+        String sql = "SELECT COALESCE(SUM(valor), 0) FROM devolucoes WHERE venda_id = ?";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, vendaId);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                return resultado.next() ? resultado.getBigDecimal(1) : BigDecimal.ZERO;
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao somar as devoluções da venda", e);
         }
     }
 

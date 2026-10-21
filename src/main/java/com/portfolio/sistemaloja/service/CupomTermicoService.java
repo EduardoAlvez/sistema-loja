@@ -65,6 +65,13 @@ public class CupomTermicoService {
         if (venda.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
             linhas.add(linhaValor("Desconto", venda.getDesconto()));
         }
+        if (venda.getPontosResgatados() > 0) {
+            linhas.add("Pontos resgatados: " + venda.getPontosResgatados()
+                    + " (" + VALOR.format(venda.getValorPontos()) + ")");
+        }
+        if (venda.getPontosCreditados() > 0) {
+            linhas.add("Pontos creditados: " + venda.getPontosCreditados());
+        }
         linhas.add(linhaValor("TOTAL", venda.getTotal()));
         if (venda.isPagamentoDividido()) {
             linhas.add("Pagamento dividido:");

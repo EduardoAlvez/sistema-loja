@@ -185,9 +185,11 @@ public class VendaService {
         BigDecimal bruto = itens.stream()
                 .map(VendaItem::getValorBruto)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal descontoTotal = venda.getDesconto().add(itens.stream()
-                .map(VendaItem::getDesconto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        BigDecimal descontoTotal = venda.getDesconto()
+                .add(venda.getValorPontos())
+                .add(itens.stream()
+                        .map(VendaItem::getDesconto)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add));
         BigDecimal limite = bruto.multiply(BigDecimal.valueOf(percentual))
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         if (descontoTotal.compareTo(limite) > 0) {
@@ -217,6 +219,9 @@ public class VendaService {
             throw new ValidacaoException("Saldo de pontos insuficiente. O cliente tem " + saldo + " ponto(s).");
         }
         BigDecimal valor = fidelidade.valorDosPontos(pontos);
+        if (valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidacaoException("O resgate de pontos não gera desconto com a configuração atual.");
+        }
         BigDecimal desconto = venda.getDesconto() == null ? BigDecimal.ZERO : venda.getDesconto();
         BigDecimal somaItens = itens.stream()
                 .map(VendaItem::getSubtotal)
@@ -225,7 +230,6 @@ public class VendaService {
             throw new ValidacaoException("O resgate de pontos não pode zerar o total da venda.");
         }
         venda.setValorPontos(valor);
-        venda.setDesconto(desconto.add(valor));
     }
 
     private List<FidelidadeMovimento> movimentosDaVenda(Venda venda) {

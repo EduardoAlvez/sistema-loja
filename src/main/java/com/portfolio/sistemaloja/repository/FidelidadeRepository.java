@@ -124,8 +124,8 @@ public class FidelidadeRepository {
         }
         FidelidadeMovimento movimento = new FidelidadeMovimento(clienteId, vendaId, devolucaoId,
                 TipoMovimentoFidelidade.ESTORNO_CREDITO, aEstornar, descricao);
-        inserirExtrato(movimento, conexao, null, null);
         atualizarSaldo(movimento, conexao);
+        inserirExtrato(movimento, conexao, null, null);
         return aEstornar;
     }
 

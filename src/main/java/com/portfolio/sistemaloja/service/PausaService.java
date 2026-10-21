@@ -26,16 +26,16 @@ public class PausaService {
         if (venda.getItens().isEmpty()) {
             throw new ValidacaoException("Adicione pelo menos um item antes de pausar a venda.");
         }
-        venda.recalcularTotal();
         BigDecimal valorPontos = venda.getValorPontos();
-        BigDecimal descontoTotal = venda.getDesconto().add(valorPontos);
+        BigDecimal descontoManual = venda.getDesconto();
+        BigDecimal total = venda.somaItens().subtract(descontoManual).subtract(valorPontos);
         VendaPausada pausada = new VendaPausada();
         pausada.setClienteId(venda.getClienteId());
         pausada.setUsuarioId(venda.getUsuarioId() != null ? venda.getUsuarioId()
                 : usuario == null ? null : usuario.getId());
         pausada.setFormaPagamento(venda.getFormaPagamento());
-        pausada.setDesconto(descontoTotal);
-        pausada.setTotal(venda.somaItens().subtract(descontoTotal));
+        pausada.setDesconto(descontoManual);
+        pausada.setTotal(total);
         pausada.setPontosResgatados(venda.getPontosResgatados());
         pausada.setValorPontos(valorPontos);
         pausada.setObservacao(observacao);

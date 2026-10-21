@@ -248,14 +248,19 @@ Regras aplicadas:
 
 - **Crédito**: `floor(total da venda × pontos por real)`, calculado sobre o **total final** (já com
   descontos e resgates) — nunca sobre o valor pago (o troco não gera pontos).
-- **Resgate**: o PDV envia só a **quantidade de pontos**; o serviço converte para dinheiro e
-  soma em `venda.desconto`, então o resgate **respeita o limite de desconto do perfil**.
-- O resgate não pode zerar o total da venda e o saldo do cliente é debitado **na mesma transação**
-  da venda (o crédito da venda para no mesmo extrato).
+- **Resgate**: o PDV envia só a **quantidade de pontos**; o serviço converte para dinheiro e grava
+  em `venda.valorPontos` (o `venda.desconto` é sempre o desconto manual, o total é
+  `itens - desconto - valorPontos`), então o resgate **respeita o limite de desconto do perfil**
+  (desconto manual + pontos + descontos de item).
+- O resgate não pode zerar o total da venda, um resgate que não gere desconto é recusado e o saldo
+  do cliente é debitado **na mesma transação** da venda (o crédito da venda para no mesmo extrato).
 - **Devolução parcial**: estorna a parte proporcional dos pontos creditados, calculada sobre a
-  **mercadoria devolvida** em relação à mercadoria vendida (devolver 25% da mercadoria estorna 25%
-  dos pontos), limitado ao que ainda não foi estornado; **cancelar a venda** estorna todo o crédito
-  e devolve os pontos resgatados.
+  **mercadoria devolvida acumulados** em relação à mercadoria vendida (devolver 25% da mercadoria
+  estorna 25% dos pontos; devolver tudo em várias devoluções estorna o mesmo que devolver tudo de
+  uma vez), limitado ao que ainda não foi estornado e nunca acima dos pontos creditados;
+  **cancelar a venda** estorna todo o crédito e devolve os pontos resgatados.
+- **Regra conhecida (produto)**: na devolução os pontos **resgatados** não voltam ao cliente (só no
+  cancelamento) e o crédito do cliente é o valor da mercadoria devolvida.
 - A trilha de auditoria e o extrato registram os pontos **efetivamente** estornados, e a devolução
   guarda o quanto estornou em `devolucoes.pontos_estornados`.
 - Saldo e estornos ficam registrados no **extrato de pontos** (crédito, resgate, estorno de crédito
@@ -267,7 +272,7 @@ Regras aplicadas:
 mvn test
 ```
 
-**253 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**255 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -329,7 +334,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V15 (esquema, caixa, PIX, estoque mínimo, promoções, pontos)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 253 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 255 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -418,7 +423,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 253 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 255 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 

@@ -40,18 +40,19 @@ public class FidelidadeService {
         return config.calcularPontos(totalVenda);
     }
 
-    public int calcularEstorno(int pontosCreditados, BigDecimal baseVenda, BigDecimal baseDevolucao) {
+    public int calcularEstorno(int pontosCreditados, BigDecimal baseVenda, BigDecimal devolvidoAcumulado,
+                               int jaEstornados) {
         if (pontosCreditados <= 0 || baseVenda == null || baseVenda.compareTo(BigDecimal.ZERO) <= 0) {
             return 0;
         }
-        BigDecimal devolvido = baseDevolucao == null ? BigDecimal.ZERO : baseDevolucao;
+        BigDecimal devolvido = devolvidoAcumulado == null ? BigDecimal.ZERO : devolvidoAcumulado;
         if (devolvido.compareTo(BigDecimal.ZERO) <= 0) {
             return 0;
         }
         BigDecimal fracao = devolvido.min(baseVenda).divide(baseVenda, 6, RoundingMode.HALF_UP);
-        int estorno = BigDecimal.valueOf(pontosCreditados).multiply(fracao)
+        int estornoAcumulado = BigDecimal.valueOf(pontosCreditados).multiply(fracao)
                 .setScale(0, RoundingMode.FLOOR).intValue();
-        return Math.max(estorno, 0);
+        return Math.max(estornoAcumulado - Math.max(jaEstornados, 0), 0);
     }
 
     public FidelidadeMovimento credito(long clienteId, Long vendaId, int pontos, String descricao) {

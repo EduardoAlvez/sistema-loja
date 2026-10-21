@@ -67,7 +67,7 @@ class VendaFidelidadeTest {
 
         assertEquals(20, registrada.getPontosResgatados());
         assertEquals(0, new BigDecimal("1.00").compareTo(registrada.getValorPontos()));
-        assertEquals(0, new BigDecimal("1.00").compareTo(registrada.getDesconto()));
+        assertEquals(0, new BigDecimal("0.00").compareTo(registrada.getDesconto()));
         assertEquals(0, new BigDecimal("9.00").compareTo(registrada.getTotal()));
         assertEquals(100 - 20 + 9, app.getFidelidade().saldo(cliente.getId()));
     }
@@ -126,6 +126,34 @@ class VendaFidelidadeTest {
 
         assertTrue(erro.getMessage().contains("excede o limite"));
         assertEquals(100, app.getFidelidade().saldo(cliente.getId()));
+    }
+
+    @Test
+    void resgateQueNaoGeraDescontoEhRecusado() {
+        System.setProperty("fidelidade.valorPorPonto", "0.001");
+        Aplicacao local;
+        try {
+            local = BancoTeste.criar("pontosinficientes" + System.nanoTime());
+        } finally {
+            System.clearProperty("fidelidade.valorPorPonto");
+        }
+        Usuario adminLocal = local.getAuth().autenticar("admin", "admin123");
+        Cliente clienteLocal = local.getClientes().salvar(new Cliente(null, "Joao Lima", "52998224725",
+                "11988887777", "joao@exemplo.com", true));
+        local.getFidelidadeRepository().aplicarMovimentos(List.of(
+                local.getFidelidade().credito(clienteLocal.getId(), null, 10, "Credito de teste")));
+        Venda venda = new Venda();
+        venda.setUsuarioId(adminLocal.getId());
+        venda.setClienteId(clienteLocal.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.setPontosResgatados(1);
+        venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 1, agua.getPrecoVenda()));
+
+        ValidacaoException erro = assertThrows(ValidacaoException.class,
+                () -> local.getVendas().registrar(venda));
+
+        assertTrue(erro.getMessage().contains("não gera desconto"), erro.getMessage());
+        assertEquals(10, local.getFidelidade().saldo(clienteLocal.getId()));
     }
 
     private void creditar(int pontos) {
