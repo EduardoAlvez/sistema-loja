@@ -139,19 +139,6 @@ public class PainelPDV extends JPanel {
 
         JPanel linhaCliente = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         linhaCliente.setOpaque(false);
-        statusCaixa.setFont(statusCaixa.getFont().deriveFont(Font.BOLD, 12f));
-        linhaCliente.add(statusCaixa);
-        botaoCaixa.addActionListener(e -> acaoCaixa());
-        linhaCliente.add(botaoCaixa);
-        botaoSangria.addActionListener(e -> movimentarCaixa(TipoLancamentoCaixa.SANGRIA));
-        linhaCliente.add(botaoSangria);
-        botaoSuprimento.addActionListener(e -> movimentarCaixa(TipoLancamentoCaixa.SUPRIMENTO));
-        linhaCliente.add(botaoSuprimento);
-        botaoFecharCaixa.addActionListener(e -> fecharCaixa());
-        linhaCliente.add(botaoFecharCaixa);
-        JButton devolucao = new JButton("Devolução");
-        devolucao.addActionListener(e -> abrirDevolucao());
-        linhaCliente.add(devolucao);
         linhaCliente.add(Ui.rotulo("Cliente:"));
         cliente.setPreferredSize(new Dimension(240, cliente.getPreferredSize().height));
         linhaCliente.add(cliente);
@@ -168,8 +155,25 @@ public class PainelPDV extends JPanel {
         linhaBusca.add(adicionar);
         linhaBusca.add(statusEstoque);
 
+        JPanel linhaCaixa = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        linhaCaixa.setOpaque(false);
+        statusCaixa.setFont(statusCaixa.getFont().deriveFont(Font.BOLD, 12f));
+        linhaCaixa.add(statusCaixa);
+        botaoCaixa.addActionListener(e -> acaoCaixa());
+        linhaCaixa.add(botaoCaixa);
+        botaoSangria.addActionListener(e -> movimentarCaixa(TipoLancamentoCaixa.SANGRIA));
+        linhaCaixa.add(botaoSangria);
+        botaoSuprimento.addActionListener(e -> movimentarCaixa(TipoLancamentoCaixa.SUPRIMENTO));
+        linhaCaixa.add(botaoSuprimento);
+        botaoFecharCaixa.addActionListener(e -> fecharCaixa());
+        linhaCaixa.add(botaoFecharCaixa);
+        JButton devolucao = new JButton("Devolução");
+        devolucao.addActionListener(e -> abrirDevolucao());
+        linhaCaixa.add(devolucao);
+
         topo.add(titulo, BorderLayout.NORTH);
         topo.add(linhaBusca, BorderLayout.CENTER);
+        topo.add(linhaCaixa, BorderLayout.SOUTH);
         return topo;
     }
 
@@ -220,7 +224,14 @@ public class PainelPDV extends JPanel {
         });
         pagamentoPainel.add(desconto);
         statusPagamento.setForeground(Ui.COR_PRINCIPAL);
-        pagamentoPainel.add(statusPagamento);
+
+        JPanel statusLinha = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 2));
+        statusLinha.setOpaque(false);
+        statusLinha.add(statusPagamento);
+        JPanel pagamentoColuna = new JPanel(new GridLayout(2, 1, 0, 2));
+        pagamentoColuna.setOpaque(false);
+        pagamentoColuna.add(pagamentoPainel);
+        pagamentoColuna.add(statusLinha);
 
         JPanel totais = new JPanel(new GridLayout(2, 2, 12, 0));
         totais.setOpaque(false);
@@ -234,7 +245,7 @@ public class PainelPDV extends JPanel {
         totais.add(total);
         totais.add(troco);
 
-        JPanel botoes = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JPanel botoes = new JPanel(new GridLayout(2, 4, 8, 6));
         botoes.setOpaque(false);
         JButton limpar = new JButton("Limpar carrinho [F8]");
         limpar.addActionListener(e -> limpar());
@@ -264,13 +275,13 @@ public class PainelPDV extends JPanel {
         botoes.add(ajuda);
         botoes.add(finalizar);
 
-        JPanel esquerda = new JPanel(new BorderLayout(10, 0));
-        esquerda.setOpaque(false);
-        esquerda.add(pagamentoPainel, BorderLayout.NORTH);
+        JPanel linhaSuperior = new JPanel(new BorderLayout(16, 0));
+        linhaSuperior.setOpaque(false);
+        linhaSuperior.add(pagamentoColuna, BorderLayout.WEST);
+        linhaSuperior.add(totais, BorderLayout.EAST);
 
-        rodape.add(esquerda, BorderLayout.WEST);
-        rodape.add(totais, BorderLayout.CENTER);
-        rodape.add(botoes, BorderLayout.EAST);
+        rodape.add(linhaSuperior, BorderLayout.NORTH);
+        rodape.add(botoes, BorderLayout.SOUTH);
         return rodape;
     }
 

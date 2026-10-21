@@ -7,10 +7,20 @@ import com.portfolio.sistemaloja.model.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JTextField;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Rectangle;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PainelPDVTest {
 
@@ -57,6 +67,112 @@ class PainelPDVTest {
 
         painel.adicionarProduto(agua);
         assertEquals(Ui.moeda(agua.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
+    }
+
+    @Test
+    void controlesDoPdvNaoSobrepoemNemEstouramATela() {
+        PainelPDV painel = new PainelPDV(app, operador);
+        painel.setSize(1100, 720);
+        aplicarLayout(painel);
+
+        List<Component> controles = controles(painel);
+        assertTrue(controles.size() > 15, "controles do PDV nao encontrados");
+
+        for (Component controle : controles) {
+            Rectangle area = areaNoPainel(painel, controle);
+            assertTrue(area.width > 0 && area.height > 0,
+                    "controle sem area util: " + nome(controle) + " / " + classe(controle));
+            assertTrue(area.x + area.width <= 1100,
+                    "controle estourou a largura da tela: " + nome(controle) + " " + area);
+            assertTrue(area.y + area.height <= 720,
+                    "controle estourou a altura da tela: " + nome(controle) + " " + area);
+        }
+
+        for (int i = 0; i < controles.size(); i++) {
+            for (int j = i + 1; j < controles.size(); j++) {
+                Component primeiro = controles.get(i);
+                Component segundo = controles.get(j);
+                if (descendente(primeiro, segundo) || descendente(segundo, primeiro)) {
+                    continue;
+                }
+                Rectangle inter = areaNoPainel(painel, primeiro).intersection(areaNoPainel(painel, segundo));
+                assertTrue(inter.width <= 0 || inter.height <= 0,
+                        "controles sobrepostos: " + nome(primeiro) + " e " + nome(segundo) + " " + inter);
+            }
+        }
+    }
+
+    private void aplicarLayout(Component componente) {
+        componente.doLayout();
+        if (componente instanceof Container container) {
+            for (Component filho : container.getComponents()) {
+                aplicarLayout(filho);
+            }
+        }
+    }
+
+    private List<Component> controles(Component componente) {
+        List<Component> lista = new ArrayList<>();
+        if (componente instanceof JButton || componente instanceof JTextField
+                || componente instanceof JComboBox<?> || componente instanceof JLabel) {
+            if (!parteDeWidget(componente)) {
+                lista.add(componente);
+            }
+        }
+        if (componente instanceof Container container) {
+            for (Component filho : container.getComponents()) {
+                lista.addAll(controles(filho));
+            }
+        }
+        return lista;
+    }
+
+    private boolean parteDeWidget(Component componente) {
+        Component atual = componente.getParent();
+        while (atual != null) {
+            if (atual instanceof JComboBox<?> || atual instanceof javax.swing.JScrollPane) {
+                return true;
+            }
+            atual = atual.getParent();
+        }
+        return false;
+    }
+
+    private Rectangle areaNoPainel(Component raiz, Component componente) {
+        Rectangle area = new Rectangle(componente.getX(), componente.getY(),
+                componente.getWidth(), componente.getHeight());
+        Component atual = componente.getParent();
+        while (atual != null && atual != raiz) {
+            area.translate(atual.getX(), atual.getY());
+            atual = atual.getParent();
+        }
+        return area;
+    }
+
+    private boolean descendente(Component possivelPai, Component componente) {
+        Component atual = componente.getParent();
+        while (atual != null) {
+            if (atual == possivelPai) {
+                return true;
+            }
+            atual = atual.getParent();
+        }
+        return false;
+    }
+
+    private String nome(Component componente) {
+        if (componente instanceof JButton botao) {
+            return "botao '" + botao.getText() + "'";
+        }
+        if (componente instanceof JLabel rotulo) {
+            return "rotulo '" + rotulo.getText() + "'";
+        }
+        return componente.getClass().getSimpleName();
+    }
+
+    private String classe(Component componente) {
+        return componente.getClass().getName() + " pai=" + (componente.getParent() == null
+                ? "null" : componente.getParent().getClass().getName());
     }
 
     private int linhaDe(PainelPDV painel, String nome) {

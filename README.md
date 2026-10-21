@@ -235,7 +235,7 @@ Regras aplicadas na venda:
 mvn test
 ```
 
-**219 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**220 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -296,7 +296,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V12 (esquema, caixa, PIX, estoque mínimo, promoções...)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 219 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 220 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -385,7 +385,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 219 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 220 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 

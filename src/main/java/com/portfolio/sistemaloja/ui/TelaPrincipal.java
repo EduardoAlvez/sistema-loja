@@ -37,6 +37,7 @@ public class TelaPrincipal extends JFrame {
         setTitle("Sistema de Gestão de Loja - " + usuario.getNome());
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1100, 720));
+        setSize(1320, 820);
         setLocationRelativeTo(null);
         montar();
         iniciarRelogio();
