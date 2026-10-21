@@ -33,6 +33,8 @@ public class PausaService {
         pausada.setFormaPagamento(venda.getFormaPagamento());
         pausada.setDesconto(venda.getDesconto());
         pausada.setTotal(venda.getTotal());
+        pausada.setPontosResgatados(venda.getPontosResgatados());
+        pausada.setValorPontos(venda.getValorPontos());
         pausada.setObservacao(observacao);
         pausada.getItens().addAll(venda.getItens());
         pausada.getPagamentos().addAll(venda.getPagamentos());

@@ -65,13 +65,25 @@ class FidelidadeServiceTest {
     }
 
     @Test
-    void estornoDevolveOsPontosAoSaldo() {
+    void estornoCreditoRetiraOsPontosDoSaldo() {
         app.getFidelidadeRepository().aplicarMovimentos(List.of(
                 app.getFidelidade().credito(cliente.getId(), 10L, 50, "Venda V000001")));
         app.getFidelidadeRepository().aplicarMovimentos(List.of(
                 app.getFidelidade().estornoCredito(cliente.getId(), 10L, 30, "Estorno V000001")));
 
-        assertEquals(80, app.getFidelidade().saldo(cliente.getId()));
+        assertEquals(20, app.getFidelidade().saldo(cliente.getId()));
+    }
+
+    @Test
+    void estornoDebitoDevolveOsPontosResgatadosAoSaldo() {
+        app.getFidelidadeRepository().aplicarMovimentos(List.of(
+                app.getFidelidade().credito(cliente.getId(), 10L, 50, "Venda V000001")));
+        app.getFidelidadeRepository().aplicarMovimentos(List.of(
+                app.getFidelidade().debito(cliente.getId(), 11L, 20, "Resgate V000002")));
+        app.getFidelidadeRepository().aplicarMovimentos(List.of(
+                app.getFidelidade().estornoDebito(cliente.getId(), 11L, 20, "Cancelamento V000002")));
+
+        assertEquals(50, app.getFidelidade().saldo(cliente.getId()));
     }
 
     @Test

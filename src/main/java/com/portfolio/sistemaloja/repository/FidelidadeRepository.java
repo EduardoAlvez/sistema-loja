@@ -81,11 +81,47 @@ public class FidelidadeRepository {
     }
 
     public int pontosEstornados(Connection conexao, long vendaId) throws SQLException {
-        String sql = "SELECT COALESCE(SUM(pontos), 0) FROM fidelidade_extrato "
-                + "WHERE venda_id = ? AND tipo = ?";
+        String sql = "SELECT pontos_estornados FROM vendas WHERE id = ?";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, vendaId);
-            preparada.setString(2, TipoMovimentoFidelidade.ESTORNO_CREDITO.name());
+            try (ResultSet resultado = preparada.executeQuery()) {
+                return resultado.next() ? resultado.getInt(1) : 0;
+            }
+        }
+    }
+
+    public int estornarCredito(Connection conexao, long clienteId, long vendaId, Long devolucaoId,
+            int pontosSolicitados, String descricao) throws SQLException {
+        if (pontosSolicitados <= 0) {
+            return 0;
+        }
+        int pontosCreditados = pontosCreditados(conexao, vendaId);
+        int jaEstornados = pontosEstornados(conexao, vendaId);
+        int aEstornar = Math.min(pontosSolicitados, pontosCreditados - jaEstornados);
+        if (aEstornar <= 0) {
+            return 0;
+        }
+        String sql = "UPDATE vendas SET pontos_estornados = pontos_estornados + ? "
+                + "WHERE id = ? AND pontos_estornados + ? <= pontos_creditados";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setInt(1, aEstornar);
+            preparada.setLong(2, vendaId);
+            preparada.setInt(3, aEstornar);
+            if (preparada.executeUpdate() == 0) {
+                return 0;
+            }
+        }
+        FidelidadeMovimento movimento = new FidelidadeMovimento(clienteId, vendaId, devolucaoId,
+                TipoMovimentoFidelidade.ESTORNO_CREDITO, aEstornar, descricao);
+        inserirExtrato(movimento, conexao, null, null);
+        atualizarSaldo(movimento, conexao);
+        return aEstornar;
+    }
+
+    private int pontosCreditados(Connection conexao, long vendaId) throws SQLException {
+        String sql = "SELECT pontos_creditados FROM vendas WHERE id = ?";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, vendaId);
             try (ResultSet resultado = preparada.executeQuery()) {
                 return resultado.next() ? resultado.getInt(1) : 0;
             }
@@ -122,7 +158,20 @@ public class FidelidadeRepository {
             debitarComSaldoSuficiente(movimento, conexao);
             return;
         }
+        if (movimento.tipo() == TipoMovimentoFidelidade.ESTORNO_CREDITO) {
+            debitar(movimento, conexao);
+            return;
+        }
         String sql = "UPDATE clientes SET saldo_pontos = saldo_pontos + ? WHERE id = ?";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setInt(1, movimento.pontos());
+            preparada.setLong(2, movimento.clienteId());
+            preparada.executeUpdate();
+        }
+    }
+
+    private void debitar(FidelidadeMovimento movimento, Connection conexao) throws SQLException {
+        String sql = "UPDATE clientes SET saldo_pontos = saldo_pontos - ? WHERE id = ?";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setInt(1, movimento.pontos());
             preparada.setLong(2, movimento.clienteId());

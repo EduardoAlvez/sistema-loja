@@ -15,6 +15,8 @@ public class VendaPausada {
     private FormaPagamento formaPagamento;
     private BigDecimal desconto = BigDecimal.ZERO;
     private BigDecimal total = BigDecimal.ZERO;
+    private int pontosResgatados;
+    private BigDecimal valorPontos = BigDecimal.ZERO;
     private String observacao;
     private final List<VendaItem> itens = new ArrayList<>();
     private final List<VendaPagamento> pagamentos = new ArrayList<>();
@@ -90,6 +92,22 @@ public class VendaPausada {
         this.total = total == null ? BigDecimal.ZERO : total;
     }
 
+    public int getPontosResgatados() {
+        return pontosResgatados;
+    }
+
+    public void setPontosResgatados(int pontosResgatados) {
+        this.pontosResgatados = pontosResgatados;
+    }
+
+    public BigDecimal getValorPontos() {
+        return valorPontos;
+    }
+
+    public void setValorPontos(BigDecimal valorPontos) {
+        this.valorPontos = valorPontos == null ? BigDecimal.ZERO : valorPontos;
+    }
+
     public String getObservacao() {
         return observacao;
     }
@@ -116,6 +134,8 @@ public class VendaPausada {
         venda.setUsuarioId(usuarioId);
         venda.setFormaPagamento(formaPagamento);
         venda.setDesconto(desconto);
+        venda.setPontosResgatados(pontosResgatados);
+        venda.setValorPontos(valorPontos);
         for (VendaItem item : itens) {
             venda.adicionarItem(item);
         }

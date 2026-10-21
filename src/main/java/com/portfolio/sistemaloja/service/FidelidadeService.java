@@ -6,6 +6,7 @@ import com.portfolio.sistemaloja.model.TipoMovimentoFidelidade;
 import com.portfolio.sistemaloja.repository.FidelidadeRepository;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 public class FidelidadeService {
@@ -38,6 +39,20 @@ public class FidelidadeService {
 
     public int calcularCredito(BigDecimal totalVenda) {
         return config.calcularPontos(totalVenda);
+    }
+
+    public int calcularEstorno(int pontosCreditados, BigDecimal valorVenda, BigDecimal valorDevolvido) {
+        if (pontosCreditados <= 0 || valorVenda == null || valorVenda.compareTo(BigDecimal.ZERO) <= 0) {
+            return 0;
+        }
+        BigDecimal devolvido = valorDevolvido == null ? BigDecimal.ZERO : valorDevolvido;
+        if (devolvido.compareTo(BigDecimal.ZERO) <= 0) {
+            return 0;
+        }
+        BigDecimal fracao = devolvido.min(valorVenda).divide(valorVenda, 6, RoundingMode.HALF_UP);
+        int estorno = BigDecimal.valueOf(pontosCreditados).multiply(fracao)
+                .setScale(0, RoundingMode.FLOOR).intValue();
+        return Math.max(estorno, 0);
     }
 
     public FidelidadeMovimento credito(long clienteId, Long vendaId, int pontos, String descricao) {

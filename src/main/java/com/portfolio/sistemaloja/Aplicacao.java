@@ -84,7 +84,7 @@ public class Aplicacao {
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria);
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();
-        this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria);
+        this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria, fidelidade);
         this.cupomTermico = new CupomTermicoService(ConfiguracaoPix.padrao());
         ImpressoraConfig impressoraConfig = ImpressoraConfig.padrao();
         this.impressao = new ImpressaoCupomService(

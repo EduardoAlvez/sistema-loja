@@ -20,7 +20,8 @@ public class VendaPausadaRepository {
 
     private static final String SELECT_BASE = """
             SELECT p.id, p.data_hora, p.cliente_id, cl.nome AS cliente_nome, p.usuario_id,
-                   us.nome AS usuario_nome, p.forma_pagamento, p.desconto, p.total, p.observacao
+                   us.nome AS usuario_nome, p.forma_pagamento, p.desconto, p.total, p.observacao,
+                   p.pontos_resgatados, p.valor_pontos
               FROM vendas_pausadas p
               LEFT JOIN clientes cl ON cl.id = p.cliente_id
               LEFT JOIN usuarios us ON us.id = p.usuario_id""";
@@ -99,7 +100,7 @@ public class VendaPausadaRepository {
 
     private void inserir(VendaPausada pausada, Connection conexao) throws SQLException {
         String sql = "INSERT INTO vendas_pausadas (cliente_id, usuario_id, forma_pagamento, desconto, total, "
-                + "observacao) VALUES (?, ?, ?, ?, ?, ?)";
+                + "observacao, pontos_resgatados, valor_pontos) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             if (pausada.getClienteId() == null) {
                 preparada.setObject(1, null);
@@ -119,6 +120,8 @@ public class VendaPausadaRepository {
             preparada.setBigDecimal(4, pausada.getDesconto());
             preparada.setBigDecimal(5, pausada.getTotal());
             preparada.setString(6, pausada.getObservacao());
+            preparada.setInt(7, pausada.getPontosResgatados());
+            preparada.setBigDecimal(8, pausada.getValorPontos());
             preparada.executeUpdate();
             try (ResultSet chaves = preparada.getGeneratedKeys()) {
                 if (chaves.next()) {
@@ -217,6 +220,9 @@ public class VendaPausadaRepository {
             pausada.setFormaPagamento(FormaPagamento.valueOf(forma));
         }
         pausada.setTotal(resultado.getBigDecimal("total"));
+        pausada.setPontosResgatados(resultado.getInt("pontos_resgatados"));
+        BigDecimal valorPontos = resultado.getBigDecimal("valor_pontos");
+        pausada.setValorPontos(valorPontos == null ? BigDecimal.ZERO : valorPontos);
         pausada.setObservacao(resultado.getString("observacao"));
         return pausada;
     }

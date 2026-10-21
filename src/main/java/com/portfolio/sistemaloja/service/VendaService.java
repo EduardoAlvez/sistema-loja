@@ -95,9 +95,24 @@ public class VendaService {
     }
 
     public void cancelar(long vendaId) {
+        Venda venda = vendas.buscarPorId(vendaId)
+                .orElseThrow(() -> new ValidacaoException("Venda não encontrada."));
+        if (venda.getStatus() == StatusVenda.CANCELADA) {
+            return;
+        }
         vendas.cancelar(vendaId);
         LOG.warn("Venda {} cancelada", vendaId);
         auditoria.registrar("VENDA_CANCELADA", "VENDA", vendaId, null);
+        if (venda.getClienteId() != null && venda.getPontosCreditados() > 0) {
+            auditoria.registrar("PONTOS_ESTORNADOS", "CLIENTE", venda.getClienteId(),
+                    venda.getPontosCreditados() + " ponto(s) estornados no cancelamento da venda "
+                            + venda.getNumero());
+        }
+        if (venda.getClienteId() != null && venda.getPontosResgatados() > 0) {
+            auditoria.registrar("PONTOS_ESTORNADOS", "CLIENTE", venda.getClienteId(),
+                    venda.getPontosResgatados() + " ponto(s) devolvidos ao cliente no cancelamento da venda "
+                            + venda.getNumero());
+        }
     }
 
     public List<Venda> listar(java.time.LocalDate inicio, java.time.LocalDate fim) {

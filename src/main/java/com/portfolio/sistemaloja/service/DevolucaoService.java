@@ -18,11 +18,18 @@ public class DevolucaoService {
     private final DevolucaoRepository devolucoes;
     private final VendaRepository vendas;
     private final AuditoriaService auditoria;
+    private final FidelidadeService fidelidade;
 
     public DevolucaoService(DevolucaoRepository devolucoes, VendaRepository vendas, AuditoriaService auditoria) {
+        this(devolucoes, vendas, auditoria, null);
+    }
+
+    public DevolucaoService(DevolucaoRepository devolucoes, VendaRepository vendas, AuditoriaService auditoria,
+                            FidelidadeService fidelidade) {
         this.devolucoes = devolucoes;
         this.vendas = vendas;
         this.auditoria = auditoria;
+        this.fidelidade = fidelidade;
     }
 
     public Devolucao devolver(long vendaId, List<DevolucaoItem> itens, boolean creditoNoCliente,
@@ -66,10 +73,20 @@ public class DevolucaoService {
             throw new ValidacaoException("O valor da devolução deve ser maior que zero.");
         }
 
-        Devolucao registrada = devolucoes.salvar(devolucao);
+        int pontosEstornados = 0;
+        if (fidelidade != null && venda.getPontosCreditados() > 0) {
+            pontosEstornados = fidelidade.calcularEstorno(venda.getPontosCreditados(), venda.getTotal(),
+                    devolucao.getValor());
+        }
+
+        Devolucao registrada = devolucoes.salvar(devolucao, pontosEstornados);
         auditoria.registrar("DEVOLUCAO_VENDA", "venda", venda.getId(), "Devolução de "
                 + registrada.getQuantidadeItens() + " item(ns) no valor de R$ " + registrada.getValor()
                 + (creditoNoCliente ? " creditada no cliente" : " sem crédito"));
+        if (pontosEstornados > 0) {
+            auditoria.registrar("PONTOS_ESTORNADOS", "CLIENTE", venda.getClienteId(),
+                    pontosEstornados + " ponto(s) estornados na devolucao " + registrada.getId());
+        }
         return registrada;
     }
 

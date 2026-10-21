@@ -4,6 +4,7 @@ import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.FidelidadeMovimento;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.StatusVenda;
+import com.portfolio.sistemaloja.model.TipoMovimentoFidelidade;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.model.VendaPagamento;
@@ -26,7 +27,8 @@ public class VendaRepository {
     private static final String SELECT_BASE = """
             SELECT v.id, v.numero, v.data_hora, v.cliente_id, cl.nome AS cliente_nome,
                    v.usuario_id, us.nome AS usuario_nome, v.forma_pagamento, v.desconto, v.total,
-                   v.valor_pago, v.troco, v.status, v.pontos_creditados, v.pontos_resgatados, v.valor_pontos
+                   v.valor_pago, v.troco, v.status, v.pontos_creditados, v.pontos_resgatados, v.valor_pontos,
+                   v.pontos_estornados
               FROM vendas v
               LEFT JOIN clientes cl ON cl.id = v.cliente_id
               LEFT JOIN usuarios us ON us.id = v.usuario_id""";
@@ -184,6 +186,7 @@ public class VendaRepository {
                     preparada.setLong(2, vendaId);
                     preparada.executeUpdate();
                 }
+                estornarPontos(venda, conexao);
                 conexao.commit();
             } catch (SQLException | RepositorioException e) {
                 conexao.rollback();
@@ -191,6 +194,22 @@ public class VendaRepository {
             }
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao cancelar a venda", e);
+        }
+    }
+
+    private void estornarPontos(Venda venda, Connection conexao) throws SQLException {
+        if (venda.getClienteId() == null) {
+            return;
+        }
+        if (venda.getPontosCreditados() > 0) {
+            fidelidade.estornarCredito(conexao, venda.getClienteId(), venda.getId(), null,
+                    venda.getPontosCreditados(), "Estorno de pontos da venda " + venda.getNumero());
+        }
+        if (venda.getPontosResgatados() > 0) {
+            FidelidadeMovimento estorno = new FidelidadeMovimento(venda.getClienteId(), venda.getId(), null,
+                    TipoMovimentoFidelidade.ESTORNO_DEBITO, venda.getPontosResgatados(),
+                    "Devolucao dos pontos resgatados na venda " + venda.getNumero());
+            fidelidade.aplicarMovimentos(conexao, List.of(estorno), null, null);
         }
     }
 
@@ -329,6 +348,7 @@ public class VendaRepository {
         venda.setPontosCreditados(resultado.getInt("pontos_creditados"));
         venda.setPontosResgatados(resultado.getInt("pontos_resgatados"));
         venda.setValorPontos(resultado.getBigDecimal("valor_pontos"));
+        venda.setPontosEstornados(resultado.getInt("pontos_estornados"));
         return venda;
     }
 

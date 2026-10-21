@@ -15,12 +15,18 @@ import java.util.List;
 public class DevolucaoRepository {
 
     private final ConexaoFonte fonte;
+    private final FidelidadeRepository fidelidade;
 
     public DevolucaoRepository(ConexaoFonte fonte) {
         this.fonte = fonte;
+        this.fidelidade = new FidelidadeRepository(fonte);
     }
 
     public Devolucao salvar(Devolucao devolucao) {
+        return salvar(devolucao, 0);
+    }
+
+    public Devolucao salvar(Devolucao devolucao, int pontosEstornados) {
         try (Connection conexao = fonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
@@ -31,6 +37,11 @@ public class DevolucaoRepository {
                 }
                 if (devolucao.isCreditoCliente()) {
                     creditarCliente(devolucao, conexao);
+                }
+                if (pontosEstornados > 0 && devolucao.getClienteId() != null) {
+                    fidelidade.estornarCredito(conexao, devolucao.getClienteId(), devolucao.getVendaId(),
+                            devolucao.getId(), pontosEstornados,
+                            "Estorno de pontos da devolucao " + devolucao.getId());
                 }
                 conexao.commit();
             } catch (SQLException e) {
