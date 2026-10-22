@@ -23,6 +23,7 @@ public class Venda {
     private int pontosCreditados;
     private int pontosEstornados;
     private BigDecimal valorPontos = BigDecimal.ZERO;
+    private BigDecimal somaItensBrutos;
     private final List<VendaItem> itens = new ArrayList<>();
     private final List<VendaPagamento> pagamentos = new ArrayList<>();
 
@@ -195,8 +196,15 @@ public class Venda {
     }
 
     public BigDecimal somaItensBrutos() {
+        if (somaItensBrutos != null) {
+            return somaItensBrutos;
+        }
         return itens.stream()
                 .map(VendaItem::getValorBruto)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public void setSomaItensBrutos(BigDecimal somaItensBrutos) {
+        this.somaItensBrutos = somaItensBrutos;
     }
 }

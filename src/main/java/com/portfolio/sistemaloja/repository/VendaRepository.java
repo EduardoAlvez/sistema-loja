@@ -199,6 +199,18 @@ public class VendaRepository {
         return pontosEstornados;
     }
 
+    public void travarParaEstorno(long vendaId, Connection conexao) throws SQLException {
+        String sql = "SELECT id FROM vendas WHERE id = ? FOR UPDATE";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, vendaId);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (!resultado.next()) {
+                    throw new RepositorioException("Venda não encontrada: " + vendaId, null);
+                }
+            }
+        }
+    }
+
     private int estornarPontos(Venda venda, Connection conexao) throws SQLException {
         if (venda.getClienteId() == null) {
             return 0;

@@ -258,7 +258,9 @@ Regras aplicadas:
   **mercadoria devolvida acumulados** em relação à mercadoria vendida (devolver 25% da mercadoria
   estorna 25% dos pontos; devolver tudo em várias devoluções estorna o mesmo que devolver tudo de
   uma vez), limitado ao que ainda não foi estornado e nunca acima dos pontos creditados;
-  **cancelar a venda** estorna todo o crédito e devolve os pontos resgatados.
+  o cálculo acontece **dentro da transação da devolução**, com a venda travada (`SELECT ... FOR UPDATE`),
+  para que devoluções simultâneas da mesma venda não estornem em dobro; **cancelar a venda** estorna
+  todo o crédito e devolve os pontos resgatados.
 - **Regra conhecida (produto)**: na devolução os pontos **resgatados** não voltam ao cliente (só no
   cancelamento) e o crédito do cliente é o valor da mercadoria devolvida.
 - A trilha de auditoria e o extrato registram os pontos **efetivamente** estornados, e a devolução

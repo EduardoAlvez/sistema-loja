@@ -71,20 +71,20 @@ class FidelidadeEstornoTest {
 
     @Test
     void devolucoesParciaisAcumulamOEstornoProporcional() {
-        Venda registrada = app.getVendas().registrar(venda(admin, 4, new BigDecimal("5.00"), 0));
-        assertEquals(5, app.getFidelidade().saldo(cliente.getId()));
+        Venda registrada = app.getVendas().registrar(venda(admin, 10, new BigDecimal("2.00"), 0));
+        assertEquals(23, app.getFidelidade().saldo(cliente.getId()));
 
-        devolverUmItemPorVez(registrada, 3);
+        devolverUmItemPorVez(registrada, 4);
 
-        assertEquals(2, app.getFidelidade().saldo(cliente.getId()));
+        assertEquals(14, app.getFidelidade().saldo(cliente.getId()));
     }
 
     @Test
     void devolucoesParciaisSomadasEstornamTodosOsPontosCreditados() {
-        Venda registrada = app.getVendas().registrar(venda(admin, 4, new BigDecimal("5.00"), 0));
-        assertEquals(5, app.getFidelidade().saldo(cliente.getId()));
+        Venda registrada = app.getVendas().registrar(venda(admin, 10, new BigDecimal("2.00"), 0));
+        assertEquals(23, app.getFidelidade().saldo(cliente.getId()));
 
-        devolverUmItemPorVez(registrada, 4);
+        devolverUmItemPorVez(registrada, 10);
 
         assertEquals(0, app.getFidelidade().saldo(cliente.getId()));
     }

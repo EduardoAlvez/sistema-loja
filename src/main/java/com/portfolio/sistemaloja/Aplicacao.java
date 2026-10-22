@@ -68,7 +68,6 @@ public class Aplicacao {
         VendaRepository vendaRepository = new VendaRepository(fonte);
         CaixaRepository caixaRepository = new CaixaRepository(fonte);
         VendaPausadaRepository vendaPausadaRepository = new VendaPausadaRepository(fonte);
-        DevolucaoRepository devolucaoRepository = new DevolucaoRepository(fonte);
         UsuarioRepository usuarioRepository = new UsuarioRepository(fonte);
         RelatorioRepository relatorioRepository = new RelatorioRepository(fonte);
         AuditoriaRepository auditoriaRepository = new AuditoriaRepository(fonte);
@@ -79,12 +78,13 @@ public class Aplicacao {
         this.clientes = new ClienteService(clienteRepository, auditoria);
         this.fidelidadeRepository = new FidelidadeRepository(fonte);
         this.fidelidade = new FidelidadeService(fidelidadeRepository, FidelidadeConfig.padrao());
+        DevolucaoRepository devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
                 auditoria, relogio, fidelidade);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria);
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();
-        this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria, fidelidade);
+        this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria);
         this.cupomTermico = new CupomTermicoService(ConfiguracaoPix.padrao());
         ImpressoraConfig impressoraConfig = ImpressoraConfig.padrao();
         this.impressao = new ImpressaoCupomService(

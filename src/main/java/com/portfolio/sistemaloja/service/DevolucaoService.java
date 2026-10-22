@@ -18,18 +18,11 @@ public class DevolucaoService {
     private final DevolucaoRepository devolucoes;
     private final VendaRepository vendas;
     private final AuditoriaService auditoria;
-    private final FidelidadeService fidelidade;
 
     public DevolucaoService(DevolucaoRepository devolucoes, VendaRepository vendas, AuditoriaService auditoria) {
-        this(devolucoes, vendas, auditoria, null);
-    }
-
-    public DevolucaoService(DevolucaoRepository devolucoes, VendaRepository vendas, AuditoriaService auditoria,
-                            FidelidadeService fidelidade) {
         this.devolucoes = devolucoes;
         this.vendas = vendas;
         this.auditoria = auditoria;
-        this.fidelidade = fidelidade;
     }
 
     public Devolucao devolver(long vendaId, List<DevolucaoItem> itens, boolean creditoNoCliente,
@@ -73,14 +66,12 @@ public class DevolucaoService {
             throw new ValidacaoException("O valor da devolução deve ser maior que zero.");
         }
 
-        int pontosSolicitados = 0;
-        if (fidelidade != null && venda.getPontosCreditados() > 0) {
-            BigDecimal devolvidoAcumulado = devolucoes.valorDevolvido(venda.getId()).add(devolucao.getValor());
-            pontosSolicitados = fidelidade.calcularEstorno(venda.getPontosCreditados(), venda.somaItensBrutos(),
-                    devolvidoAcumulado, venda.getPontosEstornados());
-        }
+        Devolucao registrada = devolucoes.salvar(devolucao);
+        registrarAuditoria(venda, devolucao, registrada, creditoNoCliente);
+        return registrada;
+    }
 
-        Devolucao registrada = devolucoes.salvar(devolucao, pontosSolicitados);
+    private void registrarAuditoria(Venda venda, Devolucao devolucao, Devolucao registrada, boolean creditoNoCliente) {
         auditoria.registrar("DEVOLUCAO_VENDA", "venda", venda.getId(), "Devolução de "
                 + registrada.getQuantidadeItens() + " item(ns) no valor de R$ " + registrada.getValor()
                 + (creditoNoCliente ? " creditada no cliente" : " sem crédito"));
@@ -89,7 +80,6 @@ public class DevolucaoService {
             auditoria.registrar("PONTOS_ESTORNADOS", "CLIENTE", venda.getClienteId(),
                     pontosEstornados + " ponto(s) estornados na devolucao " + registrada.getId());
         }
-        return registrada;
     }
 
     public int jaDevolvido(long vendaItemId) {

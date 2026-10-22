@@ -4,7 +4,9 @@ import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.ExtratoFidelidade;
 import com.portfolio.sistemaloja.model.FidelidadeMovimento;
 import com.portfolio.sistemaloja.model.TipoMovimentoFidelidade;
+import com.portfolio.sistemaloja.model.Venda;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -97,6 +99,46 @@ public class FidelidadeRepository {
             preparada.setLong(1, vendaId);
             try (ResultSet resultado = preparada.executeQuery()) {
                 return resultado.next() ? resultado.getInt(1) : 0;
+            }
+        }
+    }
+
+    public Venda vendaParaEstorno(Connection conexao, long vendaId) throws SQLException {
+        String sql = "SELECT v.id, v.numero, v.cliente_id, v.desconto, v.valor_pontos, v.pontos_creditados, "
+                + "v.pontos_resgatados, v.pontos_estornados, "
+                + "(SELECT COALESCE(SUM(i.quantidade * i.preco_unitario), 0) FROM venda_itens i "
+                + "WHERE i.venda_id = v.id) AS soma_bruta "
+                + "FROM vendas v WHERE v.id = ?";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, vendaId);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (!resultado.next()) {
+                    return null;
+                }
+                Venda venda = new Venda();
+                venda.setId(resultado.getLong("id"));
+                venda.setNumero(resultado.getString("numero"));
+                long clienteId = resultado.getLong("cliente_id");
+                if (!resultado.wasNull()) {
+                    venda.setClienteId(clienteId);
+                }
+                venda.setDesconto(resultado.getBigDecimal("desconto"));
+                venda.setValorPontos(resultado.getBigDecimal("valor_pontos"));
+                venda.setPontosCreditados(resultado.getInt("pontos_creditados"));
+                venda.setPontosResgatados(resultado.getInt("pontos_resgatados"));
+                venda.setPontosEstornados(resultado.getInt("pontos_estornados"));
+                venda.setSomaItensBrutos(resultado.getBigDecimal("soma_bruta"));
+                return venda;
+            }
+        }
+    }
+
+    public BigDecimal valorDevolvido(Connection conexao, long vendaId) throws SQLException {
+        String sql = "SELECT COALESCE(SUM(valor), 0) FROM devolucoes WHERE venda_id = ?";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, vendaId);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                return resultado.next() ? resultado.getBigDecimal(1) : BigDecimal.ZERO;
             }
         }
     }

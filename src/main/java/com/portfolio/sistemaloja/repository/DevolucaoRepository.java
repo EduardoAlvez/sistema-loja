@@ -3,6 +3,7 @@ package com.portfolio.sistemaloja.repository;
 import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.Devolucao;
 import com.portfolio.sistemaloja.model.DevolucaoItem;
+import com.portfolio.sistemaloja.service.FidelidadeService;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -17,10 +18,18 @@ public class DevolucaoRepository {
 
     private final ConexaoFonte fonte;
     private final FidelidadeRepository fidelidade;
+    private final VendaRepository vendas;
+    private final FidelidadeService estorno;
 
     public DevolucaoRepository(ConexaoFonte fonte) {
+        this(fonte, null);
+    }
+
+    public DevolucaoRepository(ConexaoFonte fonte, FidelidadeService fidelidade) {
         this.fonte = fonte;
         this.fidelidade = new FidelidadeRepository(fonte);
+        this.vendas = new VendaRepository(fonte);
+        this.estorno = fidelidade;
     }
 
     public Devolucao salvar(Devolucao devolucao) {
@@ -32,6 +41,11 @@ public class DevolucaoRepository {
         try (Connection conexao = fonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
+                vendas.travarParaEstorno(devolucao.getVendaId(), conexao);
+                int pontos = pontosSolicitados;
+                if (estorno != null && pontos <= 0) {
+                    pontos = estorno.calcularEstornoPendente(devolucao.getVendaId(), devolucao.getValor(), conexao);
+                }
                 inserirDevolucao(devolucao, conexao);
                 for (DevolucaoItem item : devolucao.getItens()) {
                     inserirItem(devolucao.getId(), item, conexao);
@@ -40,9 +54,9 @@ public class DevolucaoRepository {
                 if (devolucao.isCreditoCliente()) {
                     creditarCliente(devolucao, conexao);
                 }
-                if (pontosSolicitados > 0 && devolucao.getClienteId() != null) {
+                if (pontos > 0 && devolucao.getClienteId() != null) {
                     pontosEstornados = fidelidade.estornarCredito(conexao, devolucao.getClienteId(),
-                            devolucao.getVendaId(), devolucao.getId(), pontosSolicitados,
+                            devolucao.getVendaId(), devolucao.getId(), pontos,
                             "Estorno de pontos da devolucao " + devolucao.getId());
                     registrarPontosEstornados(devolucao.getId(), pontosEstornados, conexao);
                 }
@@ -122,15 +136,20 @@ public class DevolucaoRepository {
     }
 
     public BigDecimal valorDevolvido(long vendaId) {
+        try (Connection conexao = fonte.getConnection()) {
+            return valorDevolvido(vendaId, conexao);
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao somar as devoluções da venda", e);
+        }
+    }
+
+    public BigDecimal valorDevolvido(long vendaId, Connection conexao) throws SQLException {
         String sql = "SELECT COALESCE(SUM(valor), 0) FROM devolucoes WHERE venda_id = ?";
-        try (Connection conexao = fonte.getConnection();
-             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, vendaId);
             try (ResultSet resultado = preparada.executeQuery()) {
                 return resultado.next() ? resultado.getBigDecimal(1) : BigDecimal.ZERO;
             }
-        } catch (SQLException e) {
-            throw new RepositorioException("Falha ao somar as devoluções da venda", e);
         }
     }
 

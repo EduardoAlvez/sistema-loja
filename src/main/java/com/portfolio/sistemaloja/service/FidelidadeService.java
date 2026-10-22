@@ -3,10 +3,13 @@ package com.portfolio.sistemaloja.service;
 import com.portfolio.sistemaloja.model.ExtratoFidelidade;
 import com.portfolio.sistemaloja.model.FidelidadeMovimento;
 import com.portfolio.sistemaloja.model.TipoMovimentoFidelidade;
+import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.repository.FidelidadeRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 
 public class FidelidadeService {
@@ -53,6 +56,18 @@ public class FidelidadeService {
         int estornoAcumulado = BigDecimal.valueOf(pontosCreditados).multiply(fracao)
                 .setScale(0, RoundingMode.FLOOR).intValue();
         return Math.max(estornoAcumulado - Math.max(jaEstornados, 0), 0);
+    }
+
+    public int calcularEstornoPendente(long vendaId, BigDecimal valorDevolucao, Connection conexao)
+            throws SQLException {
+        Venda venda = fidelidade.vendaParaEstorno(conexao, vendaId);
+        if (venda == null || venda.getPontosCreditados() <= 0) {
+            return 0;
+        }
+        BigDecimal acumulado = fidelidade.valorDevolvido(conexao, vendaId)
+                .add(valorDevolucao == null ? BigDecimal.ZERO : valorDevolucao);
+        return calcularEstorno(venda.getPontosCreditados(), venda.somaItensBrutos(), acumulado,
+                venda.getPontosEstornados());
     }
 
     public FidelidadeMovimento credito(long clienteId, Long vendaId, int pontos, String descricao) {
