@@ -286,13 +286,37 @@ Regras aplicadas:
 - Saldo e estornos ficam registrados no **extrato de pontos** (crédito, resgate, estorno de crédito
   e devolução de resgate) e na **trilha de auditoria**.
 
+
+### Autorização por supervisor (PIN)
+
+O PDV exige autorização de um supervisor (perfil superior) sempre que o operador:
+
+- aplicar um desconto acima da alçada do seu perfil (desconto total da venda, descontos de item e pontos resgatados);
+- cancelar uma venda;
+- registrar uma sangria de caixa.
+
+O supervisor se identifica com **login + PIN** (4 a 6 dígitos) num diálogo reutilizável. Cada autorização —
+e cada tentativa negada — gera evento na trilha de auditoria (`AUTORIZACAO_SUPERVISOR` /
+`AUTORIZACAO_NEGADA`) com operador, supervisor e motivo.
+
+O PIN é individual por usuário e é definido na tela de Usuários (somente admin). Usuários sem PIN não
+podem ser autorizadores. Para demonstração, o banco semeado traz:
+
+| Usuário | Perfil | PIN de demonstração |
+|---------|--------|---------------------|
+| admin | Administrador | `1234` |
+| operador | Operador de caixa | `5678` |
+
+Altere esses PINs em produção. A migração `V17` adiciona `pin_hash` e `pin_sal` (somente o hash,
+nunca o texto puro) à tabela de usuários.
+
 ### Testes
 
 ```bash
 mvn test
 ```
 
-**271 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**283 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -354,7 +378,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V16 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 271 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 283 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -445,7 +469,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 271 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 283 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
@@ -455,7 +479,7 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 - [x] Promoções com vigência e preço por dia/horário (happy hour)
 - [x] Fidelidade por pontos, com resgate como desconto na venda
 - [x] Tela de Configurações do admin (fidelidade e PIX persistidos no banco, valendo na hora)
-- [ ] Autorização de supervisor por PIN (desconto acima da alçada, cancelamento e sangria)
+- [x] Autorização de supervisor por PIN (desconto acima da alçada, cancelamento e sangria)
 - [ ] Conferência cega no fechamento de caixa, com a divergência registrada
 - [ ] Indicadores: vendas por hora, curva ABC, giro/ruptura, produtos sem movimentação, comparativo mensal
 

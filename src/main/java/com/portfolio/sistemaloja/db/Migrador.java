@@ -53,6 +53,21 @@ public final class Migrador {
         }
 
         inserirClientePadrao(conexao);
+
+        String salAdmin = Senhas.gerarSal();
+        String salOperador = Senhas.gerarSal();
+        try (PreparedStatement definicao = conexao.prepareStatement(
+                "UPDATE usuarios SET pin_hash = ?, pin_sal = ? WHERE login = ?")) {
+            definicao.setString(1, Senhas.hash("1234", salAdmin));
+            definicao.setString(2, salAdmin);
+            definicao.setString(3, "admin");
+            definicao.addBatch();
+            definicao.setString(1, Senhas.hash("5678", salOperador));
+            definicao.setString(2, salOperador);
+            definicao.setString(3, "operador");
+            definicao.addBatch();
+            definicao.executeBatch();
+        }
     }
 
     private static void inserirUsuario(Connection conexao, String nome, String login, String senha,

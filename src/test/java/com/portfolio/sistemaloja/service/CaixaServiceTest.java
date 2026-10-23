@@ -7,6 +7,8 @@ import com.portfolio.sistemaloja.model.CaixaLancamento;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.StatusCaixa;
+import com.portfolio.sistemaloja.model.Autorizacao;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
@@ -80,7 +82,8 @@ class CaixaServiceTest {
     void sangriaAbateDoSaldoEmEspecie() {
         Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
 
-        app.getCaixa().lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("40.00"), "depósito", operador);
+        Autorizacao token = BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.SANGRIA);
+        app.getCaixa().lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("40.00"), "depósito", operador, token);
 
         assertEquals(0, new BigDecimal("60.00").compareTo(app.getCaixa().saldoEspecie(caixa)));
     }
@@ -89,8 +92,9 @@ class CaixaServiceTest {
     void sangriaNaoPodeExcederOSaldoEmEspecie() {
         Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
 
+        Autorizacao token = BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.SANGRIA);
         ValidacaoException erro = assertThrows(ValidacaoException.class, () -> app.getCaixa()
-                .lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("100.01"), null, operador));
+                .lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("100.01"), null, operador, token));
         assertTrue(erro.getMessage().contains("saldo em espécie"));
         assertEquals(0, new BigDecimal("100.00").compareTo(app.getCaixa().saldoEspecie(caixa)));
     }
@@ -108,7 +112,8 @@ class CaixaServiceTest {
 
         assertEquals(0, new BigDecimal("110.00").compareTo(app.getCaixa().saldoEspecie(caixa)));
 
-        app.getCaixa().lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("110.00"), null, operador);
+        Autorizacao token110 = BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.SANGRIA);
+        app.getCaixa().lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("110.00"), null, operador, token110);
         assertEquals(0, BigDecimal.ZERO.compareTo(app.getCaixa().saldoEspecie(caixa)));
     }
 
@@ -130,7 +135,8 @@ class CaixaServiceTest {
     void listaOsLancamentosDoCaixaComUsuarioETipo() {
         Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
         app.getCaixa().lancar(TipoLancamentoCaixa.SUPRIMENTO, new BigDecimal("20.00"), "troco", operador);
-        app.getCaixa().lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("30.00"), "cofre", operador);
+        Autorizacao token30 = BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.SANGRIA);
+        app.getCaixa().lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("30.00"), "cofre", operador, token30);
 
         List<CaixaLancamento> lancamentos = app.getCaixa().lancamentos(caixa);
 
@@ -169,7 +175,8 @@ class CaixaServiceTest {
     @Test
     void fechamentoRegistraValorStatusEDiferenca() {
         Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
-        app.getCaixa().lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("30.00"), "cofre", operador);
+        Autorizacao token30 = BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.SANGRIA);
+        app.getCaixa().lancar(TipoLancamentoCaixa.SANGRIA, new BigDecimal("30.00"), "cofre", operador, token30);
 
         CaixaService.Resumo fechado = app.getCaixa().fechar(new BigDecimal("65.00"), "conferido", operador);
 

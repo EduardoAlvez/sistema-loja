@@ -7,6 +7,8 @@ import com.portfolio.sistemaloja.model.Devolucao;
 import com.portfolio.sistemaloja.model.DevolucaoItem;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.model.Autorizacao;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
@@ -147,7 +149,8 @@ class DevolucaoServiceTest {
     void recusaDevolucaoDeVendaCancelada() {
         Venda registrada = app.getVendas().registrar(venda(2, maria.getId()));
         VendaItem item = registrada.getItens().get(0);
-        app.getVendas().cancelar(registrada.getId());
+        app.getVendas().cancelar(registrada.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         ValidacaoException erro = assertThrows(ValidacaoException.class, () -> app.getDevolucoes().devolver(
                 registrada.getId(), List.of(new DevolucaoItem(item.getId(), null, null, 1, null)),

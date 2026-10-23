@@ -1,15 +1,17 @@
 package com.portfolio.sistemaloja.model;
 
 public enum PerfilUsuario {
-    ADMIN("Administrador", 50),
-    OPERADOR("Operador de caixa", 10);
+    ADMIN("Administrador", 50, 2),
+    OPERADOR("Operador de caixa", 10, 1);
 
     private final String descricao;
     private final int percentualMaximoDesconto;
+    private final int nivel;
 
-    PerfilUsuario(String descricao, int percentualMaximoDesconto) {
+    PerfilUsuario(String descricao, int percentualMaximoDesconto, int nivel) {
         this.descricao = descricao;
         this.percentualMaximoDesconto = percentualMaximoDesconto;
+        this.nivel = nivel;
     }
 
     public String getDescricao() {
@@ -18,5 +20,13 @@ public enum PerfilUsuario {
 
     public int getPercentualMaximoDesconto() {
         return percentualMaximoDesconto;
+    }
+
+    public int getNivel() {
+        return nivel;
+    }
+
+    public boolean autoriza(PerfilUsuario operador) {
+        return operador != null && nivel > operador.nivel;
     }
 }

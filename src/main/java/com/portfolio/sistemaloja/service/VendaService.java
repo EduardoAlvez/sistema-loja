@@ -1,7 +1,10 @@
 package com.portfolio.sistemaloja.service;
 
+import com.portfolio.sistemaloja.model.Autorizacao;
 import com.portfolio.sistemaloja.model.FidelidadeMovimento;
 import com.portfolio.sistemaloja.model.FormaPagamento;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
+import com.portfolio.sistemaloja.model.PerfilUsuario;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.Usuario;
@@ -35,6 +38,7 @@ public class VendaService {
     private final UsuarioRepository usuarios;
     private final AuditoriaService auditoria;
     private final FidelidadeService fidelidade;
+    private final AutorizacaoService autorizacoes;
     private final Clock relogio;
 
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
@@ -44,20 +48,31 @@ public class VendaService {
 
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
                         AuditoriaService auditoria, Clock relogio) {
-        this(vendas, produtos, usuarios, auditoria, relogio, null);
+        this(vendas, produtos, usuarios, auditoria, relogio, null, null);
     }
 
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
                         AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade) {
+        this(vendas, produtos, usuarios, auditoria, relogio, fidelidade, null);
+    }
+
+    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
+                        AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade,
+                        AutorizacaoService autorizacoes) {
         this.vendas = vendas;
         this.produtos = produtos;
         this.usuarios = usuarios;
         this.auditoria = auditoria;
         this.relogio = Objects.requireNonNull(relogio, "relogio");
         this.fidelidade = fidelidade;
+        this.autorizacoes = autorizacoes;
     }
 
     public Venda registrar(Venda venda) {
+        return registrar(venda, null);
+    }
+
+    public Venda registrar(Venda venda, Autorizacao autorizacao) {
         if (venda.getFormaPagamento() == null) {
             throw new ValidacaoException("Selecione a forma de pagamento.");
         }
@@ -69,7 +84,7 @@ public class VendaService {
         aplicarPrecoVigente(itens, catalogo, LocalDateTime.now(relogio));
         aplicarResgatePontos(venda, itens);
         validarDescontos(venda, itens);
-        validarLimiteDescontoPorPerfil(venda, itens);
+        validarLimiteDescontoPorPerfil(venda, itens, autorizacao);
         venda.getItens().clear();
         itens.forEach(venda::adicionarItem);
         validarEstoque(venda, catalogo);
@@ -95,10 +110,17 @@ public class VendaService {
     }
 
     public void cancelar(long vendaId) {
+        cancelar(vendaId, null);
+    }
+
+    public void cancelar(long vendaId, Autorizacao autorizacao) {
         Venda venda = vendas.buscarPorId(vendaId)
                 .orElseThrow(() -> new ValidacaoException("Venda não encontrada."));
         if (venda.getStatus() == StatusVenda.CANCELADA) {
             return;
+        }
+        if (autorizacoes != null) {
+            autorizacoes.exigir(autorizacao, MotivoAutorizacao.CANCELAMENTO_VENDA);
         }
         int pontosEstornados = vendas.cancelar(vendaId);
         LOG.warn("Venda {} cancelada", vendaId);
@@ -175,7 +197,8 @@ public class VendaService {
         }
     }
 
-    private void validarLimiteDescontoPorPerfil(Venda venda, List<VendaItem> itens) {
+    private void validarLimiteDescontoPorPerfil(Venda venda, List<VendaItem> itens,
+                                                Autorizacao autorizacao) {
         if (venda.getUsuarioId() == null) {
             return;
         }
@@ -193,9 +216,12 @@ public class VendaService {
         BigDecimal limite = bruto.multiply(BigDecimal.valueOf(percentual))
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         if (descontoTotal.compareTo(limite) > 0) {
-            throw new ValidacaoException("O desconto total de " + descontoTotal.toPlainString()
-                    + " excede o limite de " + percentual + "% do perfil "
-                    + usuario.getPerfil().getDescricao() + ".");
+            if (usuario.getPerfil() == PerfilUsuario.ADMIN || autorizacoes == null) {
+                throw new ValidacaoException("O desconto total de " + descontoTotal.toPlainString()
+                        + " excede o limite de " + percentual + "% do perfil "
+                        + usuario.getPerfil().getDescricao() + ".");
+            }
+            autorizacoes.exigir(usuario, autorizacao, MotivoAutorizacao.DESCONTO_ACIMA_DA_ALCADA);
         }
     }
 

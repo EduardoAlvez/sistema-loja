@@ -138,6 +138,43 @@ public class UsuarioRepository {
         }
     }
 
+    public Optional<CredencialPin> credencialPin(String login) {
+        String sql = "SELECT id, login, perfil, ativo, pin_hash, pin_sal FROM usuarios WHERE login = ?";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setString(1, login);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (resultado.next()) {
+                    return Optional.of(new CredencialPin(
+                            resultado.getLong("id"),
+                            resultado.getString("login"),
+                            PerfilUsuario.valueOf(resultado.getString("perfil")),
+                            resultado.getBoolean("ativo"),
+                            resultado.getString("pin_hash"),
+                            resultado.getString("pin_sal")));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao buscar credencial de PIN", e);
+        }
+        return Optional.empty();
+    }
+
+    public void definirPin(long usuarioId, String pinHash, String pinSal) {
+        String sql = "UPDATE usuarios SET pin_hash = ?, pin_sal = ? WHERE id = ?";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setString(1, pinHash);
+            preparada.setString(2, pinSal);
+            preparada.setLong(3, usuarioId);
+            if (preparada.executeUpdate() == 0) {
+                throw new RepositorioException("Usuário não encontrado para definir o PIN");
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao definir o PIN", e);
+        }
+    }
+
     private Usuario mapear(ResultSet resultado) throws SQLException {
         Usuario usuario = new Usuario(
                 resultado.getLong("id"),
@@ -149,5 +186,9 @@ public class UsuarioRepository {
         usuario.setSal(resultado.getString("sal"));
         usuario.setComissaoPercentual(resultado.getBigDecimal("comissao_percentual"));
         return usuario;
+    }
+
+    public record CredencialPin(long id, String login, PerfilUsuario perfil, boolean ativo,
+                                String pinHash, String pinSal) {
     }
 }

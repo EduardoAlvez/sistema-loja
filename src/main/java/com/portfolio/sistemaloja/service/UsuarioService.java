@@ -54,6 +54,18 @@ public class UsuarioService {
         return criado;
     }
 
+    public Usuario definirPin(long usuarioId, String pin) {
+        if (pin == null || !pin.matches("\\d{4,6}")) {
+            throw new ValidacaoException("O PIN deve ter de 4 a 6 dígitos.");
+        }
+        Usuario usuario = usuarios.buscarPorId(usuarioId)
+                .orElseThrow(() -> new ValidacaoException("Usuário não encontrado."));
+        String sal = Senhas.gerarSal();
+        usuarios.definirPin(usuarioId, Senhas.hash(pin, sal), sal);
+        auditoria.registrar("PIN_DEFINIDO", "USUARIO", usuarioId, usuario.getLogin());
+        return usuario;
+    }
+
     public Usuario definirComissao(long usuarioId, BigDecimal comissaoPercentual) {
         validarComissao(comissaoPercentual);
         Usuario usuario = usuarios.buscarPorId(usuarioId)

@@ -6,6 +6,8 @@ import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.PerfilUsuario;
 import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.model.Autorizacao;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
@@ -18,6 +20,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class AuditoriaAcoesTest {
@@ -63,15 +66,19 @@ class AuditoriaAcoesTest {
         venda.setFormaPagamento(FormaPagamento.PIX);
         venda.adicionarItem(new VendaItem(feijao.getId(), feijao.getNome(), 2, feijao.getPrecoVenda()));
         Venda registrada = app.getVendas().registrar(venda);
-        app.getVendas().cancelar(registrada.getId());
+        app.getVendas().cancelar(registrada.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         List<EventoAuditoria> eventos = hoje();
-        assertEquals(3, eventos.size());
-        assertEquals("VENDA_CANCELADA", eventos.get(0).acao());
-        assertEquals(registrada.getId(), eventos.get(0).entidadeId());
-        assertEquals("VENDA_REGISTRADA", eventos.get(1).acao());
-        assertEquals(registrada.getId(), eventos.get(1).entidadeId());
-        assertEquals("LOGIN_OK", eventos.get(2).acao());
+        assertEquals(5, eventos.size());
+        assertTrue(eventos.stream().anyMatch(e -> "VENDA_CANCELADA".equals(e.acao())
+                && registrada.getId().equals(e.entidadeId())), "cancelamento ausente: " + eventos);
+        assertTrue(eventos.stream().anyMatch(e -> "VENDA_REGISTRADA".equals(e.acao())
+                && registrada.getId().equals(e.entidadeId())), "registro ausente: " + eventos);
+        assertTrue(eventos.stream().anyMatch(e -> "AUTORIZACAO_SUPERVISOR".equals(e.acao())),
+                "autorizacao ausente: " + eventos);
+        assertEquals(2, (int) eventos.stream().filter(e -> "LOGIN_OK".equals(e.acao())).count(),
+                "logins inesperados: " + eventos);
     }
 
     @Test

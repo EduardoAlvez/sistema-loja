@@ -18,6 +18,7 @@ import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaPausadaRepository;
 import com.portfolio.sistemaloja.repository.VendaRepository;
 import com.portfolio.sistemaloja.service.AuthService;
+import com.portfolio.sistemaloja.service.AutorizacaoService;
 import com.portfolio.sistemaloja.service.AuditoriaService;
 import com.portfolio.sistemaloja.service.CaixaService;
 import com.portfolio.sistemaloja.service.ClienteService;
@@ -57,6 +58,7 @@ public class Aplicacao {
     private final FidelidadeRepository fidelidadeRepository;
     private final DevolucaoRepository devolucaoRepository;
     private final ConfiguracaoService configuracoes;
+    private final AutorizacaoService autorizacoes;
 
     public Aplicacao(ConexaoFonte fonte) {
         this(fonte, Clock.systemDefaultZone());
@@ -80,11 +82,12 @@ public class Aplicacao {
         this.clientes = new ClienteService(clienteRepository, auditoria);
         this.fidelidadeRepository = new FidelidadeRepository(fonte);
         this.configuracoes = new ConfiguracaoService(configuracaoRepository, sessao, fonte);
+        this.autorizacoes = new AutorizacaoService(usuarioRepository, sessao, auditoria);
         this.fidelidade = new FidelidadeService(fidelidadeRepository, this.configuracoes);
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
-                auditoria, relogio, fidelidade);
-        this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria);
+                auditoria, relogio, fidelidade, autorizacoes);
+        this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria, autorizacoes);
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();
         this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria);
@@ -96,6 +99,10 @@ public class Aplicacao {
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
         this.exportacao = new ExportacaoService();
         this.produtoRepository = produtoRepository;
+    }
+
+    public AutorizacaoService getAutorizacoes() {
+        return autorizacoes;
     }
 
     public AuthService getAuth() {

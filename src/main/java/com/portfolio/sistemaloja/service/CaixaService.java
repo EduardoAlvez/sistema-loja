@@ -1,8 +1,10 @@
 package com.portfolio.sistemaloja.service;
 
+import com.portfolio.sistemaloja.model.Autorizacao;
 import com.portfolio.sistemaloja.model.Caixa;
 import com.portfolio.sistemaloja.model.CaixaLancamento;
 import com.portfolio.sistemaloja.model.FormaPagamento;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.CaixaRepository;
@@ -22,11 +24,18 @@ public class CaixaService {
     private final CaixaRepository caixas;
     private final VendaRepository vendas;
     private final AuditoriaService auditoria;
+    private final AutorizacaoService autorizacoes;
 
     public CaixaService(CaixaRepository caixas, VendaRepository vendas, AuditoriaService auditoria) {
+        this(caixas, vendas, auditoria, null);
+    }
+
+    public CaixaService(CaixaRepository caixas, VendaRepository vendas, AuditoriaService auditoria,
+                        AutorizacaoService autorizacoes) {
         this.caixas = caixas;
         this.vendas = vendas;
         this.auditoria = auditoria;
+        this.autorizacoes = autorizacoes;
     }
 
     public Caixa abrir(BigDecimal valorAbertura, Usuario usuario) {
@@ -55,6 +64,11 @@ public class CaixaService {
     }
 
     public CaixaLancamento lancar(TipoLancamentoCaixa tipo, BigDecimal valor, String observacao, Usuario usuario) {
+        return lancar(tipo, valor, observacao, usuario, null);
+    }
+
+    public CaixaLancamento lancar(TipoLancamentoCaixa tipo, BigDecimal valor, String observacao, Usuario usuario,
+                                  Autorizacao autorizacao) {
         if (usuario == null) {
             throw new ValidacaoException("É necessário estar autenticado para movimentar o caixa.");
         }
@@ -66,6 +80,9 @@ public class CaixaService {
             throw new ValidacaoException("O valor do lançamento deve ser maior que zero.");
         }
         if (tipo == TipoLancamentoCaixa.SANGRIA) {
+            if (autorizacoes != null) {
+                autorizacoes.exigir(usuario, autorizacao, MotivoAutorizacao.SANGRIA);
+            }
             BigDecimal saldo = saldoEspecie(aberto);
             if (lancamentoValor.compareTo(saldo) > 0) {
                 throw new ValidacaoException("A sangria de " + lancamentoValor.toPlainString()

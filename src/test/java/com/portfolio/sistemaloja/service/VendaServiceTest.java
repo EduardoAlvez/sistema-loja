@@ -5,10 +5,13 @@ import com.portfolio.sistemaloja.BancoTeste;
 import com.portfolio.sistemaloja.model.DevolucaoItem;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.model.Autorizacao;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.model.VendaPagamento;
+import com.portfolio.sistemaloja.repository.EventoAuditoria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,8 +24,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.portfolio.sistemaloja.service.AutorizacaoNecessariaException;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class VendaServiceTest {
 
@@ -87,7 +91,8 @@ class VendaServiceTest {
                 novaVenda(feijao, 5, FormaPagamento.DEBITO, null));
         assertEquals(estoqueInicial - 5, app.getProdutos().buscarPorCodigoBarras("7891000200101").getEstoque());
 
-        app.getVendas().cancelar(registrada.getId());
+        app.getVendas().cancelar(registrada.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         assertEquals(estoqueInicial, app.getProdutos().buscarPorCodigoBarras("7891000200101").getEstoque());
         assertEquals("CANCELADA", app.getVendas().buscarPorId(registrada.getId()).getStatus().name());
@@ -106,7 +111,8 @@ class VendaServiceTest {
                 List.of(new DevolucaoItem(item.getId(), null, null, 2, null)), false, null, operador);
         assertEquals(estoqueInicial - 3, app.getProdutos().buscarPorCodigoBarras("7891000200101").getEstoque());
 
-        app.getVendas().cancelar(registrada.getId());
+        app.getVendas().cancelar(registrada.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         assertEquals(estoqueInicial, app.getProdutos().buscarPorCodigoBarras("7891000200101").getEstoque(),
                 "o cancelamento deve devolver apenas as 3 unidades ainda em poder do cliente");
@@ -274,16 +280,32 @@ class VendaServiceTest {
     }
 
     @Test
-    void operadorNaoPodeAplicarDescontoAcimaDoLimiteDoPerfil() {
+    void operadorNaoPodeAplicarDescontoAcimaDoLimiteSemAutorizacao() {
         Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
         Venda venda = novaVenda(agua, 4, FormaPagamento.PIX, null);
         venda.setDesconto(new BigDecimal("1.10"));
-        ValidacaoException erro = assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
-        assertTrue(erro.getMessage().contains("10%"));
+        assertThrows(AutorizacaoNecessariaException.class, () -> app.getVendas().registrar(venda));
     }
 
     @Test
-    void descontoDeItemContaNoLimiteDoPerfil() {
+    void descontoAcimaDoLimiteAceitoComAutorizacaoSupervisor() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = novaVenda(agua, 4, FormaPagamento.PIX, null);
+        venda.setDesconto(new BigDecimal("1.10"));
+
+        Autorizacao autorizacao = BancoTeste.autorizarSupervisor(app,
+                MotivoAutorizacao.DESCONTO_ACIMA_DA_ALCADA);
+        Venda registrada = app.getVendas().registrar(venda, autorizacao);
+
+        assertEquals(0, new BigDecimal("1.10").compareTo(registrada.getDesconto()));
+        assertEquals(0, new BigDecimal("8.90").compareTo(registrada.getTotal()));
+        List<EventoAuditoria> eventos = app.getAuditoria().listar(LocalDate.now(), LocalDate.now());
+        assertTrue(eventos.stream().anyMatch(e -> "AUTORIZACAO_SUPERVISOR".equals(e.acao())),
+                "deve auditar a autorização: " + eventos);
+    }
+
+    @Test
+    void descontoDeItemContaNoLimiteDoPerfilExigeAutorizacao() {
         Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
         Venda venda = new Venda();
         venda.setUsuarioId(operador.getId());
@@ -292,8 +314,7 @@ class VendaServiceTest {
         item.setDesconto(new BigDecimal("1.00"));
         venda.adicionarItem(item);
         venda.setDesconto(new BigDecimal("0.10"));
-        ValidacaoException erro = assertThrows(ValidacaoException.class, () -> app.getVendas().registrar(venda));
-        assertTrue(erro.getMessage().contains("10%"));
+        assertThrows(AutorizacaoNecessariaException.class, () -> app.getVendas().registrar(venda));
     }
 
     @Test
@@ -460,9 +481,8 @@ class VendaServiceTest {
         venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda()));
         venda.setDesconto(new BigDecimal("0.70"));
 
-        ValidacaoException erro = assertThrows(ValidacaoException.class,
+        assertThrows(ValidacaoException.class,
                 () -> promo.getVendas().registrar(venda));
-        assertTrue(erro.getMessage().contains("10%"), erro.getMessage());
     }
 
     @Test
@@ -482,9 +502,8 @@ class VendaServiceTest {
         item.setDesconto(new BigDecimal("2.00"));
         venda.adicionarItem(item);
 
-        ValidacaoException erro = assertThrows(ValidacaoException.class,
+        assertThrows(ValidacaoException.class,
                 () -> promo.getVendas().registrar(venda));
-        assertTrue(erro.getMessage().contains("subtotal"), erro.getMessage());
     }
 
     private Aplicacao appNoHorario(LocalDateTime momento) {

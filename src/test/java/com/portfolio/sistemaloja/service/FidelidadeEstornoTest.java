@@ -8,6 +8,8 @@ import com.portfolio.sistemaloja.model.ExtratoFidelidade;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.TipoMovimentoFidelidade;
+import com.portfolio.sistemaloja.model.Autorizacao;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
@@ -100,7 +102,8 @@ class FidelidadeEstornoTest {
         app.getDevolucoes().devolver(registrada.getId(), List.of(itemDevolvido(registrada, 1)), false, null, operador);
         assertEquals(108, app.getFidelidade().saldo(cliente.getId()));
 
-        app.getVendas().cancelar(registrada.getId());
+        app.getVendas().cancelar(registrada.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         assertEquals(100, app.getFidelidade().saldo(cliente.getId()));
         String detalhe = app.getAuditoria().listar(LocalDate.now(), LocalDate.now()).stream()
@@ -116,7 +119,8 @@ class FidelidadeEstornoTest {
         Venda registrada = app.getVendas().registrar(venda(admin, 4, BigDecimal.ZERO, 20));
         assertEquals(100 - 20 + 9, app.getFidelidade().saldo(cliente.getId()));
 
-        app.getVendas().cancelar(registrada.getId());
+        app.getVendas().cancelar(registrada.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         assertEquals(100, app.getFidelidade().saldo(cliente.getId()));
         List<ExtratoFidelidade> extrato = app.getFidelidade().extrato(cliente.getId());
@@ -131,8 +135,10 @@ class FidelidadeEstornoTest {
         Venda registrada = app.getVendas().registrar(venda(admin, 4, BigDecimal.ZERO, 0));
         assertEquals(10, app.getFidelidade().saldo(cliente.getId()));
 
-        app.getVendas().cancelar(registrada.getId());
-        app.getVendas().cancelar(registrada.getId());
+        app.getVendas().cancelar(registrada.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
+        app.getVendas().cancelar(registrada.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         assertEquals(0, app.getFidelidade().saldo(cliente.getId()));
     }

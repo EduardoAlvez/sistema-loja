@@ -2,12 +2,20 @@ package com.portfolio.sistemaloja;
 
 import com.portfolio.sistemaloja.db.Banco;
 import com.portfolio.sistemaloja.db.Migrador;
+import com.portfolio.sistemaloja.model.Autorizacao;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 
 import java.time.Clock;
 
 public final class BancoTeste {
 
     private BancoTeste() {
+    }
+
+    public static Autorizacao autorizarSupervisor(Aplicacao app, MotivoAutorizacao motivo) {
+        // Quem solicita e' o operador da sessao corrente; reautentica para garantir o contexto.
+        app.getAuth().autenticar("operador", "caixa123");
+        return app.getAutorizacoes().autorizar("admin", "1234", motivo);
     }
 
     public static Aplicacao criar(String nomeBanco) {

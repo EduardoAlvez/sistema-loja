@@ -36,6 +36,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.TableModelEvent;
 
 import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.Autorizacao;
 import com.portfolio.sistemaloja.model.Caixa;
 import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.Devolucao;
@@ -50,6 +51,7 @@ import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.model.VendaPagamento;
 import com.portfolio.sistemaloja.model.VendaPausada;
 import com.portfolio.sistemaloja.service.CaixaService;
+import com.portfolio.sistemaloja.service.AutorizacaoNecessariaException;
 import com.portfolio.sistemaloja.service.ValidacaoException;
 
 public class PainelPDV extends JPanel {
@@ -385,6 +387,21 @@ public class PainelPDV extends JPanel {
             Caixa atualizado = aplicacao.getCaixa().caixaAberto().orElse(aberto);
             Ui.info(this, tipo.getDescricao() + " registrado(a). Saldo em espécie: "
                     + Ui.moeda(aplicacao.getCaixa().saldoEspecie(atualizado)));
+        } catch (AutorizacaoNecessariaException e) {
+            Optional<Autorizacao> autorizacao = DialogoAutorizacao.pedir(SwingUtilities.getWindowAncestor(this), aplicacao, e.getMotivo());
+            if (autorizacao.isEmpty()) {
+                return;
+            }
+            try {
+                aplicacao.getCaixa().lancar(tipo, parseMoeda(valor), observacao, usuario, autorizacao.get());
+                Caixa atualizado = aplicacao.getCaixa().caixaAberto().orElse(aberto);
+                Ui.info(this, tipo.getDescricao() + " registrado(a). Saldo em espécie: "
+                        + Ui.moeda(aplicacao.getCaixa().saldoEspecie(atualizado)));
+            } catch (ValidacaoException ex) {
+                Ui.erro(this, ex.getMessage());
+            } catch (RuntimeException ex) {
+                Ui.erro(this, "Falha ao registrar " + tipo.getDescricao().toLowerCase() + ": " + ex.getMessage(), ex);
+            }
         } catch (ValidacaoException e) {
             Ui.erro(this, e.getMessage());
         }
@@ -920,15 +937,30 @@ public class PainelPDV extends JPanel {
             return;
         }
         try {
-            Venda registrada = aplicacao.getVendas().registrar(montarVenda());
-            mostrarCupom(registrada);
-            limpar();
-            recarregarProdutos();
+            concluir(aplicacao.getVendas().registrar(montarVenda()));
+        } catch (AutorizacaoNecessariaException e) {
+            Optional<Autorizacao> autorizacao = DialogoAutorizacao.pedir(SwingUtilities.getWindowAncestor(this), aplicacao, e.getMotivo());
+            if (autorizacao.isEmpty()) {
+                return;
+            }
+            try {
+                concluir(aplicacao.getVendas().registrar(montarVenda(), autorizacao.get()));
+            } catch (ValidacaoException ex) {
+                Ui.erro(this, ex.getMessage());
+            } catch (RuntimeException ex) {
+                Ui.erro(this, "Falha ao finalizar a venda: " + ex.getMessage(), ex);
+            }
         } catch (ValidacaoException e) {
             Ui.erro(this, e.getMessage());
         } catch (RuntimeException e) {
             Ui.erro(this, "Falha ao finalizar a venda: " + e.getMessage(), e);
         }
+    }
+
+    private void concluir(Venda registrada) {
+        mostrarCupom(registrada);
+        limpar();
+        recarregarProdutos();
     }
 
     private void mostrarCupom(Venda venda) {

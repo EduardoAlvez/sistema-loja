@@ -1,6 +1,7 @@
 package com.portfolio.sistemaloja.ui;
 
 import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.Autorizacao;
 import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
@@ -9,6 +10,7 @@ import com.portfolio.sistemaloja.repository.ProdutoEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.ResumoOperador;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
+import com.portfolio.sistemaloja.service.AutorizacaoNecessariaException;
 import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
 import org.apache.logging.log4j.LogManager;
@@ -24,6 +26,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.SpinnerDateModel;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -34,6 +37,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 public class PainelRelatorios extends JPanel {
 
@@ -314,8 +318,20 @@ public class PainelRelatorios extends JPanel {
             aplicacao.getVendas().cancelar(venda.getId());
             Ui.info(this, "Venda cancelada e estoque devolvido.");
             gerar();
-        } catch (RuntimeException e) {
-            Ui.erro(this, "Falha ao cancelar: " + e.getMessage(), e);
+        } catch (AutorizacaoNecessariaException e) {
+            Optional<Autorizacao> autorizacao = DialogoAutorizacao.pedir(SwingUtilities.getWindowAncestor(this), aplicacao, e.getMotivo());
+            if (autorizacao.isEmpty()) {
+                return;
+            }
+            try {
+                aplicacao.getVendas().cancelar(venda.getId(), autorizacao.get());
+                Ui.info(this, "Venda cancelada e estoque devolvido.");
+                gerar();
+            } catch (RuntimeException ex) {
+                Ui.erro(this, "Falha ao cancelar: " + ex.getMessage(), ex);
+            }
+        } catch (RuntimeException ex) {
+            Ui.erro(this, "Falha ao cancelar: " + ex.getMessage(), ex);
         }
     }
 

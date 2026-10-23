@@ -7,6 +7,8 @@ import com.portfolio.sistemaloja.model.ExtratoFidelidade;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.TipoMovimentoFidelidade;
+import com.portfolio.sistemaloja.model.Autorizacao;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
@@ -18,6 +20,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VendaFidelidadeTest {
@@ -121,10 +124,9 @@ class VendaFidelidadeTest {
     void resgateRespeitaOLimiteDeDescontoDoPerfil() {
         creditar(100);
 
-        ValidacaoException erro = assertThrows(ValidacaoException.class,
+        assertThrows(AutorizacaoNecessariaException.class,
                 () -> app.getVendas().registrar(venda(operador, 4, 40)));
 
-        assertTrue(erro.getMessage().contains("excede o limite"));
         assertEquals(100, app.getFidelidade().saldo(cliente.getId()));
     }
 

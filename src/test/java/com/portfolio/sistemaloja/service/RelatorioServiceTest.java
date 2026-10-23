@@ -4,6 +4,8 @@ import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.BancoTeste;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.model.Autorizacao;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
@@ -50,7 +52,8 @@ class RelatorioServiceTest {
     @Test
     void vendaCanceladaNaoEntraNoFaturamento() {
         Venda venda = registrarVenda("7891000100103", 2, FormaPagamento.PIX);
-        app.getVendas().cancelar(venda.getId());
+        app.getVendas().cancelar(venda.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         RelatorioService.ResumoDashboard resumo = app.getRelatorios().resumoDoDia();
         assertEquals(0, resumo.vendas());
@@ -105,7 +108,8 @@ class RelatorioServiceTest {
     @Test
     void faturamentoPorDiaIgnoraVendaCancelada() {
         Venda venda = registrarVenda("7891000100103", 2, FormaPagamento.PIX);
-        app.getVendas().cancelar(venda.getId());
+        app.getVendas().cancelar(venda.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         LocalDate hoje = LocalDate.now();
         List<VendaDoDia> porDia = app.getRelatorios().faturamentoPorDia(hoje, hoje);
@@ -167,7 +171,8 @@ class RelatorioServiceTest {
     void vendaCanceladaNaoGeraComissao() {
         Venda venda = registrarVenda("7891000100103", 2, FormaPagamento.PIX);
         app.getUsuarios().definirComissao(operador.getId(), new BigDecimal("5"));
-        app.getVendas().cancelar(venda.getId());
+        app.getVendas().cancelar(venda.getId(),
+                BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         LocalDate hoje = LocalDate.now();
         assertTrue(app.getRelatorios().resumoPorOperador(hoje, hoje).isEmpty());

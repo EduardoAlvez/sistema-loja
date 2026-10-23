@@ -35,6 +35,7 @@ public class DialogoUsuario extends JDialog {
     private final JTextField login = new JTextField(14);
     private final JPasswordField senha = new JPasswordField(14);
     private final JComboBox<PerfilUsuario> perfil = new JComboBox<>(PerfilUsuario.values());
+    private final JPasswordField pinNova = new JPasswordField(10);
     private final JTextField comissao = new JTextField(6);
     private final javax.swing.table.DefaultTableModel modelo =
             Ui.modeloTabela("Nome", "Login", "Perfil", "Comissão", "Situação");
@@ -74,6 +75,7 @@ public class DialogoUsuario extends JDialog {
 
         comissao.setText("0");
         adicionar(formulario, gbc, 4, "Comissão (%)", comissao);
+        adicionar(formulario, gbc, 5, "PIN supervisor (4-6 dígitos)", pinNova);
 
         JButton criar = new JButton("Criar usuário");
         criar.setBackground(Ui.COR_PRINCIPAL);
@@ -86,6 +88,10 @@ public class DialogoUsuario extends JDialog {
         JPanel linhaAcao = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 6));
         linhaAcao.add(criar);
         linhaAcao.add(definirComissao);
+
+        JButton definirPin = new JButton("Definir PIN do selecionado");
+        definirPin.addActionListener(e -> definirPin());
+        linhaAcao.add(definirPin);
         topo.add(formulario, BorderLayout.CENTER);
         topo.add(linhaAcao, BorderLayout.SOUTH);
 
@@ -127,6 +133,30 @@ public class DialogoUsuario extends JDialog {
             Ui.erro(this, e.getMessage());
         } catch (RuntimeException e) {
             Ui.erro(this, "Falha ao criar usuário: " + e.getMessage(), e);
+        }
+    }
+
+    private void definirPin() {
+        int linha = tabela.getSelectedRow();
+        if (linha < 0) {
+            Ui.info(this, "Selecione um usuário na tabela.");
+            return;
+        }
+        Usuario selecionado = usuarios.get(tabela.convertRowIndexToModel(linha));
+        String texto = new String(pinNova.getPassword());
+        if (texto.isBlank()) {
+            Ui.erro(this, "Informe um PIN de 4 a 6 dígitos.");
+            return;
+        }
+        try {
+            aplicacao.getUsuarios().definirPin(selecionado.getId(), texto);
+            pinNova.setText("");
+            atualizar();
+            Ui.info(this, "PIN definido com sucesso.");
+        } catch (ValidacaoException e) {
+            Ui.erro(this, e.getMessage());
+        } catch (RuntimeException e) {
+            Ui.erro(this, "Falha ao definir o PIN: " + e.getMessage(), e);
         }
     }
 
