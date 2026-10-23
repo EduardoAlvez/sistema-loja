@@ -19,10 +19,24 @@ public class CupomTermicoService {
     private static final DecimalFormat VALOR =
             new DecimalFormat("#,##0.00", new DecimalFormatSymbols(Locale.forLanguageTag("pt-BR")));
 
-    private final ConfiguracaoPix pix;
+    private final ConfiguracaoService configuracoes;
+    private final ConfiguracaoPix pixFixo;
+
+    public CupomTermicoService(ConfiguracaoService configuracoes) {
+        this.configuracoes = configuracoes;
+        this.pixFixo = null;
+    }
 
     public CupomTermicoService(ConfiguracaoPix pix) {
-        this.pix = pix;
+        this.configuracoes = null;
+        this.pixFixo = pix;
+    }
+
+    private ConfiguracaoPix pix() {
+        if (configuracoes != null) {
+            return configuracoes.atual().pix();
+        }
+        return pixFixo == null ? ConfiguracaoPix.padrao() : pixFixo;
     }
 
     public String formatar(Venda venda) {
@@ -47,7 +61,7 @@ public class CupomTermicoService {
     public List<String> linhas(Venda venda) {
         List<String> linhas = new ArrayList<>();
         linhas.add("=".repeat(LARGURA));
-        linhas.add(centralizar(pix.nomeRecebedor()));
+        linhas.add(centralizar(pix().nomeRecebedor()));
         linhas.add(centralizar("CUPOM NAO FISCAL - 80mm"));
         linhas.add("=".repeat(LARGURA));
         linhas.add("Venda: " + nulo(venda.getNumero()));
@@ -92,7 +106,7 @@ public class CupomTermicoService {
         if (valor.compareTo(BigDecimal.ZERO) <= 0) {
             return null;
         }
-        return PixPayload.gerar(pix, valor, venda.getNumero());
+        return PixPayload.gerar(pix(), valor, venda.getNumero());
     }
 
     public boolean pagamentoEmDinheiro(Venda venda) {

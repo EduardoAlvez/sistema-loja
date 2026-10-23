@@ -131,29 +131,30 @@ class VendaFidelidadeTest {
     @Test
     void resgateQueNaoGeraDescontoEhRecusado() {
         System.setProperty("fidelidade.valorPorPonto", "0.001");
-        Aplicacao local;
         try {
-            local = BancoTeste.criar("pontosinficientes" + System.nanoTime());
+            Aplicacao local = BancoTeste.criar("pontosinficientes" + System.nanoTime());
+            local.getConfiguracoes().invalidar();
+            local.getConfiguracoes().atual();
+            Usuario adminLocal = local.getAuth().autenticar("admin", "admin123");
+            Cliente clienteLocal = local.getClientes().salvar(new Cliente(null, "Joao Lima", "52998224725",
+                    "11988887777", "joao@exemplo.com", true));
+            local.getFidelidadeRepository().aplicarMovimentos(List.of(
+                    local.getFidelidade().credito(clienteLocal.getId(), null, 10, "Credito de teste")));
+            Venda venda = new Venda();
+            venda.setUsuarioId(adminLocal.getId());
+            venda.setClienteId(clienteLocal.getId());
+            venda.setFormaPagamento(FormaPagamento.PIX);
+            venda.setPontosResgatados(1);
+            venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 1, agua.getPrecoVenda()));
+
+            ValidacaoException erro = assertThrows(ValidacaoException.class,
+                    () -> local.getVendas().registrar(venda));
+
+            assertTrue(erro.getMessage().contains("não gera desconto"), erro.getMessage());
+            assertEquals(10, local.getFidelidade().saldo(clienteLocal.getId()));
         } finally {
             System.clearProperty("fidelidade.valorPorPonto");
         }
-        Usuario adminLocal = local.getAuth().autenticar("admin", "admin123");
-        Cliente clienteLocal = local.getClientes().salvar(new Cliente(null, "Joao Lima", "52998224725",
-                "11988887777", "joao@exemplo.com", true));
-        local.getFidelidadeRepository().aplicarMovimentos(List.of(
-                local.getFidelidade().credito(clienteLocal.getId(), null, 10, "Credito de teste")));
-        Venda venda = new Venda();
-        venda.setUsuarioId(adminLocal.getId());
-        venda.setClienteId(clienteLocal.getId());
-        venda.setFormaPagamento(FormaPagamento.PIX);
-        venda.setPontosResgatados(1);
-        venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 1, agua.getPrecoVenda()));
-
-        ValidacaoException erro = assertThrows(ValidacaoException.class,
-                () -> local.getVendas().registrar(venda));
-
-        assertTrue(erro.getMessage().contains("não gera desconto"), erro.getMessage());
-        assertEquals(10, local.getFidelidade().saldo(clienteLocal.getId()));
     }
 
     private void creditar(int pontos) {

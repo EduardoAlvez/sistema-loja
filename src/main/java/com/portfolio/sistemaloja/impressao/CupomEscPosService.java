@@ -9,32 +9,55 @@ public class CupomEscPosService {
     public static final int CODEPAGE_CP850 = EscPos.PAGINA_CP850;
 
     private final CupomTermicoService texto;
-    private final int codepage;
-    private final int moduloQr;
+    private final com.portfolio.sistemaloja.service.ConfiguracaoService configuracoes;
+    private Integer codepageFixo;
+    private Integer moduloQrFixo;
 
     public CupomEscPosService(CupomTermicoService texto) {
-        this(texto, CODEPAGE_CP850, EscPos.MODULO_QR_PADRAO);
+        this.texto = texto;
+        this.configuracoes = null;
+        this.codepageFixo = (int) CODEPAGE_CP850;
+        this.moduloQrFixo = EscPos.MODULO_QR_PADRAO;
     }
 
     public CupomEscPosService(CupomTermicoService texto, ImpressoraConfig config) {
-        this(texto, config.codepage(), config.moduloQr());
+        this.texto = texto;
+        this.configuracoes = null;
+        this.codepageFixo = (int) config.codepage();
+        this.moduloQrFixo = config.moduloQr();
+    }
+
+    public CupomEscPosService(CupomTermicoService texto, com.portfolio.sistemaloja.service.ConfiguracaoService configuracoes) {
+        this.texto = texto;
+        this.configuracoes = configuracoes;
     }
 
     public CupomEscPosService(CupomTermicoService texto, int moduloQr) {
-        this(texto, CODEPAGE_CP850, moduloQr);
+        this.texto = texto;
+        this.configuracoes = null;
+        this.codepageFixo = (int) CODEPAGE_CP850;
+        this.moduloQrFixo = moduloQr;
+        validar(moduloQrFixo);
     }
 
-    private CupomEscPosService(CupomTermicoService texto, int codepage, int moduloQr) {
+    private void validar(int moduloQr) {
         if (moduloQr < 1 || moduloQr > 16) {
             throw new ValidacaoException("Modulo do QR deve ficar entre 1 e 16.");
         }
-        this.texto = texto;
-        this.codepage = codepage;
-        this.moduloQr = moduloQr;
+    }
+
+    private ImpressoraConfig impressora() {
+        if (configuracoes != null) {
+            return configuracoes.atual().impressora();
+        }
+        return new ImpressoraConfig("", codepageFixo == null ? (int) CODEPAGE_CP850 : codepageFixo,
+                moduloQrFixo == null ? EscPos.MODULO_QR_PADRAO : moduloQrFixo);
     }
 
     public byte[] formatar(Venda venda) {
-        EscPos cupom = new EscPos().iniciar().codepage(codepage);
+        ImpressoraConfig cfg = impressora();
+        validar(cfg.moduloQr());
+        EscPos cupom = new EscPos().iniciar().codepage((byte) cfg.codepage());
         for (String linha : texto.linhas(venda)) {
             cupom.linha(linha);
         }
@@ -45,7 +68,7 @@ public class CupomEscPosService {
             for (String linha : CupomTermicoService.quebrar(payload, EscPos.LARGURA)) {
                 cupom.linha(linha);
             }
-            cupom.qr(payload, moduloQr);
+            cupom.qr(payload, cfg.moduloQr());
             cupom.linha("Pague com o app do seu banco");
         }
         if (texto.pagamentoEmDinheiro(venda)) {

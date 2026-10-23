@@ -17,11 +17,23 @@ public class FidelidadeService {
     private static final int LIMITE_EXTRATO = 20;
 
     private final FidelidadeRepository fidelidade;
-    private final FidelidadeConfig config;
+    private final ConfiguracaoService configuracoes;
+
+    public FidelidadeService(FidelidadeRepository fidelidade, ConfiguracaoService configuracoes) {
+        this.fidelidade = fidelidade;
+        this.configuracoes = configuracoes;
+    }
 
     public FidelidadeService(FidelidadeRepository fidelidade, FidelidadeConfig config) {
         this.fidelidade = fidelidade;
-        this.config = config;
+        this.configuracoes = null;
+    }
+
+    private FidelidadeConfig config() {
+        if (configuracoes != null) {
+            return configuracoes.atual().fidelidade();
+        }
+        return FidelidadeConfig.padrao();
     }
 
     public int saldo(long clienteId) {
@@ -33,14 +45,14 @@ public class FidelidadeService {
     }
 
     public FidelidadeConfig getConfig() {
-        return config;
+        return config();
     }
 
     public BigDecimal valorDosPontos(int pontos) {
-        return config.valorDosPontos(pontos);
+        return config().valorDosPontos(pontos);
     }
     public int calcularCredito(BigDecimal totalVenda) {
-        return config.calcularPontos(totalVenda);
+        return config().calcularPontos(totalVenda);
     }
 
     public int calcularEstorno(int pontosCreditados, BigDecimal baseVenda, BigDecimal devolvidoAcumulado,

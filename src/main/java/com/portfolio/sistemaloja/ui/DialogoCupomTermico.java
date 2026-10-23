@@ -46,6 +46,7 @@ public class DialogoCupomTermico extends JDialog {
         for (String nome : impressao.impressoras()) {
             impressoras.addItem(nome);
         }
+        preselecionarImpressora();
         JPanel topo = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         topo.add(new JLabel("Impressora:"));
         topo.add(impressoras);
@@ -87,6 +88,19 @@ public class DialogoCupomTermico extends JDialog {
 
     private void cast() {
         ((JPanel) getContentPane()).setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    }
+
+    private void preselecionarImpressora() {
+        String preferida = com.portfolio.sistemaloja.impressao.ImpressoraConfig.padrao().nome();
+        if (preferida == null || preferida.isBlank()) {
+            return;
+        }
+        for (int i = 0; i < impressoras.getItemCount(); i++) {
+            if (preferida.equals(impressoras.getItemAt(i))) {
+                impressoras.setSelectedIndex(i);
+                return;
+            }
+        }
     }
 
     private void imprimir() {

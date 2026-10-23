@@ -99,7 +99,7 @@ regras de negócio e testes automatizados.
 - **Logs** em `logs/sistema-loja.log` (rotação 5 MB × 3) e console via **Log4j2**:
   erros inesperados da interface guardam a stack trace completa, junto de ações como
   login, vendas, cancelamentos e exportações
-- **Migrações de banco com Flyway** (`V1` a `V15`: esquema, auditoria, desconto, caixa,
+- **Migrações de banco com Flyway** (`V1` a `V16`: esquema, auditoria, desconto, caixa,
   pagamentos, vendas pausadas, devoluções, comissão, estoque mínimo, promoções e pontos), com histórico
   consultável e `baseline` automático para bancos já existentes
 - **Trilha de auditoria** (tabela `auditoria`, append-only): login ok/falha, venda
@@ -235,6 +235,23 @@ Regras aplicadas na venda:
   apenas um horário, promoção sem preço) é recusado.
 - O **CSV de produtos continua com 7 colunas**; promoções são editadas na tela de cadastro.
 
+### Configurações da loja (aba do admin)
+
+O admin tem uma aba **Configurações** para editar, sem reiniciar o sistema, os valores de
+**fidelidade** (pontos por real e valor do ponto) e de **PIX** (chave, nome e cidade). Os valores
+ficam gravados em `configuracoes` (migração `V16`) e valem **na hora** para novas vendas.
+
+- **Precedência**: propriedade de sistema / variável de ambiente **vencem** o banco, que vence o
+  padrão do código. Quando uma chave vem do ambiente, o campo aparece desabilitado na tela com um aviso.
+- **Validação da configuração efetiva**: além da linha do banco, o conjunto resultante (com os
+  overrides do ambiente) é validado antes de gravar — evita, por exemplo, `pontosPorReal` do ambiente
+  combinado com um `valorPorPonto` editado gerar ciclo de pontos acima de 1.
+- **Auditoria**: cada chave alterada gera um evento `CONFIG_ALTERADA` (`chave: antigo -> novo`) na
+  mesma transação da gravação, com o login do admin.
+- **Somente admin** altera (o serviço valida, não só a interface).
+- A **impressora** é configuração **local do terminal** (variável/propriedade da máquina), não do
+  banco compartilhado: vários caixas no mesmo MySQL podem ter filas de impressão diferentes.
+
 ### Fidelidade por pontos
 
 O cliente acumula **1 ponto por real** em cada venda e pode resgatar pontos como desconto no PDV.
@@ -275,7 +292,7 @@ Regras aplicadas:
 mvn test
 ```
 
-**258 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**266 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -335,9 +352,9 @@ sistema-loja/
 │   │   │   ├── service/                     # Regras de negócio e validações
 │   │   │   └── ui/                          # Classes Swing (telas, painéis, diálogos)
 │   │   └── resources/
-│   │       ├── db/migration/                # V1 a V15 (esquema, caixa, PIX, estoque mínimo, promoções, pontos)
+│   │       ├── db/migration/                # V1 a V16 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 258 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 266 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -370,7 +387,7 @@ sistema-loja/
   estoque apenas as unidades que ainda não foram devolvidas (cancelar após uma devolução parcial não
   repõe em dobro); a venda fica registrada com status `CANCELADA` para manter a trilha de auditoria
   (nunca é apagada).
-- **Migrações versionadas**: esquema no Flyway (`V1` esquema inicial até `V15` fidelidade);
+- **Migrações versionadas**: esquema no Flyway (`V1` esquema inicial até `V16` configurações);
   bancos já existentes recebem `baselineOnMigrate`, então o histórico nasce sem reaplicar DDL.
   O seed continua idempotente (só roda se a tabela `usuarios` estiver vazia).
 - **PIX BR Code na mão**: `PixPayload` monta o payload EMV campo a campo (incluindo o
@@ -428,7 +445,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 258 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 266 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
@@ -437,6 +454,7 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 - [x] Impressora ESC/POS (corte, negrito e comando de abrir gaveta) com impressora falsa nos testes
 - [x] Promoções com vigência e preço por dia/horário (happy hour)
 - [x] Fidelidade por pontos, com resgate como desconto na venda
+- [x] Tela de Configurações do admin (fidelidade e PIX persistidos no banco, valendo na hora)
 - [ ] Autorização de supervisor por PIN (desconto acima da alçada, cancelamento e sangria)
 - [ ] Conferência cega no fechamento de caixa, com a divergência registrada
 - [ ] Indicadores: vendas por hora, curva ABC, giro/ruptura, produtos sem movimentação, comparativo mensal
@@ -467,7 +485,7 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 
 Itens de robustez levantados em revisão de código, sem impacto funcional hoje:
 
-- Validar as migrações `V13`/`V14`/`V15` num **MySQL 8 real** (o CI e os testes usam H2; exige ambiente com Docker).
+- Validar as migrações `V13`/`V14`/`V15`/`V16` num **MySQL 8 real** (o CI e os testes usam H2; exige ambiente com Docker).
 - `DevolucaoRepository.unidadesDisponiveis`: em caso de dado inconsistente
   (`devolucoes > quantidade vendida`) a mensagem pode exibir "restam -N unidades"; tratar com piso em zero
   ou uma exceção explícita.

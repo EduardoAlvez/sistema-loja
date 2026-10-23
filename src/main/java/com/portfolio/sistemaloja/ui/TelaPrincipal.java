@@ -52,6 +52,9 @@ public class TelaPrincipal extends JFrame {
         abas.addTab("Produtos", new PainelProdutos(aplicacao));
         abas.addTab("Clientes", new PainelClientes(aplicacao));
         abas.addTab("Relatórios", new PainelRelatorios(aplicacao));
+        if (usuario.isAdmin()) {
+            abas.addTab("Configurações", new PainelConfiguracoes(aplicacao));
+        }
         add(abas, BorderLayout.CENTER);
         setJMenuBar(criarMenu(abas));
         add(criarBarraStatus(), BorderLayout.SOUTH);

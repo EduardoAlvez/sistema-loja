@@ -3,13 +3,13 @@ package com.portfolio.sistemaloja;
 import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.impressao.CupomEscPosService;
 import com.portfolio.sistemaloja.impressao.ImpressaoCupomService;
-import com.portfolio.sistemaloja.impressao.ImpressoraConfig;
 import com.portfolio.sistemaloja.impressao.ImpressorasSpool;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.AuditoriaRepository;
 import com.portfolio.sistemaloja.repository.CaixaRepository;
 import com.portfolio.sistemaloja.repository.CategoriaRepository;
 import com.portfolio.sistemaloja.repository.ClienteRepository;
+import com.portfolio.sistemaloja.repository.ConfiguracaoRepository;
 import com.portfolio.sistemaloja.repository.DevolucaoRepository;
 import com.portfolio.sistemaloja.repository.FidelidadeRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
@@ -21,12 +21,11 @@ import com.portfolio.sistemaloja.service.AuthService;
 import com.portfolio.sistemaloja.service.AuditoriaService;
 import com.portfolio.sistemaloja.service.CaixaService;
 import com.portfolio.sistemaloja.service.ClienteService;
-import com.portfolio.sistemaloja.service.ConfiguracaoPix;
+import com.portfolio.sistemaloja.service.ConfiguracaoService;
 import com.portfolio.sistemaloja.service.CupomService;
 import com.portfolio.sistemaloja.service.CupomTermicoService;
 import com.portfolio.sistemaloja.service.DevolucaoService;
 import com.portfolio.sistemaloja.service.ExportacaoService;
-import com.portfolio.sistemaloja.service.FidelidadeConfig;
 import com.portfolio.sistemaloja.service.FidelidadeService;
 import com.portfolio.sistemaloja.service.PausaService;
 import com.portfolio.sistemaloja.service.ProdutoService;
@@ -34,6 +33,8 @@ import com.portfolio.sistemaloja.service.RelatorioService;
 import com.portfolio.sistemaloja.service.UsuarioService;
 import com.portfolio.sistemaloja.service.VendaService;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.Clock;
 
 public class Aplicacao {
@@ -57,6 +58,7 @@ public class Aplicacao {
     private final FidelidadeService fidelidade;
     private final FidelidadeRepository fidelidadeRepository;
     private final DevolucaoRepository devolucaoRepository;
+    private final ConfiguracaoService configuracoes;
 
     public Aplicacao(ConexaoFonte fonte) {
         this(fonte, Clock.systemDefaultZone());
@@ -72,13 +74,15 @@ public class Aplicacao {
         UsuarioRepository usuarioRepository = new UsuarioRepository(fonte);
         RelatorioRepository relatorioRepository = new RelatorioRepository(fonte);
         AuditoriaRepository auditoriaRepository = new AuditoriaRepository(fonte);
+        ConfiguracaoRepository configuracaoRepository = new ConfiguracaoRepository(fonte);
 
         this.auditoria = new AuditoriaService(auditoriaRepository, sessao);
         this.auth = new AuthService(usuarioRepository, sessao, auditoria);
         this.produtos = new ProdutoService(produtoRepository, categoriaRepository, auditoria);
         this.clientes = new ClienteService(clienteRepository, auditoria);
         this.fidelidadeRepository = new FidelidadeRepository(fonte);
-        this.fidelidade = new FidelidadeService(fidelidadeRepository, FidelidadeConfig.padrao());
+        this.configuracoes = new ConfiguracaoService(configuracaoRepository, sessao, fonte);
+        this.fidelidade = new FidelidadeService(fidelidadeRepository, this.configuracoes);
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
                 auditoria, relogio, fidelidade);
@@ -86,10 +90,9 @@ public class Aplicacao {
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();
         this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria);
-        this.cupomTermico = new CupomTermicoService(ConfiguracaoPix.padrao());
-        ImpressoraConfig impressoraConfig = ImpressoraConfig.padrao();
+        this.cupomTermico = new CupomTermicoService(this.configuracoes);
         this.impressao = new ImpressaoCupomService(
-                new CupomEscPosService(this.cupomTermico, impressoraConfig),
+                new CupomEscPosService(this.cupomTermico, this.configuracoes),
                 new ImpressorasSpool());
         this.usuarios = new UsuarioService(usuarioRepository, auditoria);
         this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
@@ -171,5 +174,9 @@ public class Aplicacao {
 
     public DevolucaoRepository getDevolucaoRepository() {
         return devolucaoRepository;
+    }
+
+    public ConfiguracaoService getConfiguracoes() {
+        return configuracoes;
     }
 }
