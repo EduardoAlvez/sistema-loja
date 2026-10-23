@@ -3,9 +3,10 @@ package com.portfolio.sistemaloja.repository;
 import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.Devolucao;
 import com.portfolio.sistemaloja.model.DevolucaoItem;
+import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.service.FidelidadeService;
+import com.portfolio.sistemaloja.service.ValidacaoException;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,33 +20,27 @@ public class DevolucaoRepository {
     private final ConexaoFonte fonte;
     private final FidelidadeRepository fidelidade;
     private final VendaRepository vendas;
-    private final FidelidadeService estorno;
+    private final FidelidadeService calculadoraEstorno;
 
-    public DevolucaoRepository(ConexaoFonte fonte) {
-        this(fonte, null);
-    }
-
-    public DevolucaoRepository(ConexaoFonte fonte, FidelidadeService fidelidade) {
+    public DevolucaoRepository(ConexaoFonte fonte, FidelidadeService calculadoraEstorno) {
         this.fonte = fonte;
         this.fidelidade = new FidelidadeRepository(fonte);
         this.vendas = new VendaRepository(fonte);
-        this.estorno = fidelidade;
+        this.calculadoraEstorno = calculadoraEstorno;
     }
 
     public Devolucao salvar(Devolucao devolucao) {
-        return salvar(devolucao, 0);
-    }
-
-    public Devolucao salvar(Devolucao devolucao, int pontosSolicitados) {
         int pontosEstornados = 0;
         try (Connection conexao = fonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
-                vendas.travarParaEstorno(devolucao.getVendaId(), conexao);
-                int pontos = pontosSolicitados;
-                if (estorno != null && pontos <= 0) {
-                    pontos = estorno.calcularEstornoPendente(devolucao.getVendaId(), devolucao.getValor(), conexao);
+                StatusVenda status = vendas.travarParaEstorno(devolucao.getVendaId(), conexao);
+                if (status != StatusVenda.CONCLUIDA) {
+                    throw new ValidacaoException("Somente vendas concluídas podem ser devolvidas.");
                 }
+                validarQuantidades(devolucao, conexao);
+                int pontos = calculadoraEstorno.calcularEstornoPendente(
+                        devolucao.getVendaId(), devolucao.getValor(), conexao);
                 inserirDevolucao(devolucao, conexao);
                 for (DevolucaoItem item : devolucao.getItens()) {
                     inserirItem(devolucao.getId(), item, conexao);
@@ -64,11 +59,48 @@ public class DevolucaoRepository {
             } catch (SQLException e) {
                 conexao.rollback();
                 throw e;
+            } catch (RuntimeException e) {
+                conexao.rollback();
+                throw e;
             }
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao registrar a devolução", e);
         }
         return buscarPorId(devolucao.getId());
+    }
+
+    private void validarQuantidades(Devolucao devolucao, Connection conexao) throws SQLException {
+        for (DevolucaoItem item : devolucao.getItens()) {
+            int vendido = quantidadeVendida(item.getVendaItemId(), conexao);
+            int disponivel = vendido - quantidadeDevolvida(item.getVendaItemId(), conexao);
+            if (item.getQuantidade() > disponivel) {
+                throw new ValidacaoException("Item " + item.getProdutoNome() + ": restam "
+                        + Math.max(disponivel, 0) + " unidade(s) para devolver.");
+            }
+        }
+    }
+
+    private int quantidadeVendida(long vendaItemId, Connection conexao) throws SQLException {
+        String sql = "SELECT quantidade FROM venda_itens WHERE id = ?";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, vendaItemId);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (!resultado.next()) {
+                    throw new ValidacaoException("Item informado não pertence à venda.");
+                }
+                return resultado.getInt(1);
+            }
+        }
+    }
+
+    private int quantidadeDevolvida(long vendaItemId, Connection conexao) throws SQLException {
+        String sql = "SELECT COALESCE(SUM(quantidade), 0) FROM devolucao_itens WHERE venda_item_id = ?";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, vendaItemId);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                return resultado.next() ? resultado.getInt(1) : 0;
+            }
+        }
     }
 
     public Devolucao buscarPorId(long id) {
@@ -132,24 +164,6 @@ public class DevolucaoRepository {
             }
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao somar as devoluções do item", e);
-        }
-    }
-
-    public BigDecimal valorDevolvido(long vendaId) {
-        try (Connection conexao = fonte.getConnection()) {
-            return valorDevolvido(vendaId, conexao);
-        } catch (SQLException e) {
-            throw new RepositorioException("Falha ao somar as devoluções da venda", e);
-        }
-    }
-
-    public BigDecimal valorDevolvido(long vendaId, Connection conexao) throws SQLException {
-        String sql = "SELECT COALESCE(SUM(valor), 0) FROM devolucoes WHERE venda_id = ?";
-        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
-            preparada.setLong(1, vendaId);
-            try (ResultSet resultado = preparada.executeQuery()) {
-                return resultado.next() ? resultado.getBigDecimal(1) : BigDecimal.ZERO;
-            }
         }
     }
 

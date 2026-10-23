@@ -199,14 +199,15 @@ public class VendaRepository {
         return pontosEstornados;
     }
 
-    public void travarParaEstorno(long vendaId, Connection conexao) throws SQLException {
-        String sql = "SELECT id FROM vendas WHERE id = ? FOR UPDATE";
+    public StatusVenda travarParaEstorno(long vendaId, Connection conexao) throws SQLException {
+        String sql = "SELECT status FROM vendas WHERE id = ? FOR UPDATE";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, vendaId);
             try (ResultSet resultado = preparada.executeQuery()) {
                 if (!resultado.next()) {
                     throw new RepositorioException("Venda não encontrada: " + vendaId, null);
                 }
+                return StatusVenda.valueOf(resultado.getString("status"));
             }
         }
     }

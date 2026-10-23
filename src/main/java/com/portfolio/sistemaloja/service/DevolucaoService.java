@@ -51,11 +51,6 @@ public class DevolucaoService {
             if (item.getQuantidade() <= 0) {
                 throw new ValidacaoException("Quantidade inválida para o item " + vendido.getProdutoNome() + ".");
             }
-            int disponivel = vendido.getQuantidade() - devolucoes.quantidadeDevolvida(vendido.getId());
-            if (item.getQuantidade() > disponivel) {
-                throw new ValidacaoException("Item " + vendido.getProdutoNome() + ": restam "
-                        + Math.max(disponivel, 0) + " unidade(s) para devolver.");
-            }
             item.setProdutoId(vendido.getProdutoId());
             item.setProdutoNome(vendido.getProdutoNome());
             item.setValorUnitario(vendido.getPrecoUnitario());

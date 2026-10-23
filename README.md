@@ -259,8 +259,9 @@ Regras aplicadas:
   estorna 25% dos pontos; devolver tudo em várias devoluções estorna o mesmo que devolver tudo de
   uma vez), limitado ao que ainda não foi estornado e nunca acima dos pontos creditados;
   o cálculo acontece **dentro da transação da devolução**, com a venda travada (`SELECT ... FOR UPDATE`),
-  para que devoluções simultâneas da mesma venda não estornem em dobro; **cancelar a venda** estorna
-  todo o crédito e devolve os pontos resgatados.
+  e a checagem de status e de unidades disponíveis é refeita sob esse mesmo lock, para que devoluções
+  simultâneas da mesma venda não estornem em dobro nem excedam a quantidade vendida; **cancelar a venda**
+  estorna todo o crédito e devolve os pontos resgatados.
 - **Regra conhecida (produto)**: na devolução os pontos **resgatados** não voltam ao cliente (só no
   cancelamento) e o crédito do cliente é o valor da mercadoria devolvida.
 - A trilha de auditoria e o extrato registram os pontos **efetivamente** estornados, e a devolução
@@ -274,7 +275,7 @@ Regras aplicadas:
 mvn test
 ```
 
-**255 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**257 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -336,7 +337,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V15 (esquema, caixa, PIX, estoque mínimo, promoções, pontos)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 255 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 257 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -425,7 +426,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 255 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 257 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 

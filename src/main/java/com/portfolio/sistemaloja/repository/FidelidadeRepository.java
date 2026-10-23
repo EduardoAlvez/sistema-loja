@@ -4,7 +4,7 @@ import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.ExtratoFidelidade;
 import com.portfolio.sistemaloja.model.FidelidadeMovimento;
 import com.portfolio.sistemaloja.model.TipoMovimentoFidelidade;
-import com.portfolio.sistemaloja.model.Venda;
+import com.portfolio.sistemaloja.model.VendaParaEstorno;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -103,9 +103,8 @@ public class FidelidadeRepository {
         }
     }
 
-    public Venda vendaParaEstorno(Connection conexao, long vendaId) throws SQLException {
-        String sql = "SELECT v.id, v.numero, v.cliente_id, v.desconto, v.valor_pontos, v.pontos_creditados, "
-                + "v.pontos_resgatados, v.pontos_estornados, "
+    public VendaParaEstorno vendaParaEstorno(Connection conexao, long vendaId) throws SQLException {
+        String sql = "SELECT v.pontos_creditados, v.pontos_estornados, "
                 + "(SELECT COALESCE(SUM(i.quantidade * i.preco_unitario), 0) FROM venda_itens i "
                 + "WHERE i.venda_id = v.id) AS soma_bruta "
                 + "FROM vendas v WHERE v.id = ?";
@@ -115,20 +114,10 @@ public class FidelidadeRepository {
                 if (!resultado.next()) {
                     return null;
                 }
-                Venda venda = new Venda();
-                venda.setId(resultado.getLong("id"));
-                venda.setNumero(resultado.getString("numero"));
-                long clienteId = resultado.getLong("cliente_id");
-                if (!resultado.wasNull()) {
-                    venda.setClienteId(clienteId);
-                }
-                venda.setDesconto(resultado.getBigDecimal("desconto"));
-                venda.setValorPontos(resultado.getBigDecimal("valor_pontos"));
-                venda.setPontosCreditados(resultado.getInt("pontos_creditados"));
-                venda.setPontosResgatados(resultado.getInt("pontos_resgatados"));
-                venda.setPontosEstornados(resultado.getInt("pontos_estornados"));
-                venda.setSomaItensBrutos(resultado.getBigDecimal("soma_bruta"));
-                return venda;
+                return new VendaParaEstorno(
+                        resultado.getInt("pontos_creditados"),
+                        resultado.getBigDecimal("soma_bruta"),
+                        resultado.getInt("pontos_estornados"));
             }
         }
     }
