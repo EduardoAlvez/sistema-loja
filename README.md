@@ -463,6 +463,20 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 
 ---
 
+## Pendências conhecidas (follow-up)
+
+Itens de robustez levantados em revisão de código, sem impacto funcional hoje:
+
+- Validar as migrações `V13`/`V14`/`V15` num **MySQL 8 real** (o CI e os testes usam H2; exige ambiente com Docker).
+- `DevolucaoRepository.unidadesDisponiveis`: em caso de dado inconsistente
+  (`devolucoes > quantidade vendida`) a mensagem pode exibir "restam -N unidades"; tratar com piso em zero
+  ou uma exceção explícita.
+- Tornar o campo do seam de teste `aposBloqueioParaTeste` `volatile` (hoje é no-op em produção).
+- `DevolucaoConcorrenciaTest`: trocar o `Thread.sleep` da coordenação por um sinal observável
+  (ex.: `Phaser`), para não depender de timing em máquinas lentas.
+
+---
+
 ## Autor
 
 **Eduardo Alvez** — [byteswood@gmail.com](mailto:byteswood@gmail.com)
