@@ -18,25 +18,14 @@ public class FidelidadeService {
 
     private final FidelidadeRepository fidelidade;
     private final ConfiguracaoService configuracoes;
-    private final FidelidadeConfig configFixo;
 
     public FidelidadeService(FidelidadeRepository fidelidade, ConfiguracaoService configuracoes) {
         this.fidelidade = fidelidade;
         this.configuracoes = configuracoes;
-        this.configFixo = null;
-    }
-
-    public FidelidadeService(FidelidadeRepository fidelidade, FidelidadeConfig config) {
-        this.fidelidade = fidelidade;
-        this.configuracoes = null;
-        this.configFixo = config;
     }
 
     private FidelidadeConfig config() {
-        if (configuracoes != null) {
-            return configuracoes.atual().fidelidade();
-        }
-        return configFixo == null ? FidelidadeConfig.padrao() : configFixo;
+        return configuracoes.atual().fidelidade();
     }
 
     public int saldo(long clienteId) {

@@ -58,11 +58,12 @@ public class ConfiguracaoService {
             try {
                 conexao.setAutoCommit(false);
                 ConfiguracaoRepository.Linha antiga = configuracoes.carregarLinhaParaAtualizacao(conexao);
-                FidelidadeConfig salva = preservarOverrides(fidelidade, antiga);
-                ConfiguracaoPix pixSalvo = preservarOverrides(pix, antiga);
-                validar(salva, pixSalvo);
+                Set<String> sobrescritas = configuracoes.chavesSobrescritasPorAmbiente();
+                FidelidadeConfig salva = preservarOverrides(fidelidade, antiga, sobrescritas);
+                ConfiguracaoPix pixSalvo = preservarOverrides(pix, antiga, sobrescritas);
+                validarParaPersistir(salva, pixSalvo);
                 ConfiguracoesAplicacao efetiva = configuracoes.salvarLoja(salva, pixSalvo, conexao);
-                validar(efetiva.fidelidade(), efetiva.pix());
+                validarEfetiva(efetiva.fidelidade(), efetiva.pix());
                 auditarAlteracoes(antiga, salva, pixSalvo, conexao);
                 conexao.commit();
                 cache.set(new Cache(efetiva, System.nanoTime() + VALIDADE_CACHE_MS * 1_000_000));
@@ -87,24 +88,28 @@ public class ConfiguracaoService {
         }
     }
 
-    private FidelidadeConfig preservarOverrides(FidelidadeConfig pedida, ConfiguracaoRepository.Linha antiga) {
-        Set<String> sobrescritas = configuracoes.chavesSobrescritasPorAmbiente();
+    private FidelidadeConfig preservarOverrides(FidelidadeConfig pedida, ConfiguracaoRepository.Linha antiga,
+                                                Set<String> sobrescritas) {
         return new FidelidadeConfig(
                 sobrescritas.contains("pontosPorReal") ? antiga.pontosPorReal() : pedida.pontosPorReal(),
                 sobrescritas.contains("valorPorPonto") ? antiga.valorPorPonto() : pedida.valorPorPonto());
     }
 
-    private ConfiguracaoPix preservarOverrides(ConfiguracaoPix pedida, ConfiguracaoRepository.Linha antiga) {
-        Set<String> sobrescritas = configuracoes.chavesSobrescritasPorAmbiente();
+    private ConfiguracaoPix preservarOverrides(ConfiguracaoPix pedida, ConfiguracaoRepository.Linha antiga,
+                                               Set<String> sobrescritas) {
         return new ConfiguracaoPix(
                 sobrescritas.contains("pixChave") ? antiga.pixChave() : pedida.chave(),
                 sobrescritas.contains("pixNome") ? antiga.pixNome() : pedida.nomeRecebedor(),
                 sobrescritas.contains("pixCidade") ? antiga.pixCidade() : pedida.cidade());
     }
 
-    private void validar(FidelidadeConfig fidelidade, ConfiguracaoPix pix) {
+    private void validarEfetiva(FidelidadeConfig fidelidade, ConfiguracaoPix pix) {
         new FidelidadeConfig(fidelidade.pontosPorReal(), fidelidade.valorPorPonto());
         pix.validar();
+    }
+
+    private void validarParaPersistir(FidelidadeConfig fidelidade, ConfiguracaoPix pix) {
+        validarEfetiva(fidelidade, pix);
         if (pix.chave().length() > ConfiguracaoPix.CHAVE_MAX) {
             throw new ValidacaoException("A chave PIX deve ter no maximo " + ConfiguracaoPix.CHAVE_MAX + " caracteres.");
         }

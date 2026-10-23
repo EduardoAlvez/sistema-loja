@@ -486,6 +486,8 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 Itens de robustez levantados em revisão de código, sem impacto funcional hoje:
 
 - Validar as migrações `V13`/`V14`/`V15`/`V16` num **MySQL 8 real** (o CI e os testes usam H2; exige ambiente com Docker).
+- Ambientes que já tenham aplicado uma versão anterior da `V16` (antes de as colunas de impressora
+  saírem) precisam de `flyway repair` ou recriar o schema: o checksum da migração mudou.
 - `DevolucaoRepository.unidadesDisponiveis`: em caso de dado inconsistente
   (`devolucoes > quantidade vendida`) a mensagem pode exibir "restam -N unidades"; tratar com piso em zero
   ou uma exceção explícita.

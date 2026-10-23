@@ -26,7 +26,7 @@ public final class PixPayload {
         if (chave.isBlank()) {
             throw new ValidacaoException("Informe uma chave PIX válida.");
         }
-        chave = truncar(chave, 77);
+        chave = truncar(chave, ConfiguracaoPix.CHAVE_MAX);
 
         StringBuilder conta = new StringBuilder();
         conta.append(campo("00", GUI));
@@ -40,8 +40,8 @@ public final class PixPayload {
         payload.append(campo("53", MOEDA_BRASIL));
         payload.append(campo("54", valor.setScale(2, RoundingMode.HALF_UP).toPlainString()));
         payload.append(campo("58", PAIS));
-        payload.append(campo("59", truncar(limpar(configuracao.nomeRecebedor()), 25)));
-        payload.append(campo("60", truncar(limpar(configuracao.cidade()), 15)));
+        payload.append(campo("59", truncar(limpar(configuracao.nomeRecebedor()), ConfiguracaoPix.NOME_MAX)));
+        payload.append(campo("60", truncar(limpar(configuracao.cidade()), ConfiguracaoPix.CIDADE_MAX)));
         payload.append(campo("62", campo("05", txid)));
         payload.append("6304");
 

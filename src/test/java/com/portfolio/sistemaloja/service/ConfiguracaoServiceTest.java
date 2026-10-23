@@ -119,6 +119,13 @@ class ConfiguracaoServiceTest {
         assertEquals(2, gravada.pontosPorReal().intValue());
         assertEquals(0, new BigDecimal("0.05").compareTo(gravada.valorPorPonto()),
                 "o valor do ambiente nao pode ser gravado no banco");
+
+        List<String> detalhes = hoje().stream()
+                .filter(e -> "CONFIG_ALTERADA".equals(e.acao()))
+                .map(EventoAuditoria::detalhe)
+                .toList();
+        assertEquals(1, detalhes.size(), "so pontosPorReal mudou: " + detalhes);
+        assertTrue(detalhes.get(0).contains("fidelidade.pontosPorReal"));
     }
 
     @Test
