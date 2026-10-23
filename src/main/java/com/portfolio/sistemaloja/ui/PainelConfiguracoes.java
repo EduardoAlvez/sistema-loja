@@ -112,8 +112,8 @@ public class PainelConfiguracoes extends JPanel {
     final void carregar() {
         aplicacao.getConfiguracoes().invalidar();
         ConfiguracoesAplicacao cfg = aplicacao.getConfiguracoes().atual();
-        pontosPorReal.setText(cfg.fidelidade().pontosPorReal().toPlainString());
-        valorPorPonto.setText(cfg.fidelidade().valorPorPonto().toPlainString());
+        pontosPorReal.setText(legivel(cfg.fidelidade().pontosPorReal()));
+        valorPorPonto.setText(legivel(cfg.fidelidade().valorPorPonto()));
         pixChave.setText(cfg.pix().chave());
         pixNome.setText(cfg.pix().nomeRecebedor());
         pixCidade.setText(cfg.pix().cidade());
@@ -144,6 +144,10 @@ public class PainelConfiguracoes extends JPanel {
         } catch (RuntimeException e) {
             Ui.erro(this, "Falha ao salvar configurações: " + e.getMessage(), e);
         }
+    }
+
+    private String legivel(BigDecimal valor) {
+        return valor.stripTrailingZeros().toPlainString();
     }
 
     private BigDecimal decimal(String texto, String rotulo) {

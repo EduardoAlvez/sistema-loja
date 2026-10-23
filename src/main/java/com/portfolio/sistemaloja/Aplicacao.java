@@ -33,8 +33,6 @@ import com.portfolio.sistemaloja.service.RelatorioService;
 import com.portfolio.sistemaloja.service.UsuarioService;
 import com.portfolio.sistemaloja.service.VendaService;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.time.Clock;
 
 public class Aplicacao {

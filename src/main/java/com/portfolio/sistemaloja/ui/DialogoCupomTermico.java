@@ -91,7 +91,12 @@ public class DialogoCupomTermico extends JDialog {
     }
 
     private void preselecionarImpressora() {
-        String preferida = com.portfolio.sistemaloja.impressao.ImpressoraConfig.padrao().nome();
+        String preferida;
+        try {
+            preferida = com.portfolio.sistemaloja.impressao.ImpressoraConfig.padrao().nome();
+        } catch (RuntimeException configuracaoInvalida) {
+            return;
+        }
         if (preferida == null || preferida.isBlank()) {
             return;
         }

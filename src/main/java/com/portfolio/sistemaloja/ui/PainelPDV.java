@@ -714,6 +714,9 @@ public class PainelPDV extends JPanel {
     }
 
     private void atualizarTotais() {
+        pontosResgate.setToolTipText("Pontos do cliente resgatados como desconto. Cada ponto vale "
+                + Ui.moeda(aplicacao.getFidelidade().getConfig().valorPorPonto())
+                + ". Limite do seu perfil: " + usuario.getPerfil().getPercentualMaximoDesconto() + "%");
         BigDecimal descontoValor = parseMoeda(desconto.getText());
         if (descontoValor.compareTo(subtotal) > 0) {
             descontoValor = subtotal;

@@ -52,8 +52,16 @@ public class ConfiguracaoRepository {
     }
 
     public Linha carregarLinha(Connection conexao) throws SQLException {
-        String sql = "SELECT pontos_por_real, valor_por_ponto, pix_chave, pix_nome, pix_cidade, "
-                + "impressora_nome, impressora_codepage, impressora_qr_modulo FROM configuracoes WHERE id = 1";
+        return carregarLinha(conexao, false);
+    }
+
+    public Linha carregarLinhaParaAtualizacao(Connection conexao) throws SQLException {
+        return carregarLinha(conexao, true);
+    }
+
+    private Linha carregarLinha(Connection conexao, boolean travar) throws SQLException {
+        String sql = "SELECT pontos_por_real, valor_por_ponto, pix_chave, pix_nome, pix_cidade "
+                + "FROM configuracoes WHERE id = 1" + (travar ? " FOR UPDATE" : "");
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             try (ResultSet resultado = preparada.executeQuery()) {
                 if (resultado.next()) {
@@ -87,19 +95,15 @@ public class ConfiguracaoRepository {
     private void inserirPadrao(Connection conexao, FidelidadeConfig fidelidade, ConfiguracaoPix pix)
             throws SQLException {
         String sql = "INSERT INTO configuracoes "
-                + "(id, pontos_por_real, valor_por_ponto, pix_chave, pix_nome, pix_cidade, "
-                + "impressora_nome, impressora_codepage, impressora_qr_modulo, atualizado_em) "
-                + "VALUES (1,?,?,?,?,?,?,?,?,?)";
+                + "(id, pontos_por_real, valor_por_ponto, pix_chave, pix_nome, pix_cidade, atualizado_em) "
+                + "VALUES (1,?,?,?,?,?,?)";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setBigDecimal(1, fidelidade.pontosPorReal());
             preparada.setBigDecimal(2, fidelidade.valorPorPonto());
             preparada.setString(3, pix.chave());
             preparada.setString(4, pix.nomeRecebedor());
             preparada.setString(5, pix.cidade());
-            preparada.setString(6, "");
-            preparada.setInt(7, 2);
-            preparada.setInt(8, 4);
-            preparada.setTimestamp(9, Timestamp.valueOf(LocalDateTime.now()));
+            preparada.setTimestamp(6, Timestamp.valueOf(LocalDateTime.now()));
             preparada.executeUpdate();
         }
     }
@@ -110,10 +114,7 @@ public class ConfiguracaoRepository {
                 FidelidadeConfig.VALOR_POR_PONTO_PADRAO,
                 "pagamentos@lojaexemplo.com.br",
                 "LOJA EXEMPLO LTDA",
-                "SAO PAULO",
-                "",
-                2,
-                4);
+                "SAO PAULO");
     }
 
     private boolean temPropriedade(String chave) {
@@ -132,17 +133,7 @@ public class ConfiguracaoRepository {
         String pixChave = resultado.getString("pix_chave");
         String pixNome = resultado.getString("pix_nome");
         String pixCidade = resultado.getString("pix_cidade");
-        String impressoraNome = resultado.getString("impressora_nome");
-        int impressoraCodepage = resultado.getInt("impressora_codepage");
-        if (resultado.wasNull()) {
-            impressoraCodepage = 2;
-        }
-        int impressoraQrModulo = resultado.getInt("impressora_qr_modulo");
-        if (resultado.wasNull()) {
-            impressoraQrModulo = 4;
-        }
-        return new Linha(pontosPorReal, valorPorPonto, pixChave, pixNome, pixCidade,
-                impressoraNome == null ? "" : impressoraNome, impressoraCodepage, impressoraQrModulo);
+        return new Linha(pontosPorReal, valorPorPonto, pixChave, pixNome, pixCidade);
     }
 
     private ConfiguracoesAplicacao resolver(Linha linha) {
@@ -193,7 +184,6 @@ public class ConfiguracaoRepository {
     }
 
     public record Linha(BigDecimal pontosPorReal, BigDecimal valorPorPonto,
-                        String pixChave, String pixNome, String pixCidade,
-                        String impressoraNome, int impressoraCodepage, int impressoraQrModulo) {
+                        String pixChave, String pixNome, String pixCidade) {
     }
 }

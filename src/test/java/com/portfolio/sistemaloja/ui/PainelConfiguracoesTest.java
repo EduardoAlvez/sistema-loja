@@ -29,7 +29,7 @@ class PainelConfiguracoesTest {
 
         PainelConfiguracoes painel = new PainelConfiguracoes(app);
 
-        assertEquals("1.000000", painel.pontosPorRealTexto());
+        assertEquals("1", painel.pontosPorRealTexto());
         assertEquals(0, new BigDecimal("0.05").compareTo(new BigDecimal(painel.valorPorPontoTexto())));
         assertTrue(painel.pontosPorRealEditavel());
     }

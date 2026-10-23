@@ -103,6 +103,63 @@ class ConfiguracaoServiceTest {
                 .findFirst().orElseThrow().usuarioLogin());
     }
 
+    @Test
+    void naoPersisteValorQueVeiodoAmbiente() {
+        app.getAuth().autenticar("admin", "admin123");
+        System.setProperty("fidelidade.valorPorPonto", "0.20");
+        app.getConfiguracoes().invalidar();
+
+        app.getConfiguracoes().salvarLoja(
+                new FidelidadeConfig(new BigDecimal("2"), new BigDecimal("0.20")),
+                app.getConfiguracoes().atual().pix());
+
+        System.clearProperty("fidelidade.valorPorPonto");
+        app.getConfiguracoes().invalidar();
+        FidelidadeConfig gravada = app.getConfiguracoes().atual().fidelidade();
+        assertEquals(2, gravada.pontosPorReal().intValue());
+        assertEquals(0, new BigDecimal("0.05").compareTo(gravada.valorPorPonto()),
+                "o valor do ambiente nao pode ser gravado no banco");
+    }
+
+    @Test
+    void desfazAGravacaoQuandoAConfiguracaoEfetivaEIinvalida() {
+        app.getAuth().autenticar("admin", "admin123");
+        System.setProperty("fidelidade.valorPorPonto", "0.20");
+
+        assertThrows(ValidacaoException.class, () -> app.getConfiguracoes().salvarLoja(
+                new FidelidadeConfig(new BigDecimal("10"), new BigDecimal("0.20")),
+                app.getConfiguracoes().atual().pix()));
+
+        System.clearProperty("fidelidade.valorPorPonto");
+        app.getConfiguracoes().invalidar();
+        assertEquals(0, new BigDecimal("1").compareTo(
+                app.getConfiguracoes().atual().fidelidade().pontosPorReal()));
+    }
+
+    @Test
+    void exigeSessaoAutenticada() {
+        assertThrows(ValidacaoException.class, () -> app.getConfiguracoes().salvarLoja(
+                new FidelidadeConfig(new BigDecimal("1"), new BigDecimal("0.05")),
+                app.getConfiguracoes().atual().pix()));
+    }
+
+    @Test
+    void recusaNumeroInvalidoVindoDoAmbiente() {
+        System.setProperty("fidelidade.valorPorPonto", "abc");
+        app.getConfiguracoes().invalidar();
+
+        assertThrows(ValidacaoException.class, () -> app.getConfiguracoes().atual());
+    }
+
+    @Test
+    void recusaPixComCampoAcimaDoLimite() {
+        app.getAuth().autenticar("admin", "admin123");
+
+        assertThrows(ValidacaoException.class, () -> app.getConfiguracoes().salvarLoja(
+                new FidelidadeConfig(new BigDecimal("1"), new BigDecimal("0.05")),
+                new ConfiguracaoPix("chave@loja.com", "NOME DO RECEBEDOR BEM COMPRIDO", "SAO PAULO")));
+    }
+
     private List<EventoAuditoria> hoje() {
         LocalDate hoje = LocalDate.now();
         return app.getAuditoria().listar(hoje, hoje);

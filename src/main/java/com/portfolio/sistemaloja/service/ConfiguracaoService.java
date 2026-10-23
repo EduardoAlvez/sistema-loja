@@ -34,7 +34,7 @@ public class ConfiguracaoService {
             return existente.valor();
         }
         ConfiguracoesAplicacao carregada = configuracoes.carregar();
-        cache.set(new Cache(carregada, System.currentTimeMillis() + VALIDADE_CACHE_MS));
+        cache.set(new Cache(carregada, System.nanoTime() + VALIDADE_CACHE_MS * 1_000_000));
         return carregada;
     }
 
@@ -44,7 +44,7 @@ public class ConfiguracaoService {
 
     private record Cache(ConfiguracoesAplicacao valor, long validade) {
         boolean expirado() {
-            return System.currentTimeMillis() >= validade;
+            return System.nanoTime() >= validade;
         }
     }
 
@@ -54,16 +54,18 @@ public class ConfiguracaoService {
 
     public ConfiguracoesAplicacao salvarLoja(FidelidadeConfig fidelidade, ConfiguracaoPix pix) {
         exigirAdmin();
-        validar(fidelidade, pix);
         try (Connection conexao = conexaoFonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
-                ConfiguracaoRepository.Linha antiga = configuracoes.carregarLinha(conexao);
-                ConfiguracoesAplicacao efetiva = configuracoes.salvarLoja(fidelidade, pix, conexao);
+                ConfiguracaoRepository.Linha antiga = configuracoes.carregarLinhaParaAtualizacao(conexao);
+                FidelidadeConfig salva = preservarOverrides(fidelidade, antiga);
+                ConfiguracaoPix pixSalvo = preservarOverrides(pix, antiga);
+                validar(salva, pixSalvo);
+                ConfiguracoesAplicacao efetiva = configuracoes.salvarLoja(salva, pixSalvo, conexao);
                 validar(efetiva.fidelidade(), efetiva.pix());
-                auditarAlteracoes(antiga, fidelidade, pix, conexao);
+                auditarAlteracoes(antiga, salva, pixSalvo, conexao);
                 conexao.commit();
-                cache.set(new Cache(efetiva, System.currentTimeMillis() + VALIDADE_CACHE_MS));
+                cache.set(new Cache(efetiva, System.nanoTime() + VALIDADE_CACHE_MS * 1_000_000));
                 return efetiva;
             } catch (SQLException e) {
                 conexao.rollback();
@@ -85,9 +87,35 @@ public class ConfiguracaoService {
         }
     }
 
+    private FidelidadeConfig preservarOverrides(FidelidadeConfig pedida, ConfiguracaoRepository.Linha antiga) {
+        Set<String> sobrescritas = configuracoes.chavesSobrescritasPorAmbiente();
+        return new FidelidadeConfig(
+                sobrescritas.contains("pontosPorReal") ? antiga.pontosPorReal() : pedida.pontosPorReal(),
+                sobrescritas.contains("valorPorPonto") ? antiga.valorPorPonto() : pedida.valorPorPonto());
+    }
+
+    private ConfiguracaoPix preservarOverrides(ConfiguracaoPix pedida, ConfiguracaoRepository.Linha antiga) {
+        Set<String> sobrescritas = configuracoes.chavesSobrescritasPorAmbiente();
+        return new ConfiguracaoPix(
+                sobrescritas.contains("pixChave") ? antiga.pixChave() : pedida.chave(),
+                sobrescritas.contains("pixNome") ? antiga.pixNome() : pedida.nomeRecebedor(),
+                sobrescritas.contains("pixCidade") ? antiga.pixCidade() : pedida.cidade());
+    }
+
     private void validar(FidelidadeConfig fidelidade, ConfiguracaoPix pix) {
         new FidelidadeConfig(fidelidade.pontosPorReal(), fidelidade.valorPorPonto());
         pix.validar();
+        if (pix.chave().length() > ConfiguracaoPix.CHAVE_MAX) {
+            throw new ValidacaoException("A chave PIX deve ter no maximo " + ConfiguracaoPix.CHAVE_MAX + " caracteres.");
+        }
+        if (pix.nomeRecebedor().length() > ConfiguracaoPix.NOME_MAX) {
+            throw new ValidacaoException("O nome do recebedor deve ter no maximo "
+                    + ConfiguracaoPix.NOME_MAX + " caracteres.");
+        }
+        if (pix.cidade().length() > ConfiguracaoPix.CIDADE_MAX) {
+            throw new ValidacaoException("A cidade do recebedor deve ter no maximo "
+                    + ConfiguracaoPix.CIDADE_MAX + " caracteres.");
+        }
     }
 
     private void auditarAlteracoes(ConfiguracaoRepository.Linha antiga, FidelidadeConfig fidelidade,

@@ -27,6 +27,10 @@ public record ConfiguracaoPix(String chave, String nomeRecebedor, String cidade)
         return new ConfiguracaoPix(chave, nome, cidade);
     }
 
+    public static final int CHAVE_MAX = 77;
+    public static final int NOME_MAX = 25;
+    public static final int CIDADE_MAX = 15;
+
     public void validar() {
         if (chave == null || chave.isBlank()) {
             throw new ValidacaoException("Informe a chave PIX da loja.");
