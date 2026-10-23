@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class DevolucaoRepository {
 
@@ -21,6 +22,8 @@ public class DevolucaoRepository {
     private final FidelidadeRepository fidelidade;
     private final VendaRepository vendas;
     private final FidelidadeService calculadoraEstorno;
+    private Consumer<Connection> aposBloqueio = conexao -> {
+    };
 
     public DevolucaoRepository(ConexaoFonte fonte, FidelidadeService calculadoraEstorno) {
         this.fonte = fonte;
@@ -29,15 +32,20 @@ public class DevolucaoRepository {
         this.calculadoraEstorno = calculadoraEstorno;
     }
 
+    public void aposBloqueioParaTeste(Consumer<Connection> aposBloqueio) {
+        this.aposBloqueio = aposBloqueio;
+    }
+
     public Devolucao salvar(Devolucao devolucao) {
         int pontosEstornados = 0;
         try (Connection conexao = fonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
-                StatusVenda status = vendas.travarParaEstorno(devolucao.getVendaId(), conexao);
+                StatusVenda status = vendas.bloquearVenda(devolucao.getVendaId(), conexao);
                 if (status != StatusVenda.CONCLUIDA) {
                     throw new ValidacaoException("Somente vendas concluídas podem ser devolvidas.");
                 }
+                aposBloqueio.accept(conexao);
                 validarQuantidades(devolucao, conexao);
                 int pontos = calculadoraEstorno.calcularEstornoPendente(
                         devolucao.getVendaId(), devolucao.getValor(), conexao);
@@ -57,10 +65,10 @@ public class DevolucaoRepository {
                 }
                 conexao.commit();
             } catch (SQLException e) {
-                conexao.rollback();
+                rollbackSilencioso(conexao, e);
                 throw e;
             } catch (RuntimeException e) {
-                conexao.rollback();
+                rollbackSilencioso(conexao, e);
                 throw e;
             }
         } catch (SQLException e) {
@@ -69,10 +77,23 @@ public class DevolucaoRepository {
         return buscarPorId(devolucao.getId());
     }
 
+    private void rollbackSilencioso(Connection conexao, Throwable causa) {
+        try {
+            conexao.rollback();
+        } catch (SQLException falhaRollback) {
+            causa.addSuppressed(falhaRollback);
+        }
+    }
+
     private void validarQuantidades(Devolucao devolucao, Connection conexao) throws SQLException {
         for (DevolucaoItem item : devolucao.getItens()) {
-            int vendido = quantidadeVendida(item.getVendaItemId(), conexao);
-            int disponivel = vendido - quantidadeDevolvida(item.getVendaItemId(), conexao);
+            if (item.getQuantidade() <= 0) {
+                throw new ValidacaoException("Quantidade inválida para o item " + item.getProdutoNome() + ".");
+            }
+            Integer disponivel = unidadesDisponiveis(devolucao.getVendaId(), item.getVendaItemId(), conexao);
+            if (disponivel == null) {
+                throw new ValidacaoException("Item informado não pertence à venda.");
+            }
             if (item.getQuantidade() > disponivel) {
                 throw new ValidacaoException("Item " + item.getProdutoNome() + ": restam "
                         + Math.max(disponivel, 0) + " unidade(s) para devolver.");
@@ -80,25 +101,17 @@ public class DevolucaoRepository {
         }
     }
 
-    private int quantidadeVendida(long vendaItemId, Connection conexao) throws SQLException {
-        String sql = "SELECT quantidade FROM venda_itens WHERE id = ?";
+    private Integer unidadesDisponiveis(long vendaId, long vendaItemId, Connection conexao) throws SQLException {
+        String sql = "SELECT i.quantidade - COALESCE(d.total, 0) AS disponivel "
+                + "FROM venda_itens i "
+                + "LEFT JOIN (SELECT venda_item_id, SUM(quantidade) AS total FROM devolucao_itens "
+                + "GROUP BY venda_item_id) d ON d.venda_item_id = i.id "
+                + "WHERE i.id = ? AND i.venda_id = ?";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, vendaItemId);
+            preparada.setLong(2, vendaId);
             try (ResultSet resultado = preparada.executeQuery()) {
-                if (!resultado.next()) {
-                    throw new ValidacaoException("Item informado não pertence à venda.");
-                }
-                return resultado.getInt(1);
-            }
-        }
-    }
-
-    private int quantidadeDevolvida(long vendaItemId, Connection conexao) throws SQLException {
-        String sql = "SELECT COALESCE(SUM(quantidade), 0) FROM devolucao_itens WHERE venda_item_id = ?";
-        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
-            preparada.setLong(1, vendaItemId);
-            try (ResultSet resultado = preparada.executeQuery()) {
-                return resultado.next() ? resultado.getInt(1) : 0;
+                return resultado.next() ? resultado.getInt("disponivel") : null;
             }
         }
     }

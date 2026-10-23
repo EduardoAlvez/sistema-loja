@@ -56,6 +56,7 @@ public class Aplicacao {
     private final ProdutoRepository produtoRepository;
     private final FidelidadeService fidelidade;
     private final FidelidadeRepository fidelidadeRepository;
+    private final DevolucaoRepository devolucaoRepository;
 
     public Aplicacao(ConexaoFonte fonte) {
         this(fonte, Clock.systemDefaultZone());
@@ -78,7 +79,7 @@ public class Aplicacao {
         this.clientes = new ClienteService(clienteRepository, auditoria);
         this.fidelidadeRepository = new FidelidadeRepository(fonte);
         this.fidelidade = new FidelidadeService(fidelidadeRepository, FidelidadeConfig.padrao());
-        DevolucaoRepository devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
+        this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
                 auditoria, relogio, fidelidade);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria);
@@ -166,5 +167,9 @@ public class Aplicacao {
 
     public FidelidadeRepository getFidelidadeRepository() {
         return fidelidadeRepository;
+    }
+
+    public DevolucaoRepository getDevolucaoRepository() {
+        return devolucaoRepository;
     }
 }

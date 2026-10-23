@@ -2,6 +2,7 @@ package com.portfolio.sistemaloja.service;
 
 import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.BancoTeste;
+import com.portfolio.sistemaloja.model.DevolucaoItem;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.Usuario;
@@ -16,6 +17,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -88,6 +90,26 @@ class VendaServiceTest {
         app.getVendas().cancelar(registrada.getId());
 
         assertEquals(estoqueInicial, app.getProdutos().buscarPorCodigoBarras("7891000200101").getEstoque());
+        assertEquals("CANCELADA", app.getVendas().buscarPorId(registrada.getId()).getStatus().name());
+    }
+
+    @Test
+    void cancelarAposDevolucaoParcialNaoDevolveEstoqueEmDobro() {
+        Produto feijao = app.getProdutos().buscarPorCodigoBarras("7891000200101");
+        int estoqueInicial = feijao.getEstoque();
+
+        Venda registrada = app.getVendas().registrar(
+                novaVenda(feijao, 5, FormaPagamento.DEBITO, null));
+        VendaItem item = registrada.getItens().get(0);
+
+        app.getDevolucoes().devolver(registrada.getId(),
+                List.of(new DevolucaoItem(item.getId(), null, null, 2, null)), false, null, operador);
+        assertEquals(estoqueInicial - 3, app.getProdutos().buscarPorCodigoBarras("7891000200101").getEstoque());
+
+        app.getVendas().cancelar(registrada.getId());
+
+        assertEquals(estoqueInicial, app.getProdutos().buscarPorCodigoBarras("7891000200101").getEstoque(),
+                "o cancelamento deve devolver apenas as 3 unidades ainda em poder do cliente");
         assertEquals("CANCELADA", app.getVendas().buscarPorId(registrada.getId()).getStatus().name());
     }
 

@@ -165,7 +165,23 @@ public class VendaRepository {
     public void devolverEstoque(Venda venda, Connection conexao) throws SQLException {
         ProdutoRepository produtos = new ProdutoRepository(() -> conexao);
         for (VendaItem item : venda.getItens()) {
-            produtos.alterarEstoque(item.getProdutoId(), item.getQuantidade(), conexao);
+            int pendente = item.getQuantidade() - quantidadeJaDevolvida(item.getId(), conexao);
+            if (pendente > 0) {
+                produtos.alterarEstoque(item.getProdutoId(), pendente, conexao);
+            }
+        }
+    }
+
+    private int quantidadeJaDevolvida(Long vendaItemId, Connection conexao) throws SQLException {
+        if (vendaItemId == null) {
+            return 0;
+        }
+        String sql = "SELECT COALESCE(SUM(quantidade), 0) FROM devolucao_itens WHERE venda_item_id = ?";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, vendaItemId);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                return resultado.next() ? resultado.getInt(1) : 0;
+            }
         }
     }
 
@@ -174,12 +190,13 @@ public class VendaRepository {
         try (Connection conexao = fonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
-                Venda venda = buscarPorId(vendaId, conexao)
-                        .orElseThrow(() -> new RepositorioException("Venda não encontrada", null));
-                if (venda.getStatus() == StatusVenda.CANCELADA) {
+                StatusVenda status = bloquearVenda(vendaId, conexao);
+                if (status == StatusVenda.CANCELADA) {
                     conexao.rollback();
                     return 0;
                 }
+                Venda venda = buscarPorId(vendaId, conexao)
+                        .orElseThrow(() -> new RepositorioException("Venda não encontrada", null));
                 devolverEstoque(venda, conexao);
                 try (PreparedStatement preparada =
                              conexao.prepareStatement("UPDATE vendas SET status = ? WHERE id = ?")) {
@@ -199,7 +216,7 @@ public class VendaRepository {
         return pontosEstornados;
     }
 
-    public StatusVenda travarParaEstorno(long vendaId, Connection conexao) throws SQLException {
+    public StatusVenda bloquearVenda(long vendaId, Connection conexao) throws SQLException {
         String sql = "SELECT status FROM vendas WHERE id = ? FOR UPDATE";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, vendaId);

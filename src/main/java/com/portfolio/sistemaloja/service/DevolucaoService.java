@@ -2,7 +2,6 @@ package com.portfolio.sistemaloja.service;
 
 import com.portfolio.sistemaloja.model.Devolucao;
 import com.portfolio.sistemaloja.model.DevolucaoItem;
-import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
@@ -29,9 +28,6 @@ public class DevolucaoService {
                               String observacao, Usuario usuario) {
         Venda venda = vendas.buscarPorId(vendaId)
                 .orElseThrow(() -> new ValidacaoException("Venda não encontrada."));
-        if (venda.getStatus() != StatusVenda.CONCLUIDA) {
-            throw new ValidacaoException("Somente vendas concluídas podem ser devolvidas.");
-        }
         if (itens == null || itens.isEmpty()) {
             throw new ValidacaoException("Selecione ao menos um item para devolver.");
         }

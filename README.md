@@ -275,7 +275,7 @@ Regras aplicadas:
 mvn test
 ```
 
-**257 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**258 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -337,7 +337,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V15 (esquema, caixa, PIX, estoque mínimo, promoções, pontos)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 257 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 258 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -366,8 +366,10 @@ sistema-loja/
   estoque juntos; qualquer falha (ex.: estoque insuficiente) dispara `rollback` e nada é gravado.
 - **Estoque protegido no SQL**: `UPDATE produtos SET estoque = estoque + ? WHERE ... AND estoque + ? >= 0`,
   ou seja, a proteção contra corrida entre caixas está no próprio banco.
-- **Cancelamento devolve estoque**: mesma transação, e a venda fica registrada com status `CANCELADA`
-  para manter a trilha de auditoria (nunca é apagada).
+- **Cancelamento devolve estoque**: mesma transação e sob o mesmo lock da devolução, devolvendo ao
+  estoque apenas as unidades que ainda não foram devolvidas (cancelar após uma devolução parcial não
+  repõe em dobro); a venda fica registrada com status `CANCELADA` para manter a trilha de auditoria
+  (nunca é apagada).
 - **Migrações versionadas**: esquema no Flyway (`V1` esquema inicial até `V15` fidelidade);
   bancos já existentes recebem `baselineOnMigrate`, então o histórico nasce sem reaplicar DDL.
   O seed continua idempotente (só roda se a tabela `usuarios` estiver vazia).
@@ -426,7 +428,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 257 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 258 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 

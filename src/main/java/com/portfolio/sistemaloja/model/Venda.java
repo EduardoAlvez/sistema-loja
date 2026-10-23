@@ -193,10 +193,4 @@ public class Venda {
                 .map(VendaItem::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
-
-    public BigDecimal somaItensBrutos() {
-        return itens.stream()
-                .map(VendaItem::getValorBruto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
 }

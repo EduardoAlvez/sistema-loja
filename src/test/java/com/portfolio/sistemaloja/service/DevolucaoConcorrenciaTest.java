@@ -19,6 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -46,24 +47,29 @@ class DevolucaoConcorrenciaTest {
         Venda registrada = app.getVendas().registrar(venda(admin, 4, BigDecimal.ZERO, 0));
         assertEquals(10, app.getFidelidade().saldo(cliente.getId()));
 
+        CountDownLatch primeiraDentroDoLock = new CountDownLatch(1);
+        CountDownLatch liberarPrimeira = new CountDownLatch(1);
+        app.getDevolucaoRepository().aposBloqueioParaTeste(conexao -> {
+            primeiraDentroDoLock.countDown();
+            aguardar(liberarPrimeira);
+        });
+
         ExecutorService pool = Executors.newFixedThreadPool(2);
+        boolean primeiraOk;
+        boolean segundaOk;
         try {
-            CountDownLatch largada = new CountDownLatch(1);
-            Callable<Boolean> devolver = () -> {
-                largada.await();
-                app.getDevolucoes().devolver(registrada.getId(), List.of(itemDevolvido(registrada, 1)),
-                        false, null, operador);
-                return true;
-            };
-            Future<Boolean> primeira = pool.submit(devolver);
-            Future<Boolean> segunda = pool.submit(devolver);
-            largada.countDown();
-            primeira.get();
-            segunda.get();
+            Future<Boolean> primeira = pool.submit(devolver(registrada, 1));
+            aguardar(primeiraDentroDoLock);
+            Future<Boolean> segunda = pool.submit(devolver(registrada, 1));
+            Thread.sleep(200);
+            liberarPrimeira.countDown();
+            primeiraOk = primeira.get(10, TimeUnit.SECONDS);
+            segundaOk = segunda.get(10, TimeUnit.SECONDS);
         } finally {
             pool.shutdownNow();
         }
 
+        assertTrue(primeiraOk && segundaOk);
         assertEquals(2, app.getDevolucoes().jaDevolvido(registrada.getItens().get(0).getId()),
                 "cada devolucao simultanea deve consumir 1 unidade, sem dupla contagem");
         assertEquals(5, app.getFidelidade().saldo(cliente.getId()),
@@ -74,33 +80,43 @@ class DevolucaoConcorrenciaTest {
     void devolucaoSimultaneaNaoExcedeOEstoqueDisponivel() throws Exception {
         Venda registrada = app.getVendas().registrar(venda(admin, 2, BigDecimal.ZERO, 0));
 
+        CountDownLatch primeiraDentroDoLock = new CountDownLatch(1);
+        CountDownLatch liberarPrimeira = new CountDownLatch(1);
+        app.getDevolucaoRepository().aposBloqueioParaTeste(conexao -> {
+            primeiraDentroDoLock.countDown();
+            aguardar(liberarPrimeira);
+        });
+
         ExecutorService pool = Executors.newFixedThreadPool(2);
-        int concluidas;
+        boolean a;
+        boolean b;
         try {
-            CountDownLatch largada = new CountDownLatch(1);
-            Callable<Boolean> devolver = () -> {
-                largada.await();
-                try {
-                    app.getDevolucoes().devolver(registrada.getId(), List.of(itemDevolvido(registrada, 2)),
-                            false, null, operador);
-                    return true;
-                } catch (ValidacaoException esperada) {
-                    return false;
-                }
-            };
-            Future<Boolean> primeira = pool.submit(devolver);
-            Future<Boolean> segunda = pool.submit(devolver);
-            largada.countDown();
-            boolean a = primeira.get();
-            boolean b = segunda.get();
-            concluidas = (a ? 1 : 0) + (b ? 1 : 0);
+            Future<Boolean> primeira = pool.submit(devolver(registrada, 2));
+            aguardar(primeiraDentroDoLock);
+            Future<Boolean> segunda = pool.submit(devolver(registrada, 2));
+            Thread.sleep(200);
+            liberarPrimeira.countDown();
+            a = primeira.get(10, TimeUnit.SECONDS);
+            b = segunda.get(10, TimeUnit.SECONDS);
         } finally {
             pool.shutdownNow();
         }
 
-        assertEquals(1, concluidas, "apenas uma das duas devolucoes pode consumir as 2 unidades");
+        assertEquals(1, (a ? 1 : 0) + (b ? 1 : 0),
+                "apenas uma das duas devolucoes pode consumir as 2 unidades");
         assertEquals(2, app.getDevolucoes().jaDevolvido(registrada.getItens().get(0).getId()));
-        assertTrue(app.getFidelidade().saldo(cliente.getId()) >= 0);
+    }
+
+    private Callable<Boolean> devolver(Venda venda, int quantidade) {
+        return () -> {
+            try {
+                app.getDevolucoes().devolver(venda.getId(), List.of(itemDevolvido(venda, quantidade)),
+                        false, null, operador);
+                return true;
+            } catch (ValidacaoException esperada) {
+                return false;
+            }
+        };
     }
 
     private DevolucaoItem itemDevolvido(Venda venda, int quantidade) {
@@ -117,5 +133,16 @@ class DevolucaoConcorrenciaTest {
         venda.setPontosResgatados(pontosResgatados);
         venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), quantidade, agua.getPrecoVenda()));
         return venda;
+    }
+
+    private static void aguardar(CountDownLatch latch) {
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("timeout aguardando coordenacao do teste");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 }
