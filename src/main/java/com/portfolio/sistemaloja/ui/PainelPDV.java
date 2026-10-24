@@ -181,24 +181,30 @@ public class PainelPDV extends JPanel {
         JPanel linhaCliente = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         linhaCliente.setOpaque(false);
         linhaCliente.add(Ui.rotulo("Cliente:"));
-        cliente.setPreferredSize(new Dimension(240, cliente.getPreferredSize().height));
+        cliente.setPreferredSize(new Dimension(220, cliente.getPreferredSize().height));
         linhaCliente.add(cliente);
-        linhaCliente.add(Ui.rotulo("CPF:"));
-        linhaCliente.add(buscaCpfCliente);
-
-        JPanel linhaVendaAPrazo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        linhaVendaAPrazo.setOpaque(false);
-        linhaVendaAPrazo.add(vendaAPrazo);
-        linhaVendaAPrazo.add(Ui.rotulo("Vencimento:"));
-        linhaVendaAPrazo.add(vencimentoFiado);
+        linhaCliente.add(vendaAPrazo);
+        linhaCliente.add(Ui.rotulo("Vencimento:"));
+        linhaCliente.add(vencimentoFiado);
         vendaAPrazo.addActionListener(e -> vencimentoFiado.setEnabled(vendaAPrazo.isSelected()));
         vencimentoFiado.setEnabled(false);
+
+        JPanel linhaBuscaCpf = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        linhaBuscaCpf.setOpaque(false);
+        linhaBuscaCpf.add(Ui.rotulo("CPF:"));
+        linhaBuscaCpf.add(buscaCpfCliente);
+        JButton buscarCliente = new JButton("Buscar");
+        buscarCliente.addActionListener(e -> buscarClientePorCpf());
+        linhaBuscaCpf.add(buscarCliente);
+        JButton cadastrarCliente = new JButton("Cadastrar");
+        cadastrarCliente.addActionListener(e -> cadastrarClienteRapido());
+        linhaBuscaCpf.add(cadastrarCliente);
 
         JPanel clienteContainer = new JPanel(new BorderLayout());
         clienteContainer.setOpaque(false);
         clienteContainer.add(linhaCliente, BorderLayout.WEST);
-        clienteContainer.add(linhaVendaAPrazo, BorderLayout.EAST);
         titulo.add(clienteContainer, BorderLayout.EAST);
+        topo.add(linhaBuscaCpf, BorderLayout.SOUTH);
 
         JPanel linhaBusca = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         linhaBusca.setOpaque(false);
