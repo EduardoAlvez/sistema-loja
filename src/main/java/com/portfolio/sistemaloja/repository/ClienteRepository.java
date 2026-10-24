@@ -15,7 +15,7 @@ import java.util.Optional;
 public class ClienteRepository {
 
     private static final String SELECT_BASE = """
-            SELECT id, nome, cpf, telefone, email, ativo, credito, saldo_pontos FROM clientes""";
+            SELECT id, nome, cpf, telefone, email, ativo, credito, saldo_pontos, limite_credito FROM clientes""";
 
     private final ConexaoFonte fonte;
 
@@ -89,8 +89,8 @@ public class ClienteRepository {
 
     public Cliente salvar(Cliente cliente) {
         String sql = cliente.getId() == null
-                ? "INSERT INTO clientes (nome, cpf, telefone, email, ativo) VALUES (?, ?, ?, ?, ?)"
-                : "UPDATE clientes SET nome = ?, cpf = ?, telefone = ?, email = ?, ativo = ? WHERE id = ?";
+                ? "INSERT INTO clientes (nome, cpf, telefone, email, ativo, limite_credito) VALUES (?, ?, ?, ?, ?, ?)"
+                : "UPDATE clientes SET nome = ?, cpf = ?, telefone = ?, email = ?, ativo = ?, limite_credito = ? WHERE id = ?";
         try (Connection conexao = fonte.getConnection();
              PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparada.setString(1, cliente.getNome());
@@ -98,8 +98,9 @@ public class ClienteRepository {
             preparada.setString(3, cliente.getTelefone());
             preparada.setString(4, cliente.getEmail());
             preparada.setBoolean(5, cliente.isAtivo());
+            preparada.setBigDecimal(6, cliente.getLimiteCredito());
             if (cliente.getId() != null) {
-                preparada.setLong(6, cliente.getId());
+                preparada.setLong(7, cliente.getId());
             }
             preparada.executeUpdate();
             if (cliente.getId() == null) {
@@ -136,6 +137,7 @@ public class ClienteRepository {
                 resultado.getBoolean("ativo"));
         cliente.setCredito(resultado.getBigDecimal("credito"));
         cliente.setSaldoPontos(resultado.getInt("saldo_pontos"));
+        cliente.setLimiteCredito(resultado.getBigDecimal("limite_credito"));
         return cliente;
     }
 }

@@ -333,13 +333,25 @@ A aba Relatórios ganhou uma seção de **Indicadores** com cinco visões:
 
 Todos os indicadores são exportados junto com o relatório em PDF e Excel.
 
+
+### Fiado / Crediário (venda a prazo)
+
+O PDV agora suporta venda a prazo (fiado) para clientes cadastrados:
+
+- **Busca por CPF**: no PDV, digite o CPF do cliente. Se já estiver cadastrado, é selecionado automaticamente; se não, um cadastro rápido é criado com CPF, telefone e rua (e-mail opcional).
+- **Limite de crédito**: cada cliente pode ter um limite definido na tela de cadastro. O sistema bloqueia vendas a prazo que excedam o limite disponível (saldo devedor atual), exceto com autorização de supervisor (PIN).
+- **Juros**: taxa de juros mensal configurável pelo admin, aplicada sobre valores em atraso a partir do vencimento.
+- **Recebimento**: a aba "Fiado / Recebíveis" lista fiados abertos e vencidos, permitindo registrar recebimentos parciais ou totais, com atualização automática do saldo devedor e status (Aberto / Parcial / Quitado / Inadimplente).
+- **Auditoria**: eventos `FIADO_GERADO`, `FIADO_RECEBIMENTO`, `FIADO_QUITADO`, `LIMITE_CREDITO_ALTERADO` e `JUROS_APLICADOS` são registrados na trilha de auditoria.
+- **Migração V19**: tabelas `fiados` e `recebimentos_fiado`, além da coluna `limite_credito` em `clientes`.
+
 ### Testes
 
 ```bash
 mvn test
 ```
 
-**285 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**291 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -401,7 +413,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V16 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 285 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 291 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -492,7 +504,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 285 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 291 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
@@ -512,7 +524,7 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 - [ ] Inventário/contagem cíclica, perdas com motivo e transferência entre lojas
 - [ ] Lote e validade com alerta de vencimento
 - [ ] TEF por interface abstrata, taxa por bandeira e conciliação de cartões
-- [ ] Fiado/crediário com limite, vencimento, recebimento parcial e juros
+- [x] Fiado/crediário com limite, vencimento, recebimento parcial e juros
 - [ ] Multi-caixa e multi-loja com preço centralizado
 - [ ] Relatórios de estoque crítico usando o `estoque_minimo` de cada produto
 - [ ] Subir o `docker-compose.yml` para MySQL 8.4 LTS

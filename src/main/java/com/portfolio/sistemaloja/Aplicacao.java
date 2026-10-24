@@ -11,9 +11,11 @@ import com.portfolio.sistemaloja.repository.CategoriaRepository;
 import com.portfolio.sistemaloja.repository.ClienteRepository;
 import com.portfolio.sistemaloja.repository.ConfiguracaoRepository;
 import com.portfolio.sistemaloja.repository.DevolucaoRepository;
+import com.portfolio.sistemaloja.repository.FiadoRepository;
 import com.portfolio.sistemaloja.repository.FidelidadeRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
+import com.portfolio.sistemaloja.repository.RecebimentoFiadoRepository;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaPausadaRepository;
 import com.portfolio.sistemaloja.repository.VendaRepository;
@@ -27,6 +29,7 @@ import com.portfolio.sistemaloja.service.CupomService;
 import com.portfolio.sistemaloja.service.CupomTermicoService;
 import com.portfolio.sistemaloja.service.DevolucaoService;
 import com.portfolio.sistemaloja.service.ExportacaoService;
+import com.portfolio.sistemaloja.service.FiadoService;
 import com.portfolio.sistemaloja.service.FidelidadeService;
 import com.portfolio.sistemaloja.service.PausaService;
 import com.portfolio.sistemaloja.service.ProdutoService;
@@ -59,6 +62,7 @@ public class Aplicacao {
     private final DevolucaoRepository devolucaoRepository;
     private final ConfiguracaoService configuracoes;
     private final AutorizacaoService autorizacoes;
+    private final FiadoService fiados;
 
     public Aplicacao(ConexaoFonte fonte) {
         this(fonte, Clock.systemDefaultZone());
@@ -83,6 +87,8 @@ public class Aplicacao {
         this.fidelidadeRepository = new FidelidadeRepository(fonte);
         this.configuracoes = new ConfiguracaoService(configuracaoRepository, sessao, fonte);
         this.autorizacoes = new AutorizacaoService(usuarioRepository, sessao, auditoria);
+        this.fiados = new FiadoService(new FiadoRepository(fonte), new RecebimentoFiadoRepository(fonte),
+                clienteRepository, configuracaoRepository, autorizacoes, auditoria, sessao);
         this.fidelidade = new FidelidadeService(fidelidadeRepository, this.configuracoes);
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
@@ -183,5 +189,9 @@ public class Aplicacao {
 
     public ConfiguracaoService getConfiguracoes() {
         return configuracoes;
+    }
+
+    public FiadoService getFiados() {
+        return fiados;
     }
 }

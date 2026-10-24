@@ -186,4 +186,56 @@ public class ConfiguracaoRepository {
     public record Linha(BigDecimal pontosPorReal, BigDecimal valorPorPonto,
                         String pixChave, String pixNome, String pixCidade) {
     }
+
+    public boolean fiadoHabilitado() {
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(
+                     "SELECT fiado_habilitado FROM configuracoes WHERE id = 1")) {
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (resultado.next()) {
+                    return resultado.getBoolean("fiado_habilitado");
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao ler se o fiado está habilitado", e);
+        }
+        return false;
+    }
+
+    public BigDecimal taxaJurosFiado() {
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(
+                     "SELECT taxa_juros_fiado FROM configuracoes WHERE id = 1")) {
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (resultado.next()) {
+                    return resultado.getBigDecimal("taxa_juros_fiado");
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao ler taxa de juros do fiado", e);
+        }
+        return BigDecimal.ZERO;
+    }
+
+    public void definirFiadoHabilitado(boolean habilitado) {
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(
+                     "UPDATE configuracoes SET fiado_habilitado = ? WHERE id = 1")) {
+            preparada.setBoolean(1, habilitado);
+            preparada.executeUpdate();
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao definir se o fiado está habilitado", e);
+        }
+    }
+
+    public void definirTaxaJurosFiado(BigDecimal taxa) {
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(
+                     "UPDATE configuracoes SET taxa_juros_fiado = ? WHERE id = 1")) {
+            preparada.setBigDecimal(1, taxa);
+            preparada.executeUpdate();
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao definir taxa de juros do fiado", e);
+        }
+    }
 }

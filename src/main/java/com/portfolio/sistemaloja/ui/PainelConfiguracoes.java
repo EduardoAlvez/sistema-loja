@@ -8,6 +8,7 @@ import com.portfolio.sistemaloja.service.ValidacaoException;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -29,6 +30,8 @@ public class PainelConfiguracoes extends JPanel {
     private final JTextField pixNome = new JTextField(30);
     private final JTextField pixCidade = new JTextField(20);
     private final JLabel aviso = new JLabel(" ");
+    private final JCheckBox fiadoHabilitado = new JCheckBox("Habilitar fiado/crediário");
+    private final JTextField taxaJurosFiado = new JTextField(10);
 
     public PainelConfiguracoes(Aplicacao aplicacao) {
         this.aplicacao = aplicacao;
@@ -55,6 +58,12 @@ public class PainelConfiguracoes extends JPanel {
         linha = campo(painel, c, linha, "Chave PIX", pixChave);
         linha = campo(painel, c, linha, "Nome do recebedor", pixNome);
         linha = campo(painel, c, linha, "Cidade", pixCidade);
+        linha = secao(painel, c, linha, "Fiado / Crediário");
+        linha = campo(painel, c, linha, "Taxa de juros mensal (%)", taxaJurosFiado);
+        c.gridx = 0;
+        c.gridy = linha;
+        c.gridwidth = 2;
+        painel.add(fiadoHabilitado, c);
 
         c.gridx = 0;
         c.gridy = linha;
@@ -118,6 +127,9 @@ public class PainelConfiguracoes extends JPanel {
         pixNome.setText(cfg.pix().nomeRecebedor());
         pixCidade.setText(cfg.pix().cidade());
 
+        fiadoHabilitado.setSelected(aplicacao.getConfiguracoes().fiadoHabilitado());
+        taxaJurosFiado.setText(legivel(aplicacao.getConfiguracoes().taxaJurosFiado()));
+
         Set<String> sobrescritas = aplicacao.getConfiguracoes().chavesSobrescritasPorAmbiente();
         pontosPorReal.setEditable(!sobrescritas.contains("pontosPorReal"));
         valorPorPonto.setEditable(!sobrescritas.contains("valorPorPonto"));
@@ -137,6 +149,9 @@ public class PainelConfiguracoes extends JPanel {
             ConfiguracaoPix pix = new ConfiguracaoPix(
                     pixChave.getText().strip(), pixNome.getText().strip(), pixCidade.getText().strip());
             aplicacao.getConfiguracoes().salvarLoja(fidelidade, pix);
+            aplicacao.getConfiguracoes().definirFiadoHabilitado(fiadoHabilitado.isSelected());
+            aplicacao.getConfiguracoes().definirTaxaJurosFiado(
+                    decimal(taxaJurosFiado.getText(), "Taxa de juros"));
             carregar();
             Ui.info(this, "Configurações salvas.");
         } catch (ValidacaoException e) {

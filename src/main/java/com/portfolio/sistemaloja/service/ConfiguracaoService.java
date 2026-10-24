@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.math.BigDecimal;
 
 public class ConfiguracaoService {
 
@@ -170,5 +171,23 @@ public class ConfiguracaoService {
         if (sessao.getAtual() == null || !sessao.getAtual().isAdmin()) {
             throw new ValidacaoException("Somente administradores podem alterar as configuracoes.");
         }
+    }
+
+    public void definirFiadoHabilitado(boolean habilitado) {
+        exigirAdmin();
+        configuracoes.definirFiadoHabilitado(habilitado);
+    }
+
+    public void definirTaxaJurosFiado(BigDecimal taxa) {
+        exigirAdmin();
+        configuracoes.definirTaxaJurosFiado(taxa);
+    }
+
+    public boolean fiadoHabilitado() {
+        return configuracoes.fiadoHabilitado();
+    }
+
+    public BigDecimal taxaJurosFiado() {
+        return configuracoes.taxaJurosFiado();
     }
 }

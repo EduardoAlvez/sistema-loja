@@ -13,6 +13,7 @@ public class Cliente {
     private boolean ativo;
     private BigDecimal credito = BigDecimal.ZERO;
     private int saldoPontos;
+    private BigDecimal limiteCredito = BigDecimal.ZERO;
 
     public Cliente() {
     }
@@ -24,6 +25,19 @@ public class Cliente {
         this.telefone = telefone;
         this.email = email;
         this.ativo = ativo;
+    }
+
+    public Cliente(Long id, String nome, String cpf, String telefone, String email, boolean ativo,
+                   BigDecimal credito, int saldoPontos, BigDecimal limiteCredito) {
+        this.id = id;
+        this.nome = nome;
+        this.cpf = cpf;
+        this.telefone = telefone;
+        this.email = email;
+        this.ativo = ativo;
+        this.credito = credito == null ? BigDecimal.ZERO : credito;
+        this.saldoPontos = saldoPontos;
+        this.limiteCredito = limiteCredito == null ? BigDecimal.ZERO : limiteCredito;
     }
 
     public Long getId() {
@@ -80,6 +94,14 @@ public class Cliente {
 
     public void setCredito(BigDecimal credito) {
         this.credito = credito == null ? BigDecimal.ZERO : credito;
+    }
+
+    public BigDecimal getLimiteCredito() {
+        return limiteCredito;
+    }
+
+    public void setLimiteCredito(BigDecimal limiteCredito) {
+        this.limiteCredito = limiteCredito == null ? BigDecimal.ZERO : limiteCredito;
     }
 
     public int getSaldoPontos() {

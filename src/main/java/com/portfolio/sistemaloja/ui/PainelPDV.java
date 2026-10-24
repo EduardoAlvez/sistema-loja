@@ -6,13 +6,17 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,6 +27,8 @@ import java.util.Optional;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JOptionPane;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -64,6 +70,9 @@ public class PainelPDV extends JPanel {
 
     private final JTextField busca = new JTextField(24);
     private final JComboBox<Cliente> cliente = new JComboBox<>();
+    private JTextField buscaCpfCliente = new JTextField(12);
+    private final JCheckBox vendaAPrazo = new JCheckBox("Venda a prazo (fiado)");
+    private final JTextField vencimentoFiado = new JTextField(10);
     private final JComboBox<FormaPagamento> pagamento = new JComboBox<>(FormaPagamento.values());
     private final JTextField valorPago = new JTextField(12);
     private final JTextField desconto = new JTextField(8);
@@ -174,7 +183,24 @@ public class PainelPDV extends JPanel {
         linhaCliente.add(Ui.rotulo("Cliente:"));
         cliente.setPreferredSize(new Dimension(240, cliente.getPreferredSize().height));
         linhaCliente.add(cliente);
+        linhaCliente.add(Ui.rotulo("CPF:"));
+        linhaCliente.add(buscaCpfCliente);
+        JButton buscarCliente = new JButton("Buscar");
+        buscarCliente.addActionListener(e -> buscarClientePorCpf());
+        linhaCliente.add(buscarCliente);
+        JButton cadastrarCliente = new JButton("Cadastrar");
+        cadastrarCliente.addActionListener(e -> cadastrarClienteRapido());
+        linhaCliente.add(cadastrarCliente);
         titulo.add(linhaCliente, BorderLayout.EAST);
+
+        JPanel linhaVendaAPrazo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        linhaVendaAPrazo.setOpaque(false);
+        linhaVendaAPrazo.add(vendaAPrazo);
+        linhaVendaAPrazo.add(Ui.rotulo("Vencimento:"));
+        linhaVendaAPrazo.add(vencimentoFiado);
+        vendaAPrazo.addActionListener(e -> vencimentoFiado.setEnabled(vendaAPrazo.isSelected()));
+        vencimentoFiado.setEnabled(false);
+        titulo.add(linhaVendaAPrazo, BorderLayout.EAST);
 
         JPanel linhaBusca = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         linhaBusca.setOpaque(false);
@@ -933,15 +959,58 @@ public class PainelPDV extends JPanel {
             Ui.erro(this, "O carrinho está vazio.");
             return;
         }
+        Cliente selecionado = (Cliente) cliente.getSelectedItem();
+        if (vendaAPrazo.isSelected() && selecionado == null) {
+            Ui.erro(this, "Para venda a prazo, selecione um cliente.");
+            return;
+        }
+        if (vendaAPrazo.isSelected() && vencimentoFiado.getText().trim().isEmpty()) {
+            Ui.erro(this, "Informe a data de vencimento para a venda a prazo.");
+            return;
+        }
         try {
-            concluir(aplicacao.getVendas().registrar(montarVenda()));
+            Venda venda = montarVenda();
+            if (vendaAPrazo.isSelected()) {
+                LocalDate vencimento;
+                try {
+                    vencimento = LocalDate.parse(vencimentoFiado.getText().trim());
+                } catch (java.time.format.DateTimeParseException ex) {
+                    throw new ValidacaoException("Data de vencimento inválida. Use o formato AAAA-MM-DD.");
+                }
+                Venda registrada = aplicacao.getVendas().registrar(venda);
+                aplicacao.getFiados().gerarFiado(selecionado.getId(), registrada.getId(),
+                        registrada.getTotal(), vencimento,
+                        "Venda a prazo - PDV");
+                Ui.info(this, "Venda a prazo registrada. Fiado gerado para o cliente " + selecionado.getNome());
+                limpar();
+                recarregarProdutos();
+            } else {
+                concluir(aplicacao.getVendas().registrar(venda));
+            }
         } catch (AutorizacaoNecessariaException e) {
             Optional<Autorizacao> autorizacao = DialogoAutorizacao.pedir(SwingUtilities.getWindowAncestor(this), aplicacao, e.getMotivo());
             if (autorizacao.isEmpty()) {
                 return;
             }
             try {
-                concluir(aplicacao.getVendas().registrar(montarVenda(), autorizacao.get()));
+                Venda venda = montarVenda();
+                if (vendaAPrazo.isSelected()) {
+                    LocalDate vencimento;
+                    try {
+                        vencimento = LocalDate.parse(vencimentoFiado.getText().trim());
+                    } catch (java.time.format.DateTimeParseException ex) {
+                        throw new ValidacaoException("Data de vencimento inválida. Use o formato AAAA-MM-DD.");
+                    }
+                    Venda registrada = aplicacao.getVendas().registrar(venda, autorizacao.get());
+                    aplicacao.getFiados().gerarFiado(selecionado.getId(), registrada.getId(),
+                            registrada.getTotal(), vencimento,
+                            "Venda a prazo - PDV");
+                    Ui.info(this, "Venda a prazo registrada. Fiado gerado para o cliente " + selecionado.getNome());
+                    limpar();
+                    recarregarProdutos();
+                } else {
+                    concluir(aplicacao.getVendas().registrar(venda, autorizacao.get()));
+                }
             } catch (ValidacaoException ex) {
                 Ui.erro(this, ex.getMessage());
             } catch (RuntimeException ex) {
@@ -1007,6 +1076,111 @@ public class PainelPDV extends JPanel {
         }
         cliente.setSelectedIndex(cliente.getItemCount() > 0 ? 0 : -1);
         atualizarSaldoPontos();
+    }
+
+    private void buscarClientePorCpf() {
+        String cpf = buscaCpfCliente.getText().trim();
+        if (cpf.isBlank()) {
+            Ui.erro(this, "Informe o CPF para buscar.");
+            return;
+        }
+        // Remove mascara para busca
+        String cpfLimpo = cpf.replaceAll("[^0-9]", "");
+        Cliente encontrado = null;
+        for (int i = 0; i < cliente.getItemCount(); i++) {
+            Cliente item = cliente.getItemAt(i);
+            if (item != null && item.getCpf() != null) {
+                String cpfItemLimpo = item.getCpf().replaceAll("[^0-9]", "");
+                if (cpfItemLimpo.equals(cpfLimpo)) {
+                    encontrado = item;
+                    break;
+                }
+            }
+        }
+        if (encontrado != null) {
+            cliente.setSelectedItem(encontrado);
+            buscaCpfCliente.setText(encontrado.getCpf());
+            Ui.info(this, "Cliente encontrado: " + encontrado.getNome());
+        } else {
+            boolean resposta = Ui.confirma(this, "CPF não encontrado. Deseja cadastrar este cliente com CPF " + cpf + "?");
+            if (resposta) {
+                cadastrarClienteRapido(cpf);
+            }
+        }
+    }
+
+    private void cadastrarClienteRapido() {
+        cadastrarClienteRapido(buscaCpfCliente.getText().trim());
+    }
+
+    private void cadastrarClienteRapido(String cpf) {
+        String cpfLimpo = cpf.replaceAll("[^0-9]", "");
+        if (cpfLimpo.length() != 11) {
+            Ui.erro(this, "CPF invalido. Informe 11 digitos.");
+            return;
+        }
+
+        JTextField telefoneField = new JTextField(15);
+        JTextField ruaField = new JTextField(25);
+        JTextField nomeField = new JTextField(25);
+        nomeField.setText(buscaNomeCliente(cpfLimpo));
+
+        JPanel painel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(4, 4, 4, 4);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        gbc.gridx = 0; gbc.gridy = 0;
+        painel.add(Ui.rotulo("Nome:"), gbc);
+        gbc.gridx = 1;
+        painel.add(nomeField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1;
+        painel.add(Ui.rotulo("Telefone:"), gbc);
+        gbc.gridx = 1;
+        painel.add(telefoneField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2;
+        painel.add(Ui.rotulo("Rua:"), gbc);
+        gbc.gridx = 1;
+        painel.add(ruaField, gbc);
+
+        int resultado = JOptionPane.showConfirmDialog(this, painel, "Cadastrar cliente (CPF: " + cpfLimpo + ")",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (resultado != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        String nome = nomeField.getText().trim();
+        String telefone = telefoneField.getText().trim();
+        String rua = ruaField.getText().trim();
+
+        if (nome.isBlank()) {
+            Ui.erro(this, "Informe o nome do cliente.");
+            return;
+        }
+
+        try {
+            Cliente novo = new Cliente(null, nome, cpfLimpo, telefone, "", true, BigDecimal.ZERO, 0, BigDecimal.ZERO);
+            novo = aplicacao.getClientes().salvar(novo);
+            cliente.addItem(novo);
+            cliente.setSelectedItem(novo);
+            buscaCpfCliente.setText(novo.getCpf());
+            Ui.info(this, "Cliente cadastrado: " + novo.getNome());
+        } catch (ValidacaoException e) {
+            Ui.erro(this, e.getMessage());
+        }
+    }
+
+    private String buscaNomeCliente(String cpfLimpo) {
+        // Tenta buscar o nome pelo CPF em clientes ja cadastrados (caso esteja desativado)
+        for (int i = 0; i < cliente.getItemCount(); i++) {
+            Cliente item = cliente.getItemAt(i);
+            if (item != null && item.getCpf() != null && item.getCpf().replaceAll("[^0-9]", "").equals(cpfLimpo)) {
+                return item.getNome();
+            }
+        }
+        return "";
     }
 
     private void recarregarProdutos() {

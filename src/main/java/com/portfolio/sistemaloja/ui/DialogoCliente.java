@@ -5,6 +5,7 @@ import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.math.BigDecimal;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -29,6 +30,7 @@ public class DialogoCliente extends JDialog {
     private final JTextField cpf = new JTextField(14);
     private final JTextField telefone = new JTextField(14);
     private final JTextField email = new JTextField(22);
+    private final JTextField limiteCredito = new JTextField(12);
     private final JCheckBox ativo = new JCheckBox("Cliente ativo");
 
     public DialogoCliente(java.awt.Window pai, Aplicacao aplicacao, Cliente cliente, Runnable aoSalvar) {
@@ -54,8 +56,9 @@ public class DialogoCliente extends JDialog {
         adicionar(formulario, gbc, 1, "CPF *", cpf);
         adicionar(formulario, gbc, 2, "Telefone", telefone);
         adicionar(formulario, gbc, 3, "E-mail", email);
+        adicionar(formulario, gbc, 4, "Limite de crédito", limiteCredito);
         gbc.gridx = 1;
-        gbc.gridy = 4;
+        gbc.gridy = 5;
         formulario.add(ativo, gbc);
 
         JButton salvar = new JButton("Salvar");
@@ -88,6 +91,7 @@ public class DialogoCliente extends JDialog {
         cpf.setText(cliente.getCpf());
         telefone.setText(cliente.getTelefone());
         email.setText(cliente.getEmail());
+        limiteCredito.setText(cliente.getLimiteCredito().stripTrailingZeros().toPlainString());
         ativo.setSelected(cliente.isAtivo());
     }
 
@@ -97,6 +101,12 @@ public class DialogoCliente extends JDialog {
             cliente.setCpf(cpf.getText().strip());
             cliente.setTelefone(telefone.getText().strip());
             cliente.setEmail(email.getText().strip());
+            String limiteTexto = limiteCredito.getText().strip();
+            if (!limiteTexto.isBlank()) {
+                cliente.setLimiteCredito(new BigDecimal(limiteTexto));
+            } else {
+                cliente.setLimiteCredito(BigDecimal.ZERO);
+            }
             cliente.setAtivo(ativo.isSelected());
             aplicacao.getClientes().salvar(cliente);
             aoSalvar.run();
