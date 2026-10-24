@@ -184,8 +184,26 @@ class CaixaServiceTest {
         assertEquals(0, new BigDecimal("65.00").compareTo(fechado.valorInformado()));
         assertEquals(0, new BigDecimal("-5.00").compareTo(fechado.diferenca()));
         assertTrue(app.getCaixa().caixaAberto().isEmpty());
-        assertEquals(StatusCaixa.FECHADO, app.getCaixa().buscarPorId(caixa.getId()).getStatus());
-        assertEquals("conferido", app.getCaixa().buscarPorId(caixa.getId()).getObservacao());
+        Caixa fechadoBanco = app.getCaixa().buscarPorId(caixa.getId());
+        assertEquals(StatusCaixa.FECHADO, fechadoBanco.getStatus());
+        assertEquals("conferido", fechadoBanco.getObservacao());
+        assertEquals(0, new BigDecimal("65.00").compareTo(fechadoBanco.getValorConferido()));
+        assertEquals(0, new BigDecimal("-5.00").compareTo(fechadoBanco.getDiferenca()));
+    }
+
+    @Test
+    void fechamentoConferidoIgualAoEsperadoSemDiferenca() {
+        Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+
+        CaixaService.Resumo fechado = app.getCaixa().fechar(new BigDecimal("100.00"), null, operador);
+
+        assertEquals(0, new BigDecimal("100.00").compareTo(fechado.saldoEsperado()));
+        assertEquals(0, new BigDecimal("100.00").compareTo(fechado.valorInformado()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(fechado.diferenca()));
+        Caixa fechadoBanco = app.getCaixa().buscarPorId(caixa.getId());
+        assertEquals(StatusCaixa.FECHADO, fechadoBanco.getStatus());
+        assertEquals(0, new BigDecimal("100.00").compareTo(fechadoBanco.getValorConferido()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(fechadoBanco.getDiferenca()));
     }
 
     @Test

@@ -13,6 +13,8 @@ public class Caixa {
     private String usuarioFechamentoNome;
     private BigDecimal valorAbertura = BigDecimal.ZERO;
     private BigDecimal valorFechamento;
+    private BigDecimal valorConferido;
+    private BigDecimal diferenca;
     private StatusCaixa status = StatusCaixa.ABERTO;
     private String observacao;
 
@@ -86,6 +88,22 @@ public class Caixa {
 
     public void setValorFechamento(BigDecimal valorFechamento) {
         this.valorFechamento = valorFechamento;
+    }
+
+    public BigDecimal getValorConferido() {
+        return valorConferido;
+    }
+
+    public void setValorConferido(BigDecimal valorConferido) {
+        this.valorConferido = valorConferido;
+    }
+
+    public BigDecimal getDiferenca() {
+        return diferenca;
+    }
+
+    public void setDiferenca(BigDecimal diferenca) {
+        this.diferenca = diferenca;
     }
 
     public StatusCaixa getStatus() {

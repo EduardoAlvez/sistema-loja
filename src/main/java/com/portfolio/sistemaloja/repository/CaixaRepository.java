@@ -21,7 +21,7 @@ public class CaixaRepository {
     private static final String SELECT_BASE = """
             SELECT c.id, c.data_abertura, c.data_fechamento, c.usuario_abertura_id, ua.nome AS usuario_abertura_nome,
                    c.usuario_fechamento_id, uf.nome AS usuario_fechamento_nome, c.valor_abertura,
-                   c.valor_fechamento, c.status, c.observacao
+                   c.valor_fechamento, c.valor_conferido, c.diferenca, c.status, c.observacao
               FROM caixas c
               LEFT JOIN usuarios ua ON ua.id = c.usuario_abertura_id
               LEFT JOIN usuarios uf ON uf.id = c.usuario_fechamento_id""";
@@ -57,17 +57,21 @@ public class CaixaRepository {
         return abertos.isEmpty() ? Optional.empty() : Optional.of(abertos.get(0));
     }
 
-    public Caixa fechar(long id, BigDecimal valorFechamento, Long usuarioFechamentoId, String observacao) {
+    public Caixa fechar(long id, BigDecimal valorFechamento, BigDecimal valorConferido, BigDecimal diferenca,
+                        Long usuarioFechamentoId, String observacao) {
         String sql = "UPDATE caixas SET data_fechamento = CURRENT_TIMESTAMP, usuario_fechamento_id = ?, "
-                + "valor_fechamento = ?, status = ?, observacao = ? WHERE id = ? AND status = ?";
+                + "valor_fechamento = ?, valor_conferido = ?, diferenca = ?, status = ?, observacao = ? "
+                + "WHERE id = ? AND status = ?";
         try (Connection conexao = fonte.getConnection();
              PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, usuarioFechamentoId);
             preparada.setBigDecimal(2, valorFechamento);
-            preparada.setString(3, StatusCaixa.FECHADO.name());
-            preparada.setString(4, observacao);
-            preparada.setLong(5, id);
-            preparada.setString(6, StatusCaixa.ABERTO.name());
+            preparada.setBigDecimal(3, valorConferido);
+            preparada.setBigDecimal(4, diferenca);
+            preparada.setString(5, StatusCaixa.FECHADO.name());
+            preparada.setString(6, observacao);
+            preparada.setLong(7, id);
+            preparada.setString(8, StatusCaixa.ABERTO.name());
             if (preparada.executeUpdate() == 0) {
                 throw new RepositorioException("O caixa já está fechado", null);
             }
@@ -187,6 +191,8 @@ public class CaixaRepository {
         }
         caixa.setValorAbertura(resultado.getBigDecimal("valor_abertura"));
         caixa.setValorFechamento(resultado.getBigDecimal("valor_fechamento"));
+        caixa.setValorConferido(resultado.getBigDecimal("valor_conferido"));
+        caixa.setDiferenca(resultado.getBigDecimal("diferenca"));
         caixa.setStatus(StatusCaixa.valueOf(resultado.getString("status")));
         caixa.setObservacao(resultado.getString("observacao"));
         return caixa;

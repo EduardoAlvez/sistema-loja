@@ -37,6 +37,7 @@ import javax.swing.event.TableModelEvent;
 
 import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.Autorizacao;
+import com.portfolio.sistemaloja.model.ConferenciaCaixa;
 import com.portfolio.sistemaloja.model.Caixa;
 import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.Devolucao;
@@ -424,24 +425,20 @@ public class PainelPDV extends JPanel {
         texto.append("Fundo inicial: ").append(Ui.moeda(resumo.fundoInicial())).append('\n');
         texto.append("Suprimentos: ").append(Ui.moeda(resumo.suprimentos())).append('\n');
         texto.append("Sangrias: ").append(Ui.moeda(resumo.sangrias())).append('\n');
-        texto.append("Saldo esperado em espécie: ").append(Ui.moeda(resumo.saldoEsperado())).append('\n');
 
-        String informado = javax.swing.JOptionPane.showInputDialog(this,
-                texto + "\nValor em espécie contado no caixa:",
-                resumo.saldoEsperado().toPlainString());
-        if (informado == null) {
+        Optional<ConferenciaCaixa> conferencia = DialogoConferenciaCaixa.pedir(
+                SwingUtilities.getWindowAncestor(this), aplicacao, aberto);
+        if (conferencia.isEmpty()) {
             return;
         }
-        String observacao = javax.swing.JOptionPane.showInputDialog(this, "Observação do fechamento (opcional):", "");
-        if (observacao == null) {
-            return;
-        }
+        ConferenciaCaixa valores = conferencia.get();
         if (!Ui.confirma(this, "Confirma o fechamento do caixa?")) {
             return;
         }
         try {
-            CaixaService.Resumo fechado = aplicacao.getCaixa().fechar(parseMoeda(informado), observacao, usuario);
+            CaixaService.Resumo fechado = aplicacao.getCaixa().fechar(valores.valor(), valores.observacao(), usuario);
             StringBuilder relatorio = new StringBuilder(texto);
+            relatorio.append("Saldo esperado em especie: ").append(Ui.moeda(fechado.saldoEsperado())).append('\n');
             relatorio.append("Informado: ").append(Ui.moeda(fechado.valorInformado())).append('\n');
             BigDecimal diferenca = fechado.diferenca();
             relatorio.append("Diferença: ").append(Ui.moeda(diferenca))

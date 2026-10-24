@@ -310,13 +310,23 @@ podem ser autorizadores. Para demonstração, o banco semeado traz:
 Altere esses PINs em produção. A migração `V17` adiciona `pin_hash` e `pin_sal` (somente o hash,
 nunca o texto puro) à tabela de usuários.
 
+
+### Conferência cega de caixa
+
+Ao fechar o caixa, o operador declara o valor em espécie contado no gaveteiro **sem ver o saldo esperado** do sistema (conferência cega). Somente após a confirmação o sistema revela o saldo esperado e calcula a divergência (sobra ou falta):
+
+- O diálogo de fechamento oculta o saldo esperado até o valor ser informado.
+- O valor conferido e a diferença são gravados na tabela `caixas` (migração `V18`).
+- Cada fechamento gera dois eventos de auditoria: `CAIXA_FECHADO` (informado vs esperado) e `CAIXA_CONFERIDO` (valor conferido, esperado e diferença).
+- O operador pode cancelar o fechamento; o caixa permanece aberto.
+
 ### Testes
 
 ```bash
 mvn test
 ```
 
-**283 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**284 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -378,7 +388,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V16 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 283 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 284 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -469,7 +479,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 283 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 284 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
@@ -480,7 +490,7 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 - [x] Fidelidade por pontos, com resgate como desconto na venda
 - [x] Tela de Configurações do admin (fidelidade e PIX persistidos no banco, valendo na hora)
 - [x] Autorização de supervisor por PIN (desconto acima da alçada, cancelamento e sangria)
-- [ ] Conferência cega no fechamento de caixa, com a divergência registrada
+- [x] Conferência cega no fechamento de caixa, com a divergência registrada
 - [ ] Indicadores: vendas por hora, curva ABC, giro/ruptura, produtos sem movimentação, comparativo mensal
 
 **Onda 2 — médio esforço**

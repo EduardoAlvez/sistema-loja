@@ -146,11 +146,18 @@ public class CaixaService {
         if (informado.compareTo(BigDecimal.ZERO) < 0) {
             throw new ValidacaoException("O valor informado de fechamento não pode ser negativo.");
         }
-        caixas.fechar(aberto.getId(), informado, usuario.getId(), observacao);
-        LOG.info("Caixa {} fechado por {} com valor {}", aberto.getId(), usuario.getLogin(), informado);
+        BigDecimal diferenca = informado.subtract(previsto.saldoEsperado());
+        Caixa fechado = caixas.fechar(aberto.getId(), informado, informado, diferenca,
+                usuario.getId(), observacao);
+        LOG.info("Caixa {} fechado por {} com valor conferido {} e diferenca {}",
+                aberto.getId(), usuario.getLogin(), informado, diferenca);
         auditoria.registrar("CAIXA_FECHADO", "CAIXA", aberto.getId(),
                 "informado " + informado.toPlainString() + " esperado " + previsto.saldoEsperado().toPlainString());
-        return resumo(aberto, informado);
+        auditoria.registrar("CAIXA_CONFERIDO", "CAIXA", aberto.getId(),
+                "conferido " + informado.toPlainString() + " esperado "
+                        + previsto.saldoEsperado().toPlainString() + " diferenca "
+                        + diferenca.toPlainString());
+        return resumo(fechado, informado);
     }
 
     private BigDecimal somar(List<CaixaLancamento> lancamentos, TipoLancamentoCaixa tipo) {
