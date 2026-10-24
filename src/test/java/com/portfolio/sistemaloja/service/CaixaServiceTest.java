@@ -14,9 +14,11 @@ import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
 import com.portfolio.sistemaloja.model.VendaPagamento;
+import com.portfolio.sistemaloja.repository.EventoAuditoria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -204,6 +206,27 @@ class CaixaServiceTest {
         assertEquals(StatusCaixa.FECHADO, fechadoBanco.getStatus());
         assertEquals(0, new BigDecimal("100.00").compareTo(fechadoBanco.getValorConferido()));
         assertEquals(0, BigDecimal.ZERO.compareTo(fechadoBanco.getDiferenca()));
+    }
+
+    @Test
+    void fechamentoConferidoMenorQueEsperadoRegistraFaltaEAuditoria() {
+        Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+
+        CaixaService.Resumo fechado = app.getCaixa().fechar(new BigDecimal("90.00"), "falta", operador);
+
+        assertEquals(0, new BigDecimal("100.00").compareTo(fechado.saldoEsperado()));
+        assertEquals(0, new BigDecimal("90.00").compareTo(fechado.valorInformado()));
+        assertEquals(0, new BigDecimal("-10.00").compareTo(fechado.diferenca()));
+        Caixa fechadoBanco = app.getCaixa().buscarPorId(caixa.getId());
+        assertEquals(StatusCaixa.FECHADO, fechadoBanco.getStatus());
+        assertEquals(0, new BigDecimal("90.00").compareTo(fechadoBanco.getValorConferido()));
+        assertEquals(0, new BigDecimal("-10.00").compareTo(fechadoBanco.getDiferenca()));
+
+        List<EventoAuditoria> eventos = app.getAuditoria().listar(LocalDate.now(), LocalDate.now());
+        assertTrue(eventos.stream().anyMatch(e -> "CAIXA_CONFERIDO".equals(e.acao())),
+                "evento CAIXA_CONFERIDO ausente: " + eventos);
+        assertTrue(eventos.stream().anyMatch(e -> "CAIXA_FECHADO".equals(e.acao())),
+                "evento CAIXA_FECHADO ausente: " + eventos);
     }
 
     @Test

@@ -1,9 +1,8 @@
 package com.portfolio.sistemaloja.ui;
 
 import com.portfolio.sistemaloja.Aplicacao;
-import com.portfolio.sistemaloja.model.ConferenciaCaixa;
 import com.portfolio.sistemaloja.model.Caixa;
-import com.portfolio.sistemaloja.service.CaixaService;
+import com.portfolio.sistemaloja.model.ConferenciaCaixa;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -26,14 +25,13 @@ public class DialogoConferenciaCaixa extends JDialog {
     public DialogoConferenciaCaixa(Window proprietario, Aplicacao aplicacao, Caixa caixaAberto) {
         super(proprietario, "Conferencia de caixa", Dialog.ModalityType.APPLICATION_MODAL);
         painel = new PainelConferenciaCaixa();
-        CaixaService.Resumo resumo = aplicacao.getCaixa().resumo(caixaAberto);
-        montar(resumo);
+        montar();
         pack();
         setLocationRelativeTo(proprietario);
         setMinimumSize(getPreferredSize());
     }
 
-    private void montar(CaixaService.Resumo resumo) {
+    private void montar() {
         setLayout(new BorderLayout(10, 10));
         add(painel, BorderLayout.CENTER);
 
