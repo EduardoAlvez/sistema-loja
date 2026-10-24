@@ -87,6 +87,9 @@ public class PainelPDV extends JPanel {
     private final JButton botaoSuprimento = new JButton("Suprimento");
     private final JButton botaoFecharCaixa = new JButton("Fechar caixa");
     private final JButton botaoBuscarProduto = new JButton("Buscar produto [F3]");
+    {
+        botaoBuscarProduto.addActionListener(e -> abrirBuscaProduto());
+    }
     private final Map<Integer, String> atalhos = new LinkedHashMap<>();
 
     private final List<VendaItem> carrinho = new ArrayList<>();
