@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS fiados (
   valor_pago DECIMAL(18,6) NOT NULL DEFAULT 0,
   valor_devedor DECIMAL(18,6) NOT NULL,
   juros_aplicados DECIMAL(18,6) NOT NULL DEFAULT 0,
+  ultimo_calculo_juros TIMESTAMP,
   data_vencimento DATE NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'ABERTO',
   observacao VARCHAR(255),

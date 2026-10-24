@@ -185,13 +185,6 @@ public class PainelPDV extends JPanel {
         linhaCliente.add(cliente);
         linhaCliente.add(Ui.rotulo("CPF:"));
         linhaCliente.add(buscaCpfCliente);
-        JButton buscarCliente = new JButton("Buscar");
-        buscarCliente.addActionListener(e -> buscarClientePorCpf());
-        linhaCliente.add(buscarCliente);
-        JButton cadastrarCliente = new JButton("Cadastrar");
-        cadastrarCliente.addActionListener(e -> cadastrarClienteRapido());
-        linhaCliente.add(cadastrarCliente);
-        titulo.add(linhaCliente, BorderLayout.EAST);
 
         JPanel linhaVendaAPrazo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         linhaVendaAPrazo.setOpaque(false);
@@ -200,7 +193,12 @@ public class PainelPDV extends JPanel {
         linhaVendaAPrazo.add(vencimentoFiado);
         vendaAPrazo.addActionListener(e -> vencimentoFiado.setEnabled(vendaAPrazo.isSelected()));
         vencimentoFiado.setEnabled(false);
-        titulo.add(linhaVendaAPrazo, BorderLayout.EAST);
+
+        JPanel clienteContainer = new JPanel(new BorderLayout());
+        clienteContainer.setOpaque(false);
+        clienteContainer.add(linhaCliente, BorderLayout.WEST);
+        clienteContainer.add(linhaVendaAPrazo, BorderLayout.EAST);
+        titulo.add(clienteContainer, BorderLayout.EAST);
 
         JPanel linhaBusca = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         linhaBusca.setOpaque(false);
@@ -980,7 +978,7 @@ public class PainelPDV extends JPanel {
                 Venda registrada = aplicacao.getVendas().registrar(venda);
                 aplicacao.getFiados().gerarFiado(selecionado.getId(), registrada.getId(),
                         registrada.getTotal(), vencimento,
-                        "Venda a prazo - PDV");
+                        "Venda a prazo - PDV", null);
                 Ui.info(this, "Venda a prazo registrada. Fiado gerado para o cliente " + selecionado.getNome());
                 limpar();
                 recarregarProdutos();
@@ -1004,7 +1002,7 @@ public class PainelPDV extends JPanel {
                     Venda registrada = aplicacao.getVendas().registrar(venda, autorizacao.get());
                     aplicacao.getFiados().gerarFiado(selecionado.getId(), registrada.getId(),
                             registrada.getTotal(), vencimento,
-                            "Venda a prazo - PDV");
+                            "Venda a prazo - PDV", autorizacao.get());
                     Ui.info(this, "Venda a prazo registrada. Fiado gerado para o cliente " + selecionado.getNome());
                     limpar();
                     recarregarProdutos();

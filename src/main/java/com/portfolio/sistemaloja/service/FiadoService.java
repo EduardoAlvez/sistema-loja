@@ -4,6 +4,7 @@ import com.portfolio.sistemaloja.Sessao;
 import com.portfolio.sistemaloja.model.Autorizacao;
 import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.Fiado;
+import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.RecebimentoFiado;
 import com.portfolio.sistemaloja.repository.ClienteRepository;
 import com.portfolio.sistemaloja.repository.ConfiguracaoRepository;
@@ -15,6 +16,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 public class FiadoService {
@@ -40,7 +42,8 @@ public class FiadoService {
     }
 
     public Fiado gerarFiado(Long clienteId, Long vendaId, BigDecimal valorTotal,
-                            LocalDate dataVencimento, String observacao) {
+                            LocalDate dataVencimento, String observacao,
+                            Autorizacao autorizacao) {
         if (!configuracoes.fiadoHabilitado()) {
             throw new ValidacaoException("O fiado esta desabilitado para esta loja. Peca ao administrador habilitar.");
         }
@@ -57,11 +60,25 @@ public class FiadoService {
             throw new ValidacaoException("O cliente esta desativado e nao pode fazer compra a prazo.");
         }
 
+        // Verifica limite de credito (considerando ja o devedor com juros)
         BigDecimal limite = cliente.getLimiteCredito();
-        BigDecimal saldoDevedor = fiados.saldoDevedorTotalPorCliente(clienteId);
-        BigDecimal disponivel = limite.subtract(saldoDevedor);
-        if (disponivel.compareTo(valorTotal) < 0) {
-            verificarAutorizacaoLimite(clienteId, valorTotal, disponivel);
+        BigDecimal saldoDevedorExistente = fiados.saldoDevedorTotalPorCliente(clienteId);
+        BigDecimal valorDevedorNovo = valorTotal.add(calcularJuros(valorTotal, dataVencimento, LocalDate.now()));
+        BigDecimal novoSaldoDevedor = saldoDevedorExistente.add(valorDevedorNovo);
+        BigDecimal disponivel = limite.subtract(saldoDevedorExistente);
+
+        if (disponivel.compareTo(valorDevedorNovo) < 0) {
+            // Excede o limite: exige autorizacao de supervisor (PIN)
+            if (autorizacao == null) {
+                throw new ValidacaoException("O cliente excedeu o limite de credito disponível ("
+                        + disponivel.toPlainString() + "). E necessario autorizacao de um supervisor.");
+            }
+            if (autorizacao.operadorId() != sessao.getAtual().getId()) {
+                throw new ValidacaoException("A autorizacao nao pertence ao operador da sessão.");
+            }
+            if (autorizacao.motivo() != MotivoAutorizacao.LIMITE_CREDITO) {
+                throw new ValidacaoException("A autorizacao nao e para limite de credito.");
+            }
         }
 
         BigDecimal juros = calcularJuros(valorTotal, dataVencimento, LocalDate.now());
@@ -69,7 +86,7 @@ public class FiadoService {
 
         Fiado fiado = new Fiado(null, vendaId, clienteId, valorTotal,
                 BigDecimal.ZERO, valorDevedor, juros,
-                dataVencimento, "ABERTO", observacao);
+                dataVencimento, "ABERTO", observacao, null);
         fiados.salvar(fiado);
 
         auditoria.registrar("FIADO_GERADO", "FIADO", fiado.id(),
@@ -77,13 +94,6 @@ public class FiadoService {
                         + " vencimento " + dataVencimento);
 
         return fiado;
-    }
-
-    private void verificarAutorizacaoLimite(Long clienteId, BigDecimal valorTotal, BigDecimal disponivel) {
-        if (sessao.getAtual() == null || !sessao.getAtual().isAdmin()) {
-            throw new ValidacaoException("O cliente excedeu o limite de credito disponível ("
-                    + disponivel.toPlainString() + "). E necessario autorizacao de um supervisor.");
-        }
     }
 
     public Fiado receber(Long fiadoId, BigDecimal valor, String formaPagamento,
@@ -99,14 +109,15 @@ public class FiadoService {
             throw new ValidacaoException("Este ja foi quitado.");
         }
 
-        // Aplica juros vencidos ate hoje antes de receber
+        // Aplica juros vencidos ate hoje (incremental, so o que nao foi cobrado ainda)
         BigDecimal jurosVencidos = calcularJurosVencidos(fiado);
         if (jurosVencidos.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal novoDevedor = fiado.valorDevedor().add(jurosVencidos);
             fiado = new Fiado(fiado.id(), fiado.vendaId(), fiado.clienteId(),
                     fiado.valorTotal(), fiado.valorPago(), novoDevedor,
                     fiado.jurosAplicados().add(jurosVencidos),
-                    fiado.dataVencimento(), fiado.status(), fiado.observacao());
+                    fiado.dataVencimento(), fiado.status(), fiado.observacao(),
+                    LocalDateTime.now());
             fiados.salvar(fiado);
             auditoria.registrar("JUROS_APLICADOS", "FIADO", fiado.id(),
                     "juros " + jurosVencidos.toPlainString() + " aplicados ao fiado " + fiadoId);
@@ -131,7 +142,8 @@ public class FiadoService {
 
         Fiado atualizado = new Fiado(fiado.id(), fiado.vendaId(), fiado.clienteId(),
                 fiado.valorTotal(), valorPagoNovo, valorDevedorNovo,
-                fiado.jurosAplicados(), fiado.dataVencimento(), novoStatus, fiado.observacao());
+                fiado.jurosAplicados(), fiado.dataVencimento(), novoStatus, fiado.observacao(),
+                fiado.ultimoCalculoJuros());
         fiados.salvar(atualizado);
 
         auditoria.registrar("FIADO_RECEBIMENTO", "FIADO", fiado.id(),
@@ -154,24 +166,23 @@ public class FiadoService {
         if (dataReferencia == null) {
             dataReferencia = LocalDate.now();
         }
+        // Nao persiste alteracoes: apenas retorna os vencidos com juros calculados em memoria
         List<Fiado> vencidos = fiados.listarVencidos(dataReferencia);
-        // Aplica juros vencidos em cada fiado vencido
-        for (int i = 0; i < vencidos.size(); i++) {
-            Fiado f = vencidos.get(i);
+        List<Fiado> resultado = new ArrayList<>();
+        for (Fiado f : vencidos) {
             BigDecimal jurosVencidos = calcularJurosVencidos(f);
             if (jurosVencidos.compareTo(BigDecimal.ZERO) > 0) {
                 BigDecimal novoDevedor = f.valorDevedor().add(jurosVencidos);
-                Fiado atualizado = new Fiado(f.id(), f.vendaId(), f.clienteId(),
+                resultado.add(new Fiado(f.id(), f.vendaId(), f.clienteId(),
                         f.valorTotal(), f.valorPago(), novoDevedor,
                         f.jurosAplicados().add(jurosVencidos),
-                        f.dataVencimento(), f.status(), f.observacao());
-                fiados.salvar(atualizado);
-                vencidos.set(i, atualizado);
-                auditoria.registrar("JUROS_APLICADOS", "FIADO", f.id(),
-                        "juros " + jurosVencidos.toPlainString() + " aplicados ao fiado " + f.id());
+                        f.dataVencimento(), f.status(), f.observacao(),
+                        f.ultimoCalculoJuros()));
+            } else {
+                resultado.add(f);
             }
         }
-        return vencidos;
+        return resultado;
     }
 
     public List<Fiado> listarPorCliente(Long clienteId) {
@@ -188,6 +199,14 @@ public class FiadoService {
         }
         Cliente cliente = clientes.buscarPorId(clienteId)
                 .orElseThrow(() -> new ValidacaoException("Cliente nao encontrado."));
+
+        // Nao permite definir limite abaixo do saldo devedor atual
+        BigDecimal saldoDevedor = fiados.saldoDevedorTotalPorCliente(clienteId);
+        if (limite.compareTo(saldoDevedor) < 0) {
+            throw new ValidacaoException("O limite nao pode ser menor que o saldo devedor atual ("
+                    + saldoDevedor.toPlainString() + ").");
+        }
+
         cliente.setLimiteCredito(limite);
         clientes.salvar(cliente);
         auditoria.registrar("LIMITE_CREDITO_ALTERADO", "CLIENTE", clienteId,
@@ -206,14 +225,24 @@ public class FiadoService {
         if (diasAtraso <= 0) {
             return BigDecimal.ZERO;
         }
-        // Juros simples: valor * taxa * dias / 30
-        return valorTotal.multiply(taxa).multiply(BigDecimal.valueOf(diasAtraso))
+        // Juros simples: valor * taxa(%) * dias / 30
+        // taxa vem em percentual (ex: 5 = 5%), entao divide por 100
+        return valorTotal.multiply(taxa.divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP))
+                .multiply(BigDecimal.valueOf(diasAtraso))
                 .divide(BigDecimal.valueOf(30), 6, RoundingMode.HALF_UP)
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calcularJurosVencidos(Fiado fiado) {
-        return calcularJuros(fiado.valorTotal(), fiado.dataVencimento(), LocalDate.now());
+        LocalDateTime ultimoCalculo = fiado.ultimoCalculoJuros();
+        LocalDate dataReferencia = LocalDate.now();
+
+        // Se ja calculou juros hoje, nao cobra de novo
+        if (ultimoCalculo != null && ultimoCalculo.toLocalDate().equals(dataReferencia)) {
+            return BigDecimal.ZERO;
+        }
+
+        return calcularJuros(fiado.valorTotal(), fiado.dataVencimento(), dataReferencia);
     }
 
     public boolean fiadoHabilitado() {

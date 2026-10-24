@@ -2,11 +2,13 @@ package com.portfolio.sistemaloja.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 public record Fiado(Long id, Long vendaId, Long clienteId, BigDecimal valorTotal,
                     BigDecimal valorPago, BigDecimal valorDevedor, BigDecimal jurosAplicados,
-                    LocalDate dataVencimento, String status, String observacao) {
+                    LocalDate dataVencimento, String status, String observacao,
+                    LocalDateTime ultimoCalculoJuros) {
 
     public Fiado {
         Objects.requireNonNull(vendaId, "vendaId");

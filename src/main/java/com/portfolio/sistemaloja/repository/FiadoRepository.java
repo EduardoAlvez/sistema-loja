@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -18,7 +19,7 @@ public class FiadoRepository {
 
     private static final String SELECT_BASE = """
             SELECT f.id, f.venda_id, f.cliente_id, f.valor_total, f.valor_pago, f.valor_devedor,
-                   f.juros_aplicados, f.data_vencimento, f.status, f.observacao
+                   f.juros_aplicados, f.ultimo_calculo_juros, f.data_vencimento, f.status, f.observacao
               FROM fiados f""";
 
     private final ConexaoFonte fonte;
@@ -31,12 +32,12 @@ public class FiadoRepository {
         String sql;
         if (fiado.id() == null) {
             sql = "INSERT INTO fiados (venda_id, cliente_id, valor_total, valor_pago, valor_devedor, "
-                    + "juros_aplicados, data_vencimento, status, observacao) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    + "juros_aplicados, ultimo_calculo_juros, data_vencimento, status, observacao) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         } else {
             sql = "UPDATE fiados SET venda_id = ?, cliente_id = ?, valor_total = ?, valor_pago = ?, "
-                    + "valor_devedor = ?, juros_aplicados = ?, data_vencimento = ?, status = ?, "
-                    + "observacao = ? WHERE id = ?";
+                    + "valor_devedor = ?, juros_aplicados = ?, ultimo_calculo_juros = ?, "
+                    + "data_vencimento = ?, status = ?, observacao = ? WHERE id = ?";
         }
         try (Connection conexao = fonte.getConnection();
              PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -46,11 +47,12 @@ public class FiadoRepository {
             preparada.setBigDecimal(4, fiado.valorPago());
             preparada.setBigDecimal(5, fiado.valorDevedor());
             preparada.setBigDecimal(6, fiado.jurosAplicados());
-            preparada.setObject(7, fiado.dataVencimento());
-            preparada.setString(8, fiado.status());
-            preparada.setString(9, fiado.observacao());
+            preparada.setObject(7, fiado.ultimoCalculoJuros());
+            preparada.setObject(8, fiado.dataVencimento());
+            preparada.setString(9, fiado.status());
+            preparada.setString(10, fiado.observacao());
             if (fiado.id() != null) {
-                preparada.setLong(10, fiado.id());
+                preparada.setLong(11, fiado.id());
             }
             preparada.executeUpdate();
             if (fiado.id() == null) {
@@ -59,7 +61,7 @@ public class FiadoRepository {
                         fiado = new Fiado(chaves.getLong(1), fiado.vendaId(), fiado.clienteId(),
                                 fiado.valorTotal(), fiado.valorPago(), fiado.valorDevedor(),
                                 fiado.jurosAplicados(), fiado.dataVencimento(), fiado.status(),
-                                fiado.observacao());
+                                fiado.observacao(), fiado.ultimoCalculoJuros());
                     }
                 }
             }
@@ -166,7 +168,8 @@ public class FiadoRepository {
                 resultado.getBigDecimal("juros_aplicados"),
                 resultado.getObject("data_vencimento", LocalDate.class),
                 resultado.getString("status"),
-                resultado.getString("observacao")
+                resultado.getString("observacao"),
+                resultado.getObject("ultimo_calculo_juros", LocalDateTime.class)
         );
     }
 }
