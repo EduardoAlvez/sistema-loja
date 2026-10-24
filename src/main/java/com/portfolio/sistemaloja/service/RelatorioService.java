@@ -1,11 +1,16 @@
 package com.portfolio.sistemaloja.service;
 
 import com.portfolio.sistemaloja.model.Venda;
+import com.portfolio.sistemaloja.repository.ComparativoPeriodo;
+import com.portfolio.sistemaloja.repository.CurvaABC;
+import com.portfolio.sistemaloja.repository.GiroEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
+import com.portfolio.sistemaloja.repository.ProdutoSemMovimento;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
 import com.portfolio.sistemaloja.repository.ResumoOperador;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
+import com.portfolio.sistemaloja.repository.VendaHora;
 import com.portfolio.sistemaloja.repository.VendaRepository;
 
 import java.math.BigDecimal;
@@ -97,6 +102,48 @@ public class RelatorioService {
             total = total.add(operador.comissao());
         }
         return total;
+    }
+
+    public List<VendaHora> vendasPorHora(LocalDate inicio, LocalDate fim) {
+        if (inicio.isAfter(fim)) {
+            throw new ValidacaoException("A data inicial deve ser anterior à final.");
+        }
+        return relatorios.vendasPorHora(inicio, fim);
+    }
+
+    public List<CurvaABC> curvaABCProdutos(LocalDate inicio, LocalDate fim) {
+        if (inicio.isAfter(fim)) {
+            throw new ValidacaoException("A data inicial deve ser anterior à final.");
+        }
+        return relatorios.curvaABCProdutos(inicio, fim);
+    }
+
+    public List<CurvaABC> curvaABCCategorias(LocalDate inicio, LocalDate fim) {
+        if (inicio.isAfter(fim)) {
+            throw new ValidacaoException("A data inicial deve ser anterior à final.");
+        }
+        return relatorios.curvaABCCategorias(inicio, fim);
+    }
+
+    public List<GiroEstoque> giroEstoque(LocalDate inicio, LocalDate fim) {
+        if (inicio.isAfter(fim)) {
+            throw new ValidacaoException("A data inicial deve ser anterior à final.");
+        }
+        return relatorios.giroEstoque(inicio, fim);
+    }
+
+    public List<ProdutoSemMovimento> produtosSemMovimento(LocalDate inicio, LocalDate fim) {
+        if (inicio.isAfter(fim)) {
+            throw new ValidacaoException("A data inicial deve ser anterior à final.");
+        }
+        return relatorios.produtosSemMovimento(inicio, fim);
+    }
+
+    public ComparativoPeriodo comparativoPeriodo(LocalDate inicio, LocalDate fim) {
+        if (inicio.isAfter(fim)) {
+            throw new ValidacaoException("A data inicial deve ser anterior à final.");
+        }
+        return relatorios.comparativoPeriodo(inicio, fim);
     }
 
     public record ResumoDashboard(int vendas, BigDecimal faturamento, BigDecimal ticketMedio,

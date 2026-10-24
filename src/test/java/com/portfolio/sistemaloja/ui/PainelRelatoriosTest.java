@@ -11,6 +11,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class PainelRelatoriosTest {
 
@@ -19,14 +20,14 @@ class PainelRelatoriosTest {
         Aplicacao adminApp = BancoTeste.criar("reladmin" + System.nanoTime());
         adminApp.getAuth().autenticar("admin", "admin123");
         JTabbedPane abasAdmin = abas(new PainelRelatorios(adminApp));
-        assertEquals(6, abasAdmin.getTabCount(), "admin deve ver a aba Auditoria");
+        assertEquals(7, abasAdmin.getTabCount(), "admin deve ver a aba Auditoria");
         assertEquals("Auditoria", abasAdmin.getTitleAt(abasAdmin.getTabCount() - 1));
 
         Aplicacao operadorApp = BancoTeste.criar("relop" + System.nanoTime());
         operadorApp.getAuth().autenticar("operador", "caixa123");
         JTabbedPane abasOperador = abas(new PainelRelatorios(operadorApp));
-        assertEquals(5, abasOperador.getTabCount(), "operador nao deve ver a aba Auditoria");
-        assertEquals("Por operador", abasOperador.getTitleAt(abasOperador.getTabCount() - 1));
+        assertEquals(6, abasOperador.getTabCount(), "operador nao deve ver a aba Auditoria");
+        assertEquals("Indicadores", abasOperador.getTitleAt(abasOperador.getTabCount() - 1));
     }
 
     @Test
@@ -39,8 +40,15 @@ class PainelRelatoriosTest {
         painel.gerar();
 
         JTabbedPane abas = abas(painel);
-        JTable tabela = (JTable) ((JScrollPane) abas.getComponentAt(abas.getTabCount() - 1))
-                .getViewport().getView();
+        // Encontra a aba "Por operador" (última para operador, antes de Indicadores)
+        JTable tabela = null;
+        for (int i = 0; i < abas.getTabCount(); i++) {
+            if ("Por operador".equals(abas.getTitleAt(i))) {
+                tabela = (JTable) ((JScrollPane) abas.getComponentAt(i)).getViewport().getView();
+                break;
+            }
+        }
+        assertNotNull(tabela, "aba Por operador deve existir");
         assertEquals(0, tabela.getRowCount(), "operador sem vendas no periodo nao aparece");
     }
 

@@ -3,8 +3,13 @@ package com.portfolio.sistemaloja.service;
 import com.portfolio.sistemaloja.grafico.GraficoFaturamento;
 import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.Venda;
+import com.portfolio.sistemaloja.repository.ComparativoPeriodo;
+import com.portfolio.sistemaloja.repository.CurvaABC;
+import com.portfolio.sistemaloja.repository.GiroEstoque;
+import com.portfolio.sistemaloja.repository.ProdutoSemMovimento;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
+import com.portfolio.sistemaloja.repository.VendaHora;
 
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
@@ -61,11 +66,35 @@ public class ExportacaoService {
                                  RelatorioService.ResumoDashboard resumo,
                                  List<Venda> vendas,
                                  List<ProdutoVendado> maisVendidos,
-                                 List<VendaDoDia> porDia) {
+                                 List<VendaDoDia> porDia,
+                                 List<VendaHora> vendasPorHora,
+                                 List<CurvaABC> curvaProdutos,
+                                 List<CurvaABC> curvaCategorias,
+                                 List<GiroEstoque> giroEstoque,
+                                 List<ProdutoSemMovimento> semMovimento,
+                                 ComparativoPeriodo comparativo) {
         public DadosRelatorio {
             vendas = vendas == null ? List.of() : List.copyOf(vendas);
             maisVendidos = maisVendidos == null ? List.of() : List.copyOf(maisVendidos);
             porDia = porDia == null ? List.of() : List.copyOf(porDia);
+            vendasPorHora = vendasPorHora == null ? List.of() : List.copyOf(vendasPorHora);
+            curvaProdutos = curvaProdutos == null ? List.of() : List.copyOf(curvaProdutos);
+            curvaCategorias = curvaCategorias == null ? List.of() : List.copyOf(curvaCategorias);
+            giroEstoque = giroEstoque == null ? List.of() : List.copyOf(giroEstoque);
+            semMovimento = semMovimento == null ? List.of() : List.copyOf(semMovimento);
+            comparativo = comparativo == null
+                    ? new ComparativoPeriodo("-", BigDecimal.ZERO, 0, BigDecimal.ZERO, BigDecimal.ZERO)
+                    : comparativo;
+        }
+
+        public static DadosRelatorio comIndicadores(LocalDate inicio, LocalDate fim,
+                                                    RelatorioService.ResumoDashboard resumo,
+                                                    List<Venda> vendas,
+                                                    List<ProdutoVendado> maisVendidos,
+                                                    List<VendaDoDia> porDia) {
+            return new DadosRelatorio(inicio, fim, resumo, vendas, maisVendidos, porDia,
+                    List.of(), List.of(), List.of(), List.of(), List.of(),
+                    new ComparativoPeriodo("-", BigDecimal.ZERO, 0, BigDecimal.ZERO, BigDecimal.ZERO));
         }
     }
 
@@ -101,6 +130,30 @@ public class ExportacaoService {
             documento.add(titulo("Mais vendidos", 13));
             documento.add(tabelaMaisVendidos(dados.maisVendidos()));
 
+            documento.add(Chunk.NEWLINE);
+            documento.add(titulo("Vendas por hora do dia", 13));
+            documento.add(tabelaVendaHora(dados.vendasPorHora()));
+            documento.add(Chunk.NEWLINE);
+
+            documento.add(titulo("Curva ABC – produtos", 13));
+            documento.add(tabelaCurvaABC(dados.curvaProdutos(), "Produto"));
+            documento.add(Chunk.NEWLINE);
+
+            documento.add(titulo("Curva ABC – categorias", 13));
+            documento.add(tabelaCurvaABC(dados.curvaCategorias(), "Categoria"));
+            documento.add(Chunk.NEWLINE);
+
+            documento.add(titulo("Giro de estoque e ruptura", 13));
+            documento.add(tabelaGiroEstoque(dados.giroEstoque()));
+            documento.add(Chunk.NEWLINE);
+
+            documento.add(titulo("Produtos sem movimento", 13));
+            documento.add(tabelaSemMovimento(dados.semMovimento()));
+            documento.add(Chunk.NEWLINE);
+
+            documento.add(titulo("Comparativo de período", 13));
+            documento.add(tabelaComparativo(dados.comparativo()));
+
             documento.close();
             return destino;
         } catch (IOException e) {
@@ -122,6 +175,18 @@ public class ExportacaoService {
             montarResumo(planilha.createSheet("Resumo"), dados, titulo, texto);
             montarVendas(planilha.createSheet("Vendas"), dados.vendas(), cabecalho, texto, moeda);
             montarMaisVendidos(planilha.createSheet("Mais vendidos"), dados.maisVendidos(),
+                    cabecalho, texto, moeda);
+            montarVendaHora(planilha.createSheet("Vendas por hora"), dados.vendasPorHora(),
+                    cabecalho, texto, moeda);
+            montarCurvaABC(planilha.createSheet("Curva ABC – produtos"), dados.curvaProdutos(),
+                    cabecalho, texto, moeda, "Produto");
+            montarCurvaABC(planilha.createSheet("Curva ABC – categorias"), dados.curvaCategorias(),
+                    cabecalho, texto, moeda, "Categoria");
+            montarGiroEstoque(planilha.createSheet("Giro de estoque"), dados.giroEstoque(),
+                    cabecalho, texto, moeda);
+            montarSemMovimento(planilha.createSheet("Sem movimento"), dados.semMovimento(),
+                    cabecalho, texto, moeda);
+            montarComparativo(planilha.createSheet("Comparativo"), dados.comparativo(),
                     cabecalho, texto, moeda);
 
             try (FileOutputStream saida = new FileOutputStream(destino)) {
@@ -234,6 +299,114 @@ public class ExportacaoService {
             adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_CENTER);
             adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_RIGHT);
         }
+        return tabela;
+    }
+
+    private PdfPTable tabelaVendaHora(List<VendaHora> horas) {
+        PdfPTable tabela = new PdfPTable(new float[]{1.5f, 1.5f, 2f});
+        tabela.setWidthPercentage(70);
+        adicionarCabecalho(tabela, "Hora", "Qtd. vendas", "Total");
+        boolean zebra = false;
+        for (VendaHora h : horas) {
+            Color fundo = zebra ? COR_ZEBRA : Color.WHITE;
+            adicionarCelula(tabela, h.hora() + "h", fundo, Color.BLACK, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, String.valueOf(h.quantidade()), fundo, Color.BLACK, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, moeda(h.total()), fundo, Color.BLACK, Element.ALIGN_RIGHT);
+            zebra = !zebra;
+        }
+        if (horas.isEmpty()) {
+            adicionarCelula(tabela, "Sem vendas no período", Color.WHITE, Color.GRAY, Element.ALIGN_LEFT);
+            adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_RIGHT);
+        }
+        return tabela;
+    }
+
+    private PdfPTable tabelaCurvaABC(List<CurvaABC> curva, String tipoColuna) {
+        PdfPTable tabela = new PdfPTable(new float[]{3.5f, 1.2f, 2f, 1.2f, 1.1f});
+        tabela.setWidthPercentage(70);
+        adicionarCabecalho(tabela, tipoColuna, "Qtd.", "Total", "%", "Classe");
+        boolean zebra = false;
+        for (CurvaABC c : curva) {
+            Color fundo = zebra ? COR_ZEBRA : Color.WHITE;
+            adicionarCelula(tabela, c.nome(), fundo, Color.BLACK, Element.ALIGN_LEFT);
+            adicionarCelula(tabela, String.valueOf(c.quantidade()), fundo, Color.BLACK, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, moeda(c.total()), fundo, Color.BLACK, Element.ALIGN_RIGHT);
+            adicionarCelula(tabela, c.percentual() + "%", fundo, Color.BLACK, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, c.classe(), fundo, Color.BLACK, Element.ALIGN_CENTER);
+            zebra = !zebra;
+        }
+        if (curva.isEmpty()) {
+            adicionarCelula(tabela, "Sem dados no período", Color.WHITE, Color.GRAY, Element.ALIGN_LEFT);
+            adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_RIGHT);
+            adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_CENTER);
+        }
+        return tabela;
+    }
+
+    private PdfPTable tabelaGiroEstoque(List<GiroEstoque> giros) {
+        PdfPTable tabela = new PdfPTable(new float[]{2.5f, 1.5f, 1.2f, 1.2f, 1.2f, 1.2f, 1.2f});
+        tabela.setWidthPercentage(100);
+        adicionarCabecalho(tabela, "Produto", "Categoria", "Estoque", "Mínimo", "Vendas", "Giro", "Ruptura");
+        boolean zebra = false;
+        for (GiroEstoque g : giros) {
+            Color fundo = zebra ? COR_ZEBRA : Color.WHITE;
+            Color corTexto = g.ruptura() ? COR_ALERTA : Color.BLACK;
+            adicionarCelula(tabela, g.nome(), fundo, corTexto, Element.ALIGN_LEFT);
+            adicionarCelula(tabela, g.categoria(), fundo, corTexto, Element.ALIGN_LEFT);
+            adicionarCelula(tabela, String.valueOf(g.estoque()), fundo, corTexto, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, String.valueOf(g.estoqueMinimo()), fundo, corTexto, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, String.valueOf(g.vendasPeriodo()), fundo, corTexto, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, moeda(g.giro()), fundo, corTexto, Element.ALIGN_RIGHT);
+            adicionarCelula(tabela, g.ruptura() ? "Sim" : "Não", fundo, corTexto, Element.ALIGN_CENTER);
+            zebra = !zebra;
+        }
+        if (giros.isEmpty()) {
+            adicionarCelula(tabela, "Sem produtos cadastrados", Color.WHITE, Color.GRAY, Element.ALIGN_LEFT);
+            for (int i = 1; i < 7; i++) {
+                PdfPCell celula = new PdfPCell(new Phrase(" "));
+                celula.setBackgroundColor(Color.WHITE);
+                tabela.addCell(celula);
+            }
+        }
+        return tabela;
+    }
+
+    private PdfPTable tabelaSemMovimento(List<ProdutoSemMovimento> lista) {
+        PdfPTable tabela = new PdfPTable(new float[]{3f, 2f, 1.2f, 2f});
+        tabela.setWidthPercentage(80);
+        adicionarCabecalho(tabela, "Produto", "Categoria", "Estoque", "Últ. movimento");
+        boolean zebra = false;
+        for (ProdutoSemMovimento s : lista) {
+            Color fundo = zebra ? COR_ZEBRA : Color.WHITE;
+            adicionarCelula(tabela, s.nome(), fundo, Color.BLACK, Element.ALIGN_LEFT);
+            adicionarCelula(tabela, s.categoria(), fundo, Color.BLACK, Element.ALIGN_LEFT);
+            adicionarCelula(tabela, String.valueOf(s.estoque()), fundo, Color.BLACK, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, s.ultimoMovimento() == null ? "-" : DATA.format(s.ultimoMovimento()),
+                    fundo, Color.BLACK, Element.ALIGN_LEFT);
+            zebra = !zebra;
+        }
+        if (lista.isEmpty()) {
+            adicionarCelula(tabela, "Todos os produtos tiveram movimento", Color.WHITE, Color.GRAY, Element.ALIGN_LEFT);
+            adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_LEFT);
+            adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_CENTER);
+            adicionarCelula(tabela, "-", Color.WHITE, Color.GRAY, Element.ALIGN_LEFT);
+        }
+        return tabela;
+    }
+
+    private PdfPTable tabelaComparativo(ComparativoPeriodo c) {
+        PdfPTable tabela = new PdfPTable(new float[]{3f, 1.8f, 1.5f, 1.8f, 1.8f});
+        tabela.setWidthPercentage(80);
+        adicionarCabecalho(tabela, "Período", "Total", "Qtd. vendas", "Variação", "Variação %");
+        Color cor = c.variacao().compareTo(BigDecimal.ZERO) >= 0 ? Color.BLACK : COR_ALERTA;
+        adicionarCelula(tabela, c.rotulo(), Color.WHITE, Color.BLACK, Element.ALIGN_LEFT);
+        adicionarCelula(tabela, moeda(c.total()), Color.WHITE, cor, Element.ALIGN_RIGHT);
+        adicionarCelula(tabela, String.valueOf(c.quantidade()), Color.WHITE, cor, Element.ALIGN_CENTER);
+        adicionarCelula(tabela, moeda(c.variacao()), Color.WHITE, cor, Element.ALIGN_RIGHT);
+        adicionarCelula(tabela, c.variacaoPercentual() + "%", Color.WHITE, cor, Element.ALIGN_CENTER);
         return tabela;
     }
 
@@ -352,6 +525,155 @@ public class ExportacaoService {
         aba.setColumnWidth(0, 34 * 256);
         aba.setColumnWidth(1, 20 * 256);
         aba.setColumnWidth(2, 18 * 256);
+    }
+
+    private void montarVendaHora(Sheet aba, List<VendaHora> horas, CellStyle cabecalho,
+                                 CellStyle texto, CellStyle moeda) {
+        String[] colunas = {"Hora", "Qtd. vendas", "Total"};
+        Row linhaCabecalho = aba.createRow(0);
+        for (int i = 0; i < colunas.length; i++) {
+            linhaCabecalho.createCell(i).setCellValue(colunas[i]);
+            linhaCabecalho.getCell(i).setCellStyle(cabecalho);
+        }
+        int linha = 1;
+        for (VendaHora h : horas) {
+            Row row = aba.createRow(linha++);
+            row.createCell(0).setCellValue(h.hora() + "h");
+            row.getCell(0).setCellStyle(texto);
+            row.createCell(1).setCellValue(h.quantidade());
+            row.getCell(1).setCellStyle(texto);
+            Cell total = row.createCell(2);
+            total.setCellValue(h.total().doubleValue());
+            total.setCellStyle(moeda);
+        }
+        aba.createFreezePane(0, 1);
+        aba.setColumnWidth(0, 12 * 256);
+        aba.setColumnWidth(1, 18 * 256);
+        aba.setColumnWidth(2, 18 * 256);
+    }
+
+    private void montarCurvaABC(Sheet aba, List<CurvaABC> curva, CellStyle cabecalho,
+                                CellStyle texto, CellStyle moeda, String tipoColuna) {
+        String[] colunas = {tipoColuna, "Qtd.", "Total", "%", "Classe"};
+        Row linhaCabecalho = aba.createRow(0);
+        for (int i = 0; i < colunas.length; i++) {
+            linhaCabecalho.createCell(i).setCellValue(colunas[i]);
+            linhaCabecalho.getCell(i).setCellStyle(cabecalho);
+        }
+        int linha = 1;
+        for (CurvaABC c : curva) {
+            Row row = aba.createRow(linha++);
+            row.createCell(0).setCellValue(c.nome());
+            row.getCell(0).setCellStyle(texto);
+            row.createCell(1).setCellValue(c.quantidade());
+            row.getCell(1).setCellStyle(texto);
+            Cell total = row.createCell(2);
+            total.setCellValue(c.total().doubleValue());
+            total.setCellStyle(moeda);
+            row.createCell(3).setCellValue(c.percentual() + "%");
+            row.getCell(3).setCellStyle(texto);
+            row.createCell(4).setCellValue(c.classe());
+            row.getCell(4).setCellStyle(texto);
+        }
+        aba.createFreezePane(0, 1);
+        aba.setColumnWidth(0, 34 * 256);
+        aba.setColumnWidth(1, 12 * 256);
+        aba.setColumnWidth(2, 18 * 256);
+        aba.setColumnWidth(3, 10 * 256);
+        aba.setColumnWidth(4, 10 * 256);
+    }
+
+    private void montarGiroEstoque(Sheet aba, List<GiroEstoque> giros, CellStyle cabecalho,
+                                   CellStyle texto, CellStyle moeda) {
+        String[] colunas = {"Produto", "Categoria", "Estoque", "Mínimo", "Vendas", "Giro", "Ruptura"};
+        Row linhaCabecalho = aba.createRow(0);
+        for (int i = 0; i < colunas.length; i++) {
+            linhaCabecalho.createCell(i).setCellValue(colunas[i]);
+            linhaCabecalho.getCell(i).setCellStyle(cabecalho);
+        }
+        int linha = 1;
+        for (GiroEstoque g : giros) {
+            Row row = aba.createRow(linha++);
+            row.createCell(0).setCellValue(g.nome());
+            row.getCell(0).setCellStyle(texto);
+            row.createCell(1).setCellValue(g.categoria());
+            row.getCell(1).setCellStyle(texto);
+            row.createCell(2).setCellValue(g.estoque());
+            row.getCell(2).setCellStyle(texto);
+            row.createCell(3).setCellValue(g.estoqueMinimo());
+            row.getCell(3).setCellStyle(texto);
+            row.createCell(4).setCellValue(g.vendasPeriodo());
+            row.getCell(4).setCellStyle(texto);
+            Cell giro = row.createCell(5);
+            giro.setCellValue(g.giro().doubleValue());
+            giro.setCellStyle(moeda);
+            row.createCell(6).setCellValue(g.ruptura() ? "Sim" : "Não");
+            row.getCell(6).setCellStyle(texto);
+        }
+        aba.createFreezePane(0, 1);
+        aba.setColumnWidth(0, 30 * 256);
+        aba.setColumnWidth(1, 20 * 256);
+        aba.setColumnWidth(2, 12 * 256);
+        aba.setColumnWidth(3, 12 * 256);
+        aba.setColumnWidth(4, 12 * 256);
+        aba.setColumnWidth(5, 12 * 256);
+        aba.setColumnWidth(6, 12 * 256);
+    }
+
+    private void montarSemMovimento(Sheet aba, List<ProdutoSemMovimento> lista, CellStyle cabecalho,
+                                    CellStyle texto, CellStyle moeda) {
+        String[] colunas = {"Produto", "Categoria", "Estoque", "Últ. movimento"};
+        Row linhaCabecalho = aba.createRow(0);
+        for (int i = 0; i < colunas.length; i++) {
+            linhaCabecalho.createCell(i).setCellValue(colunas[i]);
+            linhaCabecalho.getCell(i).setCellStyle(cabecalho);
+        }
+        int linha = 1;
+        for (ProdutoSemMovimento s : lista) {
+            Row row = aba.createRow(linha++);
+            row.createCell(0).setCellValue(s.nome());
+            row.getCell(0).setCellStyle(texto);
+            row.createCell(1).setCellValue(s.categoria());
+            row.getCell(1).setCellStyle(texto);
+            row.createCell(2).setCellValue(s.estoque());
+            row.getCell(2).setCellStyle(texto);
+            row.createCell(3).setCellValue(s.ultimoMovimento() == null ? "-" : DATA.format(s.ultimoMovimento()));
+            row.getCell(3).setCellStyle(texto);
+        }
+        aba.createFreezePane(0, 1);
+        aba.setColumnWidth(0, 34 * 256);
+        aba.setColumnWidth(1, 20 * 256);
+        aba.setColumnWidth(2, 12 * 256);
+        aba.setColumnWidth(3, 20 * 256);
+    }
+
+    private void montarComparativo(Sheet aba, ComparativoPeriodo c, CellStyle cabecalho,
+                                   CellStyle texto, CellStyle moeda) {
+        String[] colunas = {"Período", "Total", "Qtd. vendas", "Variação", "Variação %"};
+        Row linhaCabecalho = aba.createRow(0);
+        for (int i = 0; i < colunas.length; i++) {
+            linhaCabecalho.createCell(i).setCellValue(colunas[i]);
+            linhaCabecalho.getCell(i).setCellStyle(cabecalho);
+        }
+        Row row = aba.createRow(1);
+        row.createCell(0).setCellValue(c.rotulo());
+        row.getCell(0).setCellStyle(texto);
+        Cell total = row.createCell(1);
+        total.setCellValue(c.total().doubleValue());
+        total.setCellStyle(moeda);
+        row.createCell(2).setCellValue(c.quantidade());
+        row.getCell(2).setCellStyle(texto);
+        Cell variacao = row.createCell(3);
+        variacao.setCellValue(c.variacao().doubleValue());
+        variacao.setCellStyle(moeda);
+        row.createCell(4).setCellValue(c.variacaoPercentual() + "%");
+        row.getCell(4).setCellStyle(texto);
+        aba.createFreezePane(0, 1);
+        aba.setColumnWidth(0, 30 * 256);
+        aba.setColumnWidth(1, 18 * 256);
+        aba.setColumnWidth(2, 16 * 256);
+        aba.setColumnWidth(3, 18 * 256);
+        aba.setColumnWidth(4, 16 * 256);
     }
 
     private org.apache.poi.xssf.usermodel.XSSFColor corPoi(Color cor) {

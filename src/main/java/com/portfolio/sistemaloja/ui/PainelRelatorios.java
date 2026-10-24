@@ -5,11 +5,16 @@ import com.portfolio.sistemaloja.model.Autorizacao;
 import com.portfolio.sistemaloja.model.StatusVenda;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.repository.ComparativoPeriodo;
+import com.portfolio.sistemaloja.repository.CurvaABC;
 import com.portfolio.sistemaloja.repository.EventoAuditoria;
+import com.portfolio.sistemaloja.repository.GiroEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
+import com.portfolio.sistemaloja.repository.ProdutoSemMovimento;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.ResumoOperador;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
+import com.portfolio.sistemaloja.repository.VendaHora;
 import com.portfolio.sistemaloja.service.AutorizacaoNecessariaException;
 import com.portfolio.sistemaloja.service.ExportacaoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
@@ -17,6 +22,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -75,6 +82,33 @@ public class PainelRelatorios extends JPanel {
     private LocalDate periodoInicio;
     private LocalDate periodoFim;
 
+    /* ---------- Indicadores ---------- */
+    private final javax.swing.table.DefaultTableModel modeloVendaHora =
+            Ui.modeloTabela("Hora", "Qtd. vendas", "Total");
+    private final JTable tabelaVendaHora = Ui.tabela(modeloVendaHora);
+    private final javax.swing.table.DefaultTableModel modeloCurvaProdutos =
+            Ui.modeloTabela("Produto", "Qtd.", "Total", "%", "Classe");
+    private final JTable tabelaCurvaProdutos = Ui.tabela(modeloCurvaProdutos);
+    private final javax.swing.table.DefaultTableModel modeloCurvaCategorias =
+            Ui.modeloTabela("Categoria", "Qtd.", "Total", "%", "Classe");
+    private final JTable tabelaCurvaCategorias = Ui.tabela(modeloCurvaCategorias);
+    private final javax.swing.table.DefaultTableModel modeloGiroEstoque =
+            Ui.modeloTabela("Produto", "Categoria", "Estoque", "Mínimo", "Vendas", "Giro", "Ruptura");
+    private final JTable tabelaGiroEstoque = Ui.tabela(modeloGiroEstoque);
+    private final javax.swing.table.DefaultTableModel modeloSemMovimento =
+            Ui.modeloTabela("Produto", "Categoria", "Estoque", "Últ. movimento");
+    private final JTable tabelaSemMovimento = Ui.tabela(modeloSemMovimento);
+    private final javax.swing.table.DefaultTableModel modeloComparativo =
+            Ui.modeloTabela("Período", "Total", "Qtd. vendas", "Variação", "Variação %");
+    private final JTable tabelaComparativo = Ui.tabela(modeloComparativo);
+
+    private List<VendaHora> listaVendaHora = List.of();
+    private List<CurvaABC> listaCurvaProdutos = List.of();
+    private List<CurvaABC> listaCurvaCategorias = List.of();
+    private List<GiroEstoque> listaGiroEstoque = List.of();
+    private List<ProdutoSemMovimento> listaSemMovimento = List.of();
+    private ComparativoPeriodo comparativo = null;
+
     public PainelRelatorios(Aplicacao aplicacao) {
         this.aplicacao = aplicacao;
         setLayout(new BorderLayout(10, 10));
@@ -128,6 +162,7 @@ public class PainelRelatorios extends JPanel {
         abas.addTab("Mais vendidos", new JScrollPane(tabelaTop));
         abas.addTab("Estoque baixo", new JScrollPane(tabelaEstoque));
         abas.addTab("Por operador", new JScrollPane(tabelaOperador));
+        abas.addTab("Indicadores", montarIndicadores());
         if (eAdmin()) {
             abas.addTab("Auditoria", new JScrollPane(tabelaAuditoria));
         }
@@ -249,6 +284,76 @@ public class PainelRelatorios extends JPanel {
             if (eAdmin()) {
                 preencherAuditoria(aplicacao.getAuditoria().listar(de, ate));
             }
+
+            /* ---------- Indicadores ---------- */
+            listaVendaHora = aplicacao.getRelatorios().vendasPorHora(de, ate);
+            modeloVendaHora.setRowCount(0);
+            for (VendaHora h : listaVendaHora) {
+                modeloVendaHora.addRow(new Object[]{
+                        h.hora() + "h",
+                        h.quantidade(),
+                        Ui.moeda(h.total())
+                });
+            }
+
+            listaCurvaProdutos = aplicacao.getRelatorios().curvaABCProdutos(de, ate);
+            modeloCurvaProdutos.setRowCount(0);
+            for (CurvaABC c : listaCurvaProdutos) {
+                modeloCurvaProdutos.addRow(new Object[]{
+                        c.nome(),
+                        c.quantidade(),
+                        Ui.moeda(c.total()),
+                        c.percentual() + "%",
+                        c.classe()
+                });
+            }
+
+            listaCurvaCategorias = aplicacao.getRelatorios().curvaABCCategorias(de, ate);
+            modeloCurvaCategorias.setRowCount(0);
+            for (CurvaABC c : listaCurvaCategorias) {
+                modeloCurvaCategorias.addRow(new Object[]{
+                        c.nome(),
+                        c.quantidade(),
+                        Ui.moeda(c.total()),
+                        c.percentual() + "%",
+                        c.classe()
+                });
+            }
+
+            listaGiroEstoque = aplicacao.getRelatorios().giroEstoque(de, ate);
+            modeloGiroEstoque.setRowCount(0);
+            for (GiroEstoque g : listaGiroEstoque) {
+                modeloGiroEstoque.addRow(new Object[]{
+                        g.nome(),
+                        g.categoria(),
+                        g.estoque(),
+                        g.estoqueMinimo(),
+                        g.vendasPeriodo(),
+                        Ui.moeda(g.giro()),
+                        g.ruptura() ? "Sim" : "Não"
+                });
+            }
+
+            listaSemMovimento = aplicacao.getRelatorios().produtosSemMovimento(de, ate);
+            modeloSemMovimento.setRowCount(0);
+            for (ProdutoSemMovimento s : listaSemMovimento) {
+                modeloSemMovimento.addRow(new Object[]{
+                        s.nome(),
+                        s.categoria(),
+                        s.estoque(),
+                        s.ultimoMovimento() == null ? "-" : Ui.data(s.ultimoMovimento())
+                });
+            }
+
+            comparativo = aplicacao.getRelatorios().comparativoPeriodo(de, ate);
+            modeloComparativo.setRowCount(0);
+            modeloComparativo.addRow(new Object[]{
+                    comparativo.rotulo(),
+                    Ui.moeda(comparativo.total()),
+                    comparativo.quantidade(),
+                    Ui.moeda(comparativo.variacao()),
+                    comparativo.variacaoPercentual() + "%"
+            });
         } catch (RuntimeException e) {
             Ui.erro(this, e.getMessage(), e);
         }
@@ -266,12 +371,45 @@ public class PainelRelatorios extends JPanel {
         }));
     }
 
+    private JPanel montarIndicadores() {
+        JPanel painel = new JPanel();
+        painel.setLayout(new BoxLayout(painel, BoxLayout.Y_AXIS));
+        painel.setBackground(Ui.COR_FUNDO);
+        painel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+        painel.add(Ui.titulo("Indicadores de varejo"));
+        painel.add(Box.createRigidArea(new java.awt.Dimension(0, 8)));
+
+        painel.add(subsecaoIndicador("Vendas por hora do dia", tabelaVendaHora));
+        painel.add(subsecaoIndicador("Curva ABC – produtos", tabelaCurvaProdutos));
+        painel.add(subsecaoIndicador("Curva ABC – categorias", tabelaCurvaCategorias));
+        painel.add(subsecaoIndicador("Giro de estoque e ruptura", tabelaGiroEstoque));
+        painel.add(subsecaoIndicador("Produtos sem movimento", tabelaSemMovimento));
+        painel.add(subsecaoIndicador("Comparativo de período", tabelaComparativo));
+
+        JPanel container = new JPanel(new BorderLayout());
+        container.setOpaque(false);
+        container.add(new JScrollPane(painel), BorderLayout.CENTER);
+        return container;
+    }
+
+    private JPanel subsecaoIndicador(String titulo, JTable tabela) {
+        JPanel painel = new JPanel(new BorderLayout(0, 4));
+        painel.setBackground(Ui.COR_FUNDO);
+        painel.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, 0));
+        JLabel rotulo = Ui.rotulo(titulo);
+        rotulo.setFont(rotulo.getFont().deriveFont(Font.BOLD, 13f));
+        rotulo.setForeground(new Color(110, 118, 126));
+        painel.add(rotulo, BorderLayout.NORTH);
+        painel.add(new JScrollPane(tabela), BorderLayout.CENTER);
+        return painel;
+    }
+
     private void exportar(String extensao) {
-        if (resumoAtual == null || periodoInicio == null) {
-            gerar();
-        }
         ExportacaoService.DadosRelatorio dados = new ExportacaoService.DadosRelatorio(
-                periodoInicio, periodoFim, resumoAtual, vendas, maisVendidos, porDia);
+                periodoInicio, periodoFim, resumoAtual, vendas, maisVendidos, porDia,
+                listaVendaHora, listaCurvaProdutos, listaCurvaCategorias,
+                listaGiroEstoque, listaSemMovimento, comparativo);
 
         JFileChooser seletor = new JFileChooser();
         seletor.setDialogTitle("Exportar relatório de vendas");

@@ -8,7 +8,13 @@ import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.repository.ComparativoPeriodo;
+import com.portfolio.sistemaloja.repository.CurvaABC;
+import com.portfolio.sistemaloja.repository.GiroEstoque;
+import com.portfolio.sistemaloja.repository.ProdutoSemMovimento;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
+import com.portfolio.sistemaloja.repository.VendaDoDia;
+import com.portfolio.sistemaloja.repository.VendaHora;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +22,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -86,9 +93,11 @@ class ExportacaoServiceTest {
     void exportaRelatorioSemVendasSemLancarErro() throws Exception {
         app.getRelatorios().resumoPeriodo(hoje, hoje);
         Aplicacao bancoLimpo = BancoTeste.criar("exportvazio" + System.nanoTime());
-        DadosRelatorio vazio = new DadosRelatorio(hoje, hoje,
+        DadosRelatorio vazio = ExportacaoService.DadosRelatorio.comIndicadores(hoje, hoje,
                 bancoLimpo.getRelatorios().resumoPeriodo(hoje, hoje),
-                bancoLimpo.getRelatorios().vendasDoPeriodo(hoje, hoje), List.of(), List.of());
+                bancoLimpo.getRelatorios().vendasDoPeriodo(hoje, hoje),
+                List.<ProdutoVendado>of(),
+                bancoLimpo.getRelatorios().faturamentoPorDia(hoje, hoje));
 
         Path pdf = Files.createTempFile("vazio", ".pdf");
         Path xlsx = Files.createTempFile("vazio", ".xlsx");
@@ -104,8 +113,9 @@ class ExportacaoServiceTest {
     @Test
     void exportaPdfIncluiOGraficoDeFaturamento() throws Exception {
         DadosRelatorio comGrafico = dados();
-        DadosRelatorio semImagem = new DadosRelatorio(hoje, hoje, comGrafico.resumo(),
-                comGrafico.vendas(), comGrafico.maisVendidos(), List.of());
+        DadosRelatorio semImagem = ExportacaoService.DadosRelatorio.comIndicadores(hoje, hoje,
+                comGrafico.resumo(), comGrafico.vendas(), comGrafico.maisVendidos(),
+                List.<VendaDoDia>of());
 
         Path comGraficoPdf = Files.createTempFile("comgrafico", ".pdf");
         Path semImagemPdf = Files.createTempFile("semimagem", ".pdf");
@@ -139,8 +149,8 @@ class ExportacaoServiceTest {
         List<Venda> vendas = app.getRelatorios().vendasDoPeriodo(hoje, hoje);
         List<ProdutoVendado> top = app.getRelatorios().maisVendidos(hoje, hoje);
         RelatorioService.ResumoDashboard resumo = app.getRelatorios().resumoPeriodo(hoje, hoje);
-        return new ExportacaoService.DadosRelatorio(hoje, hoje, resumo, vendas, top,
-                app.getRelatorios().faturamentoPorDia(hoje, hoje));
+        List<VendaDoDia> porDia = app.getRelatorios().faturamentoPorDia(hoje, hoje);
+        return ExportacaoService.DadosRelatorio.comIndicadores(hoje, hoje, resumo, vendas, top, porDia);
     }
 
     private void registrarVenda(String codigo, int quantidade) {
