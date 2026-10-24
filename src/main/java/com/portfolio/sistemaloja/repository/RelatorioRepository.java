@@ -13,6 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -218,11 +219,15 @@ public class RelatorioRepository {
         }
         BigDecimal acumulado = BigDecimal.ZERO;
         for (CurvaABC item : crua) {
-            acumulado = acumulado.add(item.total());
             BigDecimal percentual = totalGeral.compareTo(BigDecimal.ZERO) > 0
                     ? item.total().multiply(BigDecimal.valueOf(100)).divide(totalGeral, 4, BigDecimal.ROUND_HALF_UP)
                     : BigDecimal.ZERO;
+            // Classe com base no percentual acumulado ANTES de incluir este item:
+            // acumulado anterior < 80%  => A
+            // acumulado anterior < 95%  => B
+            // acumulado anterior >= 95% => C
             String classe = classificarABC(acumulado, totalGeral);
+            acumulado = acumulado.add(item.total());
             lista.add(new CurvaABC(item.nome(), item.tipo(), item.quantidade(), item.total(),
                     percentual.stripTrailingZeros(), classe));
         }
@@ -264,11 +269,15 @@ public class RelatorioRepository {
         }
         BigDecimal acumulado = BigDecimal.ZERO;
         for (CurvaABC item : crua) {
-            acumulado = acumulado.add(item.total());
             BigDecimal percentual = totalGeral.compareTo(BigDecimal.ZERO) > 0
                     ? item.total().multiply(BigDecimal.valueOf(100)).divide(totalGeral, 4, BigDecimal.ROUND_HALF_UP)
                     : BigDecimal.ZERO;
+            // Classe com base no percentual acumulado ANTES de incluir este item:
+            // acumulado anterior < 80%  => A
+            // acumulado anterior < 95%  => B
+            // acumulado anterior >= 95% => C
             String classe = classificarABC(acumulado, totalGeral);
+            acumulado = acumulado.add(item.total());
             lista.add(new CurvaABC(item.nome(), item.tipo(), item.quantidade(), item.total(),
                     percentual.stripTrailingZeros(), classe));
         }
@@ -278,7 +287,7 @@ public class RelatorioRepository {
     public List<GiroEstoque> giroEstoque(LocalDate inicio, LocalDate fim) {
         String sql = """
                 SELECT p.id, p.nome, c.nome AS categoria, p.estoque, p.estoque_minimo,
-                       COALESCE(SUM(i.quantidade), 0) AS vendas_periodo
+                       COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN i.quantidade ELSE 0 END), 0) AS vendas_periodo
                   FROM produtos p
                   LEFT JOIN categorias c ON c.id = p.categoria_id
                   LEFT JOIN venda_itens i ON i.produto_id = p.id
@@ -301,7 +310,7 @@ public class RelatorioRepository {
                     BigDecimal giro = estoque > 0
                             ? BigDecimal.valueOf(vendasPeriodo).divide(BigDecimal.valueOf(estoque), 4, BigDecimal.ROUND_HALF_UP)
                             : BigDecimal.ZERO;
-                    boolean ruptura = estoque <= estoqueMinimo || estoque == 0;
+                    boolean ruptura = estoque <= estoqueMinimo;
                     lista.add(new GiroEstoque(
                             resultado.getLong("id"),
                             resultado.getString("nome"),
@@ -321,16 +330,17 @@ public class RelatorioRepository {
 
     public List<ProdutoSemMovimento> produtosSemMovimento(LocalDate inicio, LocalDate fim) {
         String sql = """
-                SELECT p.id, p.nome, c.nome AS categoria, p.estoque,
-                       MAX(v.data_hora) AS ultimo_movimento
+                SELECT p.id, p.nome, c.nome AS categoria, p.estoque
                   FROM produtos p
                   LEFT JOIN categorias c ON c.id = p.categoria_id
-                  LEFT JOIN venda_itens i ON i.produto_id = p.id
-                  LEFT JOIN vendas v ON v.id = i.venda_id
-                         AND v.status = 'CONCLUIDA'
                  WHERE p.ativo = TRUE
-                   AND (v.id IS NULL OR v.data_hora < ? OR v.data_hora >= ?)
-                 GROUP BY p.id, p.nome, c.nome, p.estoque
+                   AND NOT EXISTS (
+                       SELECT 1 FROM venda_itens i
+                       JOIN vendas v ON v.id = i.venda_id
+                      WHERE v.status = 'CONCLUIDA'
+                        AND v.data_hora >= ? AND v.data_hora < ?
+                        AND i.produto_id = p.id
+                   )
                  ORDER BY p.nome""";
         List<ProdutoSemMovimento> lista = new ArrayList<>();
         try (Connection conexao = fonte.getConnection();
@@ -344,7 +354,7 @@ public class RelatorioRepository {
                             resultado.getString("nome"),
                             resultado.getString("categoria") == null ? "-" : resultado.getString("categoria"),
                             resultado.getInt("estoque"),
-                            resultado.getObject("ultimo_movimento", LocalDate.class)));
+                            null));
                 }
             }
         } catch (SQLException e) {
@@ -354,7 +364,7 @@ public class RelatorioRepository {
     }
 
     public ComparativoPeriodo comparativoPeriodo(LocalDate inicio, LocalDate fim) {
-        long dias = java.time.temporal.ChronoUnit.DAYS.between(inicio, fim) + 1;
+        long dias = ChronoUnit.DAYS.between(inicio, fim) + 1;
         LocalDate anteriorInicio = inicio.minusDays(dias);
         LocalDate anteriorFim = fim.minusDays(dias);
 

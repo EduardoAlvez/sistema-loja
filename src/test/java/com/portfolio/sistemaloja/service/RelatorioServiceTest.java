@@ -9,10 +9,15 @@ import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.repository.ComparativoPeriodo;
+import com.portfolio.sistemaloja.repository.CurvaABC;
+import com.portfolio.sistemaloja.repository.GiroEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
+import com.portfolio.sistemaloja.repository.ProdutoSemMovimento;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.ResumoOperador;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
+import com.portfolio.sistemaloja.repository.VendaHora;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +27,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -211,5 +217,75 @@ class RelatorioServiceTest {
         venda.setFormaPagamento(pagamento);
         venda.adicionarItem(new VendaItem(produto.getId(), produto.getNome(), quantidade, produto.getPrecoVenda()));
         return app.getVendas().registrar(venda);
+    }
+
+    /* ---------- Testes dos novos indicadores ---------- */
+
+    @Test
+    void vendasPorHoraAgrupaPorHoraDoDia() {
+        LocalDate hoje = LocalDate.now();
+        registrarVenda("7891000100103", 1, FormaPagamento.PIX);
+        registrarVenda("7891000100104", 2, FormaPagamento.DINHEIRO);
+
+        List<VendaHora> porHora = app.getRelatorios().vendasPorHora(hoje, hoje);
+        assertFalse(porHora.isEmpty(), "deve haver pelo menos uma hora com venda");
+        // Todas as vendas foram feitas no mesmo dia, então devem aparecer em alguma hora
+    }
+
+    @Test
+    void curvaABCProdutosPrimeiroItemEhClasseA() {
+        LocalDate hoje = LocalDate.now();
+        registrarVenda("7891000100103", 10, FormaPagamento.PIX);
+        registrarVenda("7891000100104", 1, FormaPagamento.DINHEIRO);
+
+        List<CurvaABC> curva = app.getRelatorios().curvaABCProdutos(hoje, hoje);
+        assertFalse(curva.isEmpty());
+        CurvaABC primeiro = curva.get(0);
+        assertEquals("A", primeiro.classe(), "o primeiro item (maior volume) deve ser classe A");
+    }
+
+    @Test
+    void curvaABCCategoriasRetornaPeloMenosUmaCategoria() {
+        LocalDate hoje = LocalDate.now();
+        registrarVenda("7891000100103", 5, FormaPagamento.PIX);
+
+        List<CurvaABC> curva = app.getRelatorios().curvaABCCategorias(hoje, hoje);
+        assertFalse(curva.isEmpty(), "deve haver pelo menos uma categoria com venda");
+    }
+
+    @Test
+    void giroEstoqueCalculaGiroComEstoque() {
+        LocalDate hoje = LocalDate.now();
+        registrarVenda("7891000100103", 2, FormaPagamento.PIX);
+
+        List<GiroEstoque> giros = app.getRelatorios().giroEstoque(hoje, hoje);
+        assertFalse(giros.isEmpty(), "deve haver pelo menos um produto no giro");
+        // O giro deve ser >= 0 para produtos com estoque
+        GiroEstoque qualquer = giros.get(0);
+        assertTrue(qualquer.giro().compareTo(BigDecimal.ZERO) >= 0,
+                "giro deve ser nao negativo");
+    }
+
+    @Test
+    void produtosSemMovimentoExcluiProdutosComVendaNoPeriodo() {
+        LocalDate hoje = LocalDate.now();
+        registrarVenda("7891000100103", 1, FormaPagamento.PIX);
+
+        List<ProdutoSemMovimento> semMovimento = app.getRelatorios().produtosSemMovimento(hoje, hoje);
+        // Nenhum produto com venda hoje deve aparecer como sem movimento
+        boolean produto100103SemMovimento = semMovimento.stream()
+                .anyMatch(p -> p.produtoId().equals(app.getProdutos().buscarPorCodigoBarras("7891000100103").getId()));
+        assertFalse(produto100103SemMovimento, "produto com venda hoje nao deve aparecer como sem movimento");
+    }
+
+    @Test
+    void comparativoPeriodoCalculaVariacaoEntrePeriodos() {
+        LocalDate hoje = LocalDate.now();
+        registrarVenda("7891000100103", 1, FormaPagamento.PIX);
+
+        ComparativoPeriodo comp = app.getRelatorios().comparativoPeriodo(hoje, hoje);
+        assertNotNull(comp);
+        assertEquals(0, new BigDecimal("8.99").compareTo(comp.total()), "total deve ser o da venda de hoje");
+        assertEquals(1, comp.quantidade(), "quantidade deve ser 1");
     }
 }
