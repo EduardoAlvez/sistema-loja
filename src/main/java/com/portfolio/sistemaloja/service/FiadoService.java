@@ -6,7 +6,6 @@ import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.Fiado;
 import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.RecebimentoFiado;
-import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.ClienteRepository;
 import com.portfolio.sistemaloja.repository.ConfiguracaoRepository;
 import com.portfolio.sistemaloja.repository.FiadoRepository;
@@ -68,17 +67,8 @@ public class FiadoService {
         BigDecimal disponivel = limite.subtract(saldoDevedorExistente);
 
         if (disponivel.compareTo(valorDevedorNovo) < 0) {
-            // Admin esta isento de autorizacao
-            Usuario usuarioAtual = sessao.getAtual();
-            if (usuarioAtual != null && usuarioAtual.isAdmin()) {
-                // Admin pode exceder o limite sem autorizacao
-            } else if (autorizacao == null) {
-                throw new AutorizacaoNecessariaException(MotivoAutorizacao.LIMITE_CREDITO);
-            } else if (autorizacao.operadorId() != sessao.getAtual().getId()) {
-                throw new ValidacaoException("A autorizacao nao pertence ao operador da sessao.");
-            } else if (autorizacao.motivo() != MotivoAutorizacao.LIMITE_CREDITO) {
-                throw new ValidacaoException("A autorizacao nao e para limite de credito.");
-            }
+            // Excede o limite: exige autorizacao de supervisor (PIN)
+            autorizacoes.exigir(sessao.getAtual(), autorizacao, MotivoAutorizacao.LIMITE_CREDITO);
         }
 
         BigDecimal juros = calcularJuros(valorTotal, dataVencimento, LocalDate.now());
