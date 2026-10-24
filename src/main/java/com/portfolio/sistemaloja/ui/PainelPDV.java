@@ -68,7 +68,6 @@ public class PainelPDV extends JPanel {
     private final transient Aplicacao aplicacao;
     private final transient Usuario usuario;
 
-    private final JTextField busca = new JTextField(24);
     private final JComboBox<Cliente> cliente = new JComboBox<>();
     private JTextField buscaCpfCliente = new JTextField(12);
     private final JCheckBox vendaAPrazo = new JCheckBox("Venda a prazo (fiado)");
@@ -87,12 +86,8 @@ public class PainelPDV extends JPanel {
     private final JButton botaoSangria = new JButton("Sangria");
     private final JButton botaoSuprimento = new JButton("Suprimento");
     private final JButton botaoFecharCaixa = new JButton("Fechar caixa");
+    private final JButton botaoBuscarProduto = new JButton("Buscar produto [F3]");
     private final Map<Integer, String> atalhos = new LinkedHashMap<>();
-
-    private final javax.swing.table.DefaultTableModel modeloProdutos =
-            Ui.modeloTabela("Código", "Produto", "Estoque", "Preço", "Promoção");
-    private final JTable tabelaProdutos = Ui.tabela(modeloProdutos);
-    private List<Produto> produtos = List.of();
 
     private final List<VendaItem> carrinho = new ArrayList<>();
     private final List<VendaPagamento> pagamentosDivididos = new ArrayList<>();
@@ -119,20 +114,7 @@ public class PainelPDV extends JPanel {
         configurarEventos();
         instalarAtalhos();
         recarregarClientes();
-        recarregarProdutos();
         atualizarStatusCaixa();
-    }
-
-    public void focarBusca() {
-        SwingUtilities.invokeLater(busca::requestFocusInWindow);
-    }
-
-    int produtosListados() {
-        return modeloProdutos.getRowCount();
-    }
-
-    Object produtoListado(int linha, int coluna) {
-        return modeloProdutos.getValueAt(linha, coluna);
     }
 
     int itensNoCarrinho() {
@@ -206,16 +188,10 @@ public class PainelPDV extends JPanel {
         titulo.add(clienteContainer, BorderLayout.EAST);
         topo.add(linhaBuscaCpf, BorderLayout.SOUTH);
 
-        JPanel linhaBusca = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        linhaBusca.setOpaque(false);
-        linhaBusca.add(Ui.rotulo("Produto (código ou nome):"));
-        linhaBusca.add(busca);
-        JButton adicionar = new JButton("Adicionar [Enter]");
-        adicionar.setBackground(Ui.COR_PRINCIPAL);
-        adicionar.setForeground(Color.WHITE);
-        adicionar.addActionListener(e -> adicionarPeloCampo());
-        linhaBusca.add(adicionar);
-        linhaBusca.add(statusEstoque);
+        JPanel linhaBuscaProduto = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        linhaBuscaProduto.setOpaque(false);
+        linhaBuscaProduto.add(botaoBuscarProduto);
+        topo.add(linhaBuscaProduto, BorderLayout.CENTER);
 
         JPanel linhaCaixa = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         linhaCaixa.setOpaque(false);
@@ -234,17 +210,16 @@ public class PainelPDV extends JPanel {
         linhaCaixa.add(devolucao);
 
         topo.add(titulo, BorderLayout.NORTH);
-        topo.add(linhaBusca, BorderLayout.CENTER);
+        topo.add(linhaBuscaProduto, BorderLayout.CENTER);
         topo.add(linhaCaixa, BorderLayout.SOUTH);
         return topo;
     }
 
     private JSplitPane montarCentro() {
-        JPanel esquerda = painel("Produtos encontrados - duplo clique para adicionar", new JScrollPane(tabelaProdutos));
         JPanel direita = painel("Carrinho", new JScrollPane(tabelaCarrinho));
-        JSplitPane divisao = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, esquerda, direita);
-        divisao.setResizeWeight(0.45);
-        divisao.setDividerSize(8);
+        JSplitPane divisao = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JPanel(), direita);
+        divisao.setResizeWeight(1.0);
+        divisao.setDividerSize(0);
         divisao.setBorder(null);
         return divisao;
     }
@@ -482,41 +457,6 @@ public class PainelPDV extends JPanel {
     }
 
     private void configurarEventos() {
-        busca.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    adicionarPeloCampo();
-                }
-            }
-        });
-
-        busca.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            @Override
-            public void insertUpdate(javax.swing.event.DocumentEvent e) {
-                recarregarProdutos();
-            }
-
-            @Override
-            public void removeUpdate(javax.swing.event.DocumentEvent e) {
-                recarregarProdutos();
-            }
-
-            @Override
-            public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                recarregarProdutos();
-            }
-        });
-
-        tabelaProdutos.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2 && tabelaProdutos.getSelectedRow() >= 0) {
-                    adicionarProduto(selecionadoNaLista());
-                }
-            }
-        });
-
         modeloCarrinho.addTableModelListener(e -> {
             if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 1) {
                 atualizarQuantidade(e.getFirstRow());
@@ -540,7 +480,7 @@ public class PainelPDV extends JPanel {
     }
 
     private void instalarAtalhos() {
-        ligar(KeyEvent.VK_F3, "F3 - Buscar produto", busca::requestFocusInWindow);
+        ligar(KeyEvent.VK_F3, "F3 - Buscar produto", this::abrirBuscaProduto);
         ligar(KeyEvent.VK_F4, "F4 - Pagamento dividido", this::abrirPagamentoDividido);
         ligar(KeyEvent.VK_F5, "F5 - Pausar venda", this::pausarVenda);
         ligar(KeyEvent.VK_F6, "F6 - Retomar venda", this::retomarVenda);
@@ -571,8 +511,15 @@ public class PainelPDV extends JPanel {
         for (String descricao : atalhos.values()) {
             texto.append(descricao).append('\n');
         }
-        texto.append("Enter no campo de busca - Adicionar produto");
+        texto.append("F3 - Buscar produto");
         Ui.info(this, texto.toString());
+    }
+
+    private void abrirBuscaProduto() {
+        Optional<Produto> produtoSelecionado = DialogoBuscaProduto.pedir(SwingUtilities.getWindowAncestor(this), aplicacao);
+        if (produtoSelecionado.isPresent()) {
+            adicionarProduto(produtoSelecionado.get());
+        }
     }
 
     private void abrirDevolucao() {
@@ -624,44 +571,10 @@ public class PainelPDV extends JPanel {
     }
 
     private void adicionarPeloCampo() {
-        String termo = busca.getText().strip();
-        if (termo.isEmpty()) {
-            return;
+        Optional<Produto> produtoSelecionado = DialogoBuscaProduto.pedir(SwingUtilities.getWindowAncestor(this), aplicacao);
+        if (produtoSelecionado.isPresent()) {
+            adicionarProduto(produtoSelecionado.get());
         }
-        Produto porCodigo = null;
-        for (Produto produto : produtos) {
-            if (produto.getCodigoBarras().equalsIgnoreCase(termo)) {
-                porCodigo = produto;
-                break;
-            }
-        }
-        if (porCodigo == null) {
-            List<Produto> filtrados = aplicacao.getProdutos().listar(termo);
-            if (filtrados.size() == 1) {
-                porCodigo = filtrados.get(0);
-            } else {
-                recarregarProdutos();
-                if (filtrados.isEmpty()) {
-                    statusEstoque.setForeground(Ui.COR_ALERTA);
-                    statusEstoque.setText("Nenhum produto encontrado.");
-                } else {
-                    statusEstoque.setForeground(new Color(110, 118, 126));
-                    statusEstoque.setText("Selecione e dê duplo clique para adicionar.");
-                }
-                return;
-            }
-        }
-        adicionarProduto(porCodigo);
-        busca.setText("");
-        busca.requestFocusInWindow();
-    }
-
-    private Produto selecionadoNaLista() {
-        int linha = tabelaProdutos.getSelectedRow();
-        if (linha < 0) {
-            return null;
-        }
-        return produtos.get(tabelaProdutos.convertRowIndexToModel(linha));
     }
 
     void adicionarProduto(Produto produto) {
@@ -987,7 +900,6 @@ public class PainelPDV extends JPanel {
                         "Venda a prazo - PDV", null);
                 Ui.info(this, "Venda a prazo registrada. Fiado gerado para o cliente " + selecionado.getNome());
                 limpar();
-                recarregarProdutos();
             } else {
                 concluir(aplicacao.getVendas().registrar(venda));
             }
@@ -1011,7 +923,6 @@ public class PainelPDV extends JPanel {
                             "Venda a prazo - PDV", autorizacao.get());
                     Ui.info(this, "Venda a prazo registrada. Fiado gerado para o cliente " + selecionado.getNome());
                     limpar();
-                    recarregarProdutos();
                 } else {
                     concluir(aplicacao.getVendas().registrar(venda, autorizacao.get()));
                 }
@@ -1030,7 +941,6 @@ public class PainelPDV extends JPanel {
     private void concluir(Venda registrada) {
         mostrarCupom(registrada);
         limpar();
-        recarregarProdutos();
     }
 
     private void mostrarCupom(Venda venda) {
@@ -1067,7 +977,6 @@ public class PainelPDV extends JPanel {
         valorPago.setText("");
         desconto.setText("");
         pontosResgate.setText("");
-        busca.setText("");
         ajustarValorPago();
         atualizarSaldoPontos();
     }
@@ -1187,26 +1096,4 @@ public class PainelPDV extends JPanel {
         return "";
     }
 
-    private void recarregarProdutos() {
-        produtos = aplicacao.getProdutos().listar(busca.getText());
-        modeloProdutos.setRowCount(0);
-        LocalDateTime agora = LocalDateTime.now();
-        for (Produto produto : produtos) {
-            BigDecimal preco = aplicacao.getProdutos().precoVigente(produto, agora);
-            boolean promocao = preco.compareTo(produto.getPrecoVenda()) < 0;
-            modeloProdutos.addRow(new Object[]{
-                    produto.getCodigoBarras(),
-                    produto.getNome(),
-                    produto.getEstoque(),
-                    Ui.moeda(preco),
-                    promocao ? "Ativa" : ""
-            });
-        }
-        if (!produtos.isEmpty()) {
-            statusEstoque.setForeground(new Color(110, 118, 126));
-            statusEstoque.setText(produtos.size() + " produto(s)");
-        } else {
-            statusEstoque.setText(" ");
-        }
-    }
 }

@@ -102,7 +102,7 @@ public class TelaPrincipal extends JFrame {
 
     private void abrirPdv(JTabbedPane abas) {
         abas.setSelectedIndex(1);
-        painelPdv.focarBusca();
+        DialogoBuscaProduto.pedir(SwingUtilities.getWindowAncestor(this), aplicacao);
     }
 
     private void abrirDialogo(java.awt.Dialog dialogo) {

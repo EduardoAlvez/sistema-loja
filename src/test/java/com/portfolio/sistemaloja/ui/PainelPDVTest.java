@@ -44,11 +44,6 @@ class PainelPDVTest {
         app.getProdutos().salvar(agua);
 
         PainelPDV painel = new PainelPDV(app, operador);
-        int linha = linhaDe(painel, "Água Mineral 500ml");
-
-        assertEquals(Ui.moeda(new BigDecimal("1.50")), painel.produtoListado(linha, 3));
-        assertEquals("Ativa", painel.produtoListado(linha, 4));
-
         painel.adicionarProduto(agua);
         painel.adicionarProduto(agua);
 
@@ -62,12 +57,8 @@ class PainelPDVTest {
         Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
 
         PainelPDV painel = new PainelPDV(app, operador);
-        int linha = linhaDe(painel, "Água Mineral 500ml");
-
-        assertEquals(Ui.moeda(agua.getPrecoVenda()), painel.produtoListado(linha, 3));
-        assertEquals("", painel.produtoListado(linha, 4));
-
         painel.adicionarProduto(agua);
+
         assertEquals(Ui.moeda(agua.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
     }
 
@@ -203,14 +194,5 @@ class PainelPDVTest {
     private String classe(Component componente) {
         return componente.getClass().getName() + " pai=" + (componente.getParent() == null
                 ? "null" : componente.getParent().getClass().getName());
-    }
-
-    private int linhaDe(PainelPDV painel, String nome) {
-        for (int linha = 0; linha < painel.produtosListados(); linha++) {
-            if (nome.equals(painel.produtoListado(linha, 1))) {
-                return linha;
-            }
-        }
-        throw new AssertionError("Produto não encontrado na lista: " + nome);
     }
 }
