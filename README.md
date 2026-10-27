@@ -272,6 +272,11 @@ ficam gravados em `configuracoes` (migração `V16`) e valem **na hora** para no
 - **Somente admin** altera (o serviço valida, não só a interface).
 - A **impressora** é configuração **local do terminal** (variável/propriedade da máquina), não do
   banco compartilhado: vários caixas no mesmo MySQL podem ter filas de impressão diferentes.
+- **Configuração alterada no meio da venda**: o PDV compara os valores exibidos com a configuração
+  vigente antes de finalizar. Se o valor do ponto ou as promoções mudarem, o carrinho é
+  reprecificado e o operador precisa conferir o total e finalizar de novo — assim o cliente nunca
+  paga (ou não recebe desconto) por um valor diferente do que ele viu. Venda pausada avisada também
+  quando o valor do ponto mudou desde a pausa.
 
 ### Fidelidade por pontos
 
@@ -372,7 +377,7 @@ O PDV agora suporta venda a prazo (fiado) para clientes cadastrados:
 mvn test
 ```
 
-**321 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**322 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -434,7 +439,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V20 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 321 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 322 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -525,7 +530,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 321 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 322 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
