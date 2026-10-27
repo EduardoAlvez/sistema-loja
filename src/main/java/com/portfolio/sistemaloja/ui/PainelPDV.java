@@ -34,7 +34,6 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
@@ -88,6 +87,8 @@ public class PainelPDV extends JPanel {
     private final JButton botaoFecharCaixa = new JButton("Fechar caixa");
     private final JButton botaoBuscarProduto = new JButton("Buscar produto [F3]");
     {
+        botaoBuscarProduto.setBackground(Ui.COR_PRINCIPAL);
+        botaoBuscarProduto.setForeground(Color.WHITE);
         botaoBuscarProduto.addActionListener(e -> abrirBuscaProduto());
     }
     private final Map<Integer, String> atalhos = new LinkedHashMap<>();
@@ -163,20 +164,30 @@ public class PainelPDV extends JPanel {
         titulo.setOpaque(false);
         titulo.add(Ui.titulo("PDV - Ponto de Venda"), BorderLayout.WEST);
 
-        JPanel linhaCliente = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JPanel linhaCliente = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         linhaCliente.setOpaque(false);
         linhaCliente.add(Ui.rotulo("Cliente:"));
         cliente.setPreferredSize(new Dimension(220, cliente.getPreferredSize().height));
         linhaCliente.add(cliente);
-        linhaCliente.add(vendaAPrazo);
-        linhaCliente.add(Ui.rotulo("Vencimento:"));
-        linhaCliente.add(vencimentoFiado);
+
+        JPanel linhaVendaAPrazo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        linhaVendaAPrazo.setOpaque(false);
+        linhaVendaAPrazo.add(vendaAPrazo);
+        linhaVendaAPrazo.add(Ui.rotulo("Vencimento:"));
+        linhaVendaAPrazo.add(vencimentoFiado);
         vendaAPrazo.addActionListener(e -> vencimentoFiado.setEnabled(vendaAPrazo.isSelected()));
         vencimentoFiado.setEnabled(false);
 
-        JPanel linhaBuscaCpf = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JPanel clienteContainer = new JPanel(new BorderLayout());
+        clienteContainer.setOpaque(false);
+        clienteContainer.add(linhaCliente, BorderLayout.WEST);
+        clienteContainer.add(linhaVendaAPrazo, BorderLayout.EAST);
+        titulo.add(clienteContainer, BorderLayout.EAST);
+
+        JPanel linhaBuscaCpf = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         linhaBuscaCpf.setOpaque(false);
         linhaBuscaCpf.add(Ui.rotulo("CPF:"));
+        buscaCpfCliente.setPreferredSize(new Dimension(170, buscaCpfCliente.getPreferredSize().height));
         linhaBuscaCpf.add(buscaCpfCliente);
         JButton buscarCliente = new JButton("Buscar");
         buscarCliente.addActionListener(e -> buscarClientePorCpf());
@@ -185,16 +196,14 @@ public class PainelPDV extends JPanel {
         cadastrarCliente.addActionListener(e -> cadastrarClienteRapido());
         linhaBuscaCpf.add(cadastrarCliente);
 
-        JPanel clienteContainer = new JPanel(new BorderLayout());
-        clienteContainer.setOpaque(false);
-        clienteContainer.add(linhaCliente, BorderLayout.WEST);
-        titulo.add(clienteContainer, BorderLayout.EAST);
-        topo.add(linhaBuscaCpf, BorderLayout.SOUTH);
-
-        JPanel linhaBuscaProduto = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        JPanel linhaBuscaProduto = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         linhaBuscaProduto.setOpaque(false);
         linhaBuscaProduto.add(botaoBuscarProduto);
-        topo.add(linhaBuscaProduto, BorderLayout.CENTER);
+
+        JPanel central = new JPanel(new BorderLayout(0, 6));
+        central.setOpaque(false);
+        central.add(linhaBuscaProduto, BorderLayout.NORTH);
+        central.add(linhaBuscaCpf, BorderLayout.SOUTH);
 
         JPanel linhaCaixa = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         linhaCaixa.setOpaque(false);
@@ -213,18 +222,14 @@ public class PainelPDV extends JPanel {
         linhaCaixa.add(devolucao);
 
         topo.add(titulo, BorderLayout.NORTH);
-        topo.add(linhaBuscaProduto, BorderLayout.CENTER);
+        topo.add(central, BorderLayout.CENTER);
         topo.add(linhaCaixa, BorderLayout.SOUTH);
         return topo;
     }
 
-    private JSplitPane montarCentro() {
+    private JPanel montarCentro() {
         JPanel direita = painel("Carrinho", new JScrollPane(tabelaCarrinho));
-        JSplitPane divisao = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JPanel(), direita);
-        divisao.setResizeWeight(1.0);
-        divisao.setDividerSize(0);
-        divisao.setBorder(null);
-        return divisao;
+        return direita;
     }
 
     private JPanel painel(String titulo, JScrollPane rolagem) {
