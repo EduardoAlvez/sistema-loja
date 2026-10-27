@@ -1,5 +1,36 @@
 # Lições aprendidas - Sistema Loja
 
+## Lições aprendidas - Sistema Loja
+
+## Sessão: Issues #13, #14, #7 e #10 (27/10/2026)
+
+### #10 – TEF por interface abstrata, taxa por bandeira e conciliação
+
+#### Desafios encontrados
+| Desafio | Causa | Solução |
+|---------|-------|---------|
+| Integração com fluxo existente de venda | `VendaService` já possuía fluxo consolidado; precisava autorizar cartão sem quebrar dinheiro/fiado. | Integrar chamada via `OperadoraCartaoFactory` apenas para `CARTAO_CREDITO`/`CARTAO_DEBITO`, aditiva e isolada em `tef/`. |
+| Manter arquitetura limpa | Risco de acoplar PDV/serviços ao SDK da maquininha. | Criar pacote `com.portfolio.sistemaloja.tef` com contrato, DTOs, Factory e `simulado/`. Apenas interface + simulado nesta issue. |
+| Concilição de cartões no fechamento | Necessário distinguir TEF por adquirente/bandeira sem alterar vendas históricas. | Adicionar ponto de conciliação (`CaixaService.conciliarCartoes`) e aba "Taxas TEF" em `PainelRelatorios`. |
+| Configuração de taxas flexível | Taxas variam por bandeira, tipo e faixa de parcelas. | Criar `taxas_cartao` (V23) com `bandeira`, `tipo_cartao`, `parcelas_min/max`, `taxa_percentual`, `taxa_fixa`, `adquirente`. Serviço calcula `(valorBruto*%/100)+fixa`. |
+| Testes com contagem de abas | Adicionar aba no `PainelRelatorios` quebrou 3 testes. | Ajustar expectativas para 9 (admin) / 8 (operador) e apontar `Auditoria` para a última aba. |
+
+#### Erros e correções
+| Erro | Causa | Solução |
+|------|-------|---------|
+| Compilação: `VendaRepository` não encontrado em `VendaService`/`Aplicacao` | Imports ausentes após refatoração. | Adicionar `import com.portfolio.sistemaloja.repository.VendaRepository;`. |
+| Compilação: `VendaService` não encontrado em `Aplicacao` | Import ausente. | Adicionar `import com.portfolio.sistemaloja.service.VendaService;`. |
+| `PainelRelatorios` sem imports | Uso de `JTextArea` sem import. | Adicionar `import javax.swing.JTextArea;`. |
+| Testes UI quebrando | Ordem/quantidade de abas alterada. | Atualizar `PainelRelatoriosTest` para considerar "Taxas TEF" e posição de "Auditoria". |
+
+#### Lições aprendidas
+- **Abstração primeiro**: Interface + Factory permitem plugar SDK real futuramente sem tocar em PDV/VendaService.
+- **Isolamento reduz risco**: Todo código TEF em `tef/` mantém acoplamento zero com integrações concretas.
+- **Aditivo, não invasivo**: Autorizar apenas cartões novos; não alterar vendas já concluídas.
+- **Testabilidade**: `OperadoraCartaoSimulada` com `forcarNegacao` facilita cenários sem maquininha.
+- **Migrações compatíveis**: V23 simples, roda em MySQL/H2.
+- **Pequenos commits**: Seguir plano por camada facilita revisão e rollback.
+
 ## Sessão: Issues #13, #14 e #7 (27/10/2026)
 
 ### #13 – Estoque crítico usando `estoque_minimo`
