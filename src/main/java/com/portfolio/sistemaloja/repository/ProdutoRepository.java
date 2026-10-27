@@ -3,6 +3,8 @@ package com.portfolio.sistemaloja.repository;
 import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.Produto;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -178,14 +180,26 @@ public class ProdutoRepository {
         }
     }
 
-    public boolean alterarEstoque(long produtoId, int quantidade, Connection conexao) throws SQLException {
-        String sql = "UPDATE produtos SET estoque = estoque + ? WHERE id = ? AND estoque + ? >= 0";
+    public boolean atualizarCustoMedio(long produtoId, BigDecimal novoCusto, Connection conexao) throws SQLException {
+        String sql = "UPDATE produtos SET preco_custo = ? WHERE id = ?";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
-            preparada.setInt(1, quantidade);
+            preparada.setBigDecimal(1, novoCusto);
             preparada.setLong(2, produtoId);
-            preparada.setInt(3, quantidade);
             return preparada.executeUpdate() == 1;
         }
+    }
+
+    public Produto buscarPorId(long id, Connection conexao) throws SQLException {
+        String sql = SELECT_BASE + " WHERE p.id = ?";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, id);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (resultado.next()) {
+                    return mapear(resultado);
+                }
+            }
+        }
+        return null;
     }
 
     private String insercao() {
