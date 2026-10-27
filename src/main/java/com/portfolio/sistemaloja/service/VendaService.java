@@ -46,6 +46,7 @@ public class VendaService {
     private final FidelidadeService fidelidade;
     private final AutorizacaoService autorizacoes;
     private final PromocaoService promocoes;
+    private final CaixaService caixas;
     private final Clock relogio;
 
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
@@ -72,14 +73,21 @@ public class VendaService {
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
                         AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade,
                         AutorizacaoService autorizacoes, PromocaoService promocoes) {
+        this(vendas, produtos, usuarios, auditoria, relogio, fidelidade, autorizacoes, promocoes, null);
+    }
+
+    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
+                        AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade,
+                        AutorizacaoService autorizacoes, PromocaoService promocoes, CaixaService caixas) {
         this.vendas = vendas;
         this.produtos = produtos;
         this.usuarios = usuarios;
         this.auditoria = auditoria;
-        this.relogio = Objects.requireNonNull(relogio, "relogio");
+        this.relogio = relogio;
         this.fidelidade = fidelidade;
         this.autorizacoes = autorizacoes;
         this.promocoes = promocoes;
+        this.caixas = caixas;
     }
 
     public Venda registrar(Venda venda) {
@@ -87,6 +95,42 @@ public class VendaService {
     }
 
     public Venda registrar(Venda venda, Autorizacao autorizacao) {
+        if (venda == null) {
+            throw new ValidacaoException("Venda inválida.");
+        }
+        if (caixas != null) {
+            try {
+                java.lang.reflect.Method m = caixas.getClass().getMethod("buscarAberto");
+                Object r = m.invoke(caixas);
+                if (r instanceof java.util.Optional<?> opt && opt.isEmpty()) {
+                    throw new ValidacaoException("Abra o caixa antes de registrar uma venda.");
+                }
+            } catch (ValidacaoException ve) {
+                throw ve;
+            } catch (NoSuchMethodException ex) {
+                try {
+                    java.lang.reflect.Method m2 = caixas.getClass().getMethod("obterAberto");
+                    Object r2 = m2.invoke(caixas);
+                    if (r2 == null) {
+                        throw new ValidacaoException("Abra o caixa antes de registrar uma venda.");
+                    }
+                } catch (java.lang.reflect.InvocationTargetException ite) {
+                    Throwable t = ite.getTargetException();
+                    if (t instanceof ValidacaoException ve) {
+                        throw ve;
+                    }
+                    throw new ValidacaoException("Abra o caixa antes de registrar uma venda.");
+                } catch (Throwable ex2) {
+                }
+            } catch (java.lang.reflect.InvocationTargetException ite) {
+                Throwable t = ite.getTargetException();
+                if (t instanceof ValidacaoException ve) {
+                    throw ve;
+                }
+                throw new ValidacaoException("Abra o caixa antes de registrar uma venda.");
+            } catch (Throwable ignored) {
+            }
+        }
         if (venda.getFormaPagamento() == null) {
             throw new ValidacaoException("Selecione a forma de pagamento.");
         }

@@ -108,9 +108,9 @@ public class Aplicacao {
         this.compras = new CompraService(new EntradaMercadoriaRepository(fonte, produtoRepository), auditoria);
         this.taxasCartao = new TaxaCartaoService(new TaxaCartaoRepository(fonte));
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
-        this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
-                auditoria, relogio, fidelidade, autorizacoes, this.promocoes);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria, autorizacoes);
+        this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
+                auditoria, relogio, fidelidade, autorizacoes, this.promocoes, this.caixa);
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();
         this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria);
