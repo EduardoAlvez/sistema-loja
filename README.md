@@ -548,11 +548,11 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 - [ ] Fornecedores, entrada de mercadoria e sugestão de compra pelo consumo real
 - [ ] Inventário/contagem cíclica, perdas com motivo e transferência entre lojas
 - [ ] Lote e validade com alerta de vencimento
-- [ ] TEF por interface abstrata, taxa por bandeira e conciliação de cartões
+- [x] TEF por interface abstrata, taxa por bandeira e conciliação de cartões
 - [x] Fiado/crediário com limite, vencimento, recebimento parcial e juros
 - [ ] Multi-caixa e multi-loja com preço centralizado
 - [ ] Relatórios de estoque crítico usando o `estoque_minimo` de cada produto
-- [ ] Subir o `docker-compose.yml` para MySQL 8.4 LTS
+- [x] Subir o `docker-compose.yml` para MySQL 8.4 LTS
 
 **Onda 3 — alto esforço**
 
