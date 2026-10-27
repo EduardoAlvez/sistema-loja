@@ -9,11 +9,15 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PromocaoProdutoRepository {
 
@@ -114,10 +118,10 @@ public class PromocaoProdutoRepository {
             preparada.setString(2, promocao.getNome());
             preparada.setInt(3, promocao.getQuantidadeMinima());
             preparada.setBigDecimal(4, promocao.getPrecoPromocional());
-            preparada.setBoolean(5, promocao.getAtiva());
+            preparada.setBoolean(5, promocao.isAtiva());
             preparada.setObject(6, promocao.getDataInicio());
             preparada.setObject(7, promocao.getDataFim());
-            preparada.setString(8, promocao.getDiasSemana());
+            preparada.setString(8, textoDias(promocao.getDiasSemana()));
             preparada.setObject(9, promocao.getHorarioInicio());
             preparada.setObject(10, promocao.getHorarioFim());
 
@@ -156,14 +160,45 @@ public class PromocaoProdutoRepository {
         promocao.setId(resultado.getLong("id"));
         promocao.setProdutoId(resultado.getLong("produto_id"));
         promocao.setNome(resultado.getString("nome"));
+        promocao.setProdutoNome(resultado.getString("produto_nome"));
         promocao.setQuantidadeMinima(resultado.getInt("quantidade_minima"));
         promocao.setPrecoPromocional(resultado.getBigDecimal("preco_promocional"));
         promocao.setAtiva(resultado.getBoolean("ativa"));
         promocao.setDataInicio(resultado.getObject("data_inicio", LocalDate.class));
         promocao.setDataFim(resultado.getObject("data_fim", LocalDate.class));
-        promocao.setDiasSemana(resultado.getString("dias_semana"));
+        promocao.setDiasSemana(dias(resultado.getString("dias_semana")));
         promocao.setHorarioInicio(resultado.getObject("horario_inicio", LocalTime.class));
         promocao.setHorarioFim(resultado.getObject("horario_fim", LocalTime.class));
         return promocao;
+    }
+
+    private static Set<DayOfWeek> dias(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return EnumSet.noneOf(DayOfWeek.class);
+        }
+        EnumSet<DayOfWeek> dias = EnumSet.noneOf(DayOfWeek.class);
+        for (String parte : texto.split(",")) {
+            int valor;
+            try {
+                valor = Integer.parseInt(parte.strip());
+            } catch (NumberFormatException e) {
+                throw new RepositorioException("Dia de promocao invalido no banco: " + parte, e);
+            }
+            if (valor < 1 || valor > 7) {
+                throw new RepositorioException("Dia de promocao fora de 1..7 no banco: " + valor);
+            }
+            dias.add(DayOfWeek.of(valor));
+        }
+        return dias;
+    }
+
+    private static String textoDias(Set<DayOfWeek> dias) {
+        if (dias == null || dias.isEmpty()) {
+            return "";
+        }
+        return dias.stream()
+                .sorted()
+                .map(dia -> String.valueOf(dia.getValue()))
+                .collect(Collectors.joining(","));
     }
 }

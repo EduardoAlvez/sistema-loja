@@ -1,9 +1,13 @@
 package com.portfolio.sistemaloja.model;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class PromocaoProduto {
 
@@ -13,10 +17,10 @@ public class PromocaoProduto {
     private String produtoNome;
     private Integer quantidadeMinima;
     private BigDecimal precoPromocional;
-    private Boolean ativa;
+    private boolean ativa;
     private LocalDate dataInicio;
     private LocalDate dataFim;
-    private String diasSemana;
+    private Set<DayOfWeek> diasSemana = EnumSet.noneOf(DayOfWeek.class);
     private LocalTime horarioInicio;
     private LocalTime horarioFim;
 
@@ -24,8 +28,8 @@ public class PromocaoProduto {
     }
 
     public PromocaoProduto(Long id, Long produtoId, String nome, Integer quantidadeMinima,
-                           BigDecimal precoPromocional, Boolean ativa, LocalDate dataInicio,
-                           LocalDate dataFim, String diasSemana, LocalTime horarioInicio,
+                           BigDecimal precoPromocional, boolean ativa, LocalDate dataInicio,
+                           LocalDate dataFim, Set<DayOfWeek> diasSemana, LocalTime horarioInicio,
                            LocalTime horarioFim) {
         this.id = id;
         this.produtoId = produtoId;
@@ -35,7 +39,7 @@ public class PromocaoProduto {
         this.ativa = ativa;
         this.dataInicio = dataInicio;
         this.dataFim = dataFim;
-        this.diasSemana = diasSemana;
+        setDiasSemana(diasSemana);
         this.horarioInicio = horarioInicio;
         this.horarioFim = horarioFim;
     }
@@ -64,6 +68,14 @@ public class PromocaoProduto {
         this.nome = nome;
     }
 
+    public String getProdutoNome() {
+        return produtoNome;
+    }
+
+    public void setProdutoNome(String produtoNome) {
+        this.produtoNome = produtoNome;
+    }
+
     public Integer getQuantidadeMinima() {
         return quantidadeMinima;
     }
@@ -80,11 +92,11 @@ public class PromocaoProduto {
         this.precoPromocional = precoPromocional;
     }
 
-    public Boolean getAtiva() {
+    public boolean isAtiva() {
         return ativa;
     }
 
-    public void setAtiva(Boolean ativa) {
+    public void setAtiva(boolean ativa) {
         this.ativa = ativa;
     }
 
@@ -104,12 +116,14 @@ public class PromocaoProduto {
         this.dataFim = dataFim;
     }
 
-    public String getDiasSemana() {
-        return diasSemana;
+    public Set<DayOfWeek> getDiasSemana() {
+        return Collections.unmodifiableSet(diasSemana);
     }
 
-    public void setDiasSemana(String diasSemana) {
-        this.diasSemana = diasSemana;
+    public void setDiasSemana(Set<DayOfWeek> diasSemana) {
+        this.diasSemana = diasSemana == null || diasSemana.isEmpty()
+                ? EnumSet.noneOf(DayOfWeek.class)
+                : EnumSet.copyOf(diasSemana);
     }
 
     public LocalTime getHorarioInicio() {

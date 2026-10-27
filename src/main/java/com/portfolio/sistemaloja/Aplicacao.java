@@ -14,6 +14,7 @@ import com.portfolio.sistemaloja.repository.DevolucaoRepository;
 import com.portfolio.sistemaloja.repository.FiadoRepository;
 import com.portfolio.sistemaloja.repository.FidelidadeRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
+import com.portfolio.sistemaloja.repository.PromocaoProdutoRepository;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
 import com.portfolio.sistemaloja.repository.RecebimentoFiadoRepository;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
@@ -33,6 +34,7 @@ import com.portfolio.sistemaloja.service.FiadoService;
 import com.portfolio.sistemaloja.service.FidelidadeService;
 import com.portfolio.sistemaloja.service.PausaService;
 import com.portfolio.sistemaloja.service.ProdutoService;
+import com.portfolio.sistemaloja.service.PromocaoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
 import com.portfolio.sistemaloja.service.UsuarioService;
 import com.portfolio.sistemaloja.service.VendaService;
@@ -63,6 +65,7 @@ public class Aplicacao {
     private final ConfiguracaoService configuracoes;
     private final AutorizacaoService autorizacoes;
     private final FiadoService fiados;
+    private final PromocaoService promocoes;
 
     public Aplicacao(ConexaoFonte fonte) {
         this(fonte, Clock.systemDefaultZone());
@@ -90,6 +93,8 @@ public class Aplicacao {
         this.fiados = new FiadoService(new FiadoRepository(fonte), new RecebimentoFiadoRepository(fonte),
                 clienteRepository, configuracaoRepository, autorizacoes, auditoria, sessao);
         this.fidelidade = new FidelidadeService(fidelidadeRepository, this.configuracoes);
+        this.promocoes = new PromocaoService(new PromocaoProdutoRepository(fonte), produtoRepository,
+                auditoria, relogio);
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
                 auditoria, relogio, fidelidade, autorizacoes);
@@ -193,5 +198,9 @@ public class Aplicacao {
 
     public FiadoService getFiados() {
         return fiados;
+    }
+
+    public PromocaoService getPromocoes() {
+        return promocoes;
     }
 }
