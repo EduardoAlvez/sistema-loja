@@ -5,8 +5,7 @@ import com.portfolio.sistemaloja.repository.ComparativoPeriodo;
 import com.portfolio.sistemaloja.repository.CurvaABC;
 import com.portfolio.sistemaloja.repository.GiroEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
-import com.portfolio.sistemaloja.repository.ProdutoVendado;
-import com.portfolio.sistemaloja.repository.ProdutoSemMovimento;
+import com.portfolio.sistemaloja.repository.SugestaoCompra;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
 import com.portfolio.sistemaloja.repository.ResumoOperador;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
@@ -135,6 +134,13 @@ public class RelatorioService {
             throw new ValidacaoException("A data inicial deve ser anterior à final.");
         }
         return relatorios.produtosSemMovimento(inicio, fim);
+    }
+
+    public List<SugestaoCompra> sugestaoCompra(LocalDate inicio, LocalDate fim) {
+        if (inicio != null && fim != null && inicio.isAfter(fim)) {
+            throw new ValidacaoException("A data inicial deve ser anterior à final.");
+        }
+        return relatorios.sugestaoCompra(inicio, fim);
     }
 
     public ComparativoPeriodo comparativoPeriodo(LocalDate inicio, LocalDate fim) {

@@ -11,6 +11,7 @@ import com.portfolio.sistemaloja.repository.EventoAuditoria;
 import com.portfolio.sistemaloja.repository.GiroEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoSemMovimento;
+import com.portfolio.sistemaloja.repository.SugestaoCompra;
 import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.ResumoOperador;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
@@ -73,8 +74,16 @@ public class PainelRelatorios extends JPanel {
             Ui.modeloTabela("Operador", "Comissão", "Vendas", "Total vendido", "Comissão a pagar");
     private final JTable tabelaOperador = Ui.tabela(modeloOperador);
     private final javax.swing.table.DefaultTableModel modeloAuditoria =
-            Ui.modeloTabela("Data/Hora", "Usuário", "Ação", "Entidade", "ID", "Detalhe");
+            Ui.modelo("Data/Hora", "Usuário", "Ação", "Entidade", "Detalhe");
     private final JTable tabelaAuditoria = Ui.tabela(modeloAuditoria);
+    private final DefaultTableModel modeloSugestao = new DefaultTableModel(
+            new Object[]{"Produto", "Estoque", "Estoque mín.", "Vendido no período", "Média/dia", "Qtd. sugerida"}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable tabelaSugestao = new JTable(modeloSugestao);
     private List<Venda> vendas = List.of();
     private List<ProdutoVendado> maisVendidos = List.of();
     private List<VendaDoDia> porDia = List.of();
@@ -145,11 +154,9 @@ public class PainelRelatorios extends JPanel {
         JButton pdf = new JButton("Exportar PDF");
         pdf.setToolTipText("Gera o relatório do período em PDF");
         pdf.addActionListener(e -> exportar("pdf"));
-        JButton excel = new JButton("Exportar Excel");
-        excel.setToolTipText("Gera o relatório do período em planilha .xlsx");
-        excel.addActionListener(e -> exportar("xlsx"));
-        periodo.add(pdf);
-        periodo.add(excel);
+        JButton sugestao = new JButton("Sugestão de compra");
+        sugestao.addActionListener(e -> sugestaoCompra());
+        periodo.add(sugestao);
 
         topo.add(periodo, BorderLayout.CENTER);
         return topo;
@@ -161,6 +168,7 @@ public class PainelRelatorios extends JPanel {
         abas.addTab("Vendas", new JScrollPane(tabelaVendas));
         abas.addTab("Mais vendidos", new JScrollPane(tabelaTop));
         abas.addTab("Estoque baixo", new JScrollPane(tabelaEstoque));
+        abas.addTab("Sugestão de compra", montarSugestaoCompra());
         abas.addTab("Por operador", new JScrollPane(tabelaOperador));
         abas.addTab("Indicadores", montarIndicadores());
         if (eAdmin()) {
@@ -473,14 +481,36 @@ public class PainelRelatorios extends JPanel {
         }
     }
 
-    public void mostrarDetalhes(Venda venda) {
-        StringBuilder texto = new StringBuilder("Venda " + venda.getNumero() + "\n\n");
-        for (VendaItem item : venda.getItens()) {
-            texto.append(item.getQuantidade()).append(" x ")
-                    .append(item.getProdutoNome()).append(" = ")
-                    .append(Ui.moeda(item.getSubtotal())).append('\n');
+    private JPanel montarSugestaoCompra() {
+        JPanel painel = new JPanel(new BorderLayout());
+        painel.setOpaque(false);
+        JPanel topo = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topo.setOpaque(false);
+        JButton atualizar = new JButton("Atualizar sugestão");
+        atualizar.addActionListener(e -> carregarSugestao());
+        topo.add(atualizar);
+        painel.add(topo, BorderLayout.NORTH);
+        painel.add(new JScrollPane(tabelaSugestao), BorderLayout.CENTER);
+        carregarSugestao();
+        return painel;
+    }
+
+    private void carregarSugestao() {
+        modeloSugestao.setRowCount(0);
+        try {
+            List<SugestaoCompra> lista = aplicacao.getRelatorios().sugestaoCompra(inicio.getDate(), fim.getDate());
+            for (SugestaoCompra s : lista) {
+                modeloSugestao.addRow(new Object[]{
+                        s.nome(), s.estoqueAtual(), s.estoqueMinimo(), s.vendidoPeriodo(), s.mediaDiaria(), s.quantidadeSugerida()
+                });
+            }
+        } catch (Exception ex) {
+            // ignora
         }
-        texto.append("\nTotal: ").append(Ui.moeda(venda.getTotal()));
-        Ui.info(this, texto.toString());
+    }
+
+    private void sugestaoCompra() {
+        carregarSugestao();
+        abas.setSelectedIndex(3);
     }
 }

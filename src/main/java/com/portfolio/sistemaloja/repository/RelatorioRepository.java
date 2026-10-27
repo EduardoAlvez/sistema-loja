@@ -14,7 +14,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 
 public class RelatorioRepository {
@@ -424,21 +423,57 @@ public class RelatorioRepository {
         return 0;
     }
 
-    private String classificarABC(BigDecimal acumulado, BigDecimal totalGeral) {
-        if (totalGeral.compareTo(BigDecimal.ZERO) <= 0) {
-            return "C";
+    public List<SugestaoCompra> sugestaoCompra(LocalDate inicio, LocalDate fim) {
+        if (inicio == null) {
+            inicio = LocalDate.now().minusDays(29);
         }
-        BigDecimal percentualAcumulado = acumulado.multiply(BigDecimal.valueOf(100)).divide(totalGeral, 4, BigDecimal.ROUND_HALF_UP);
-        if (percentualAcumulado.compareTo(BigDecimal.valueOf(80)) <= 0) {
-            return "A";
+        if (fim == null) {
+            fim = LocalDate.now();
         }
-        if (percentualAcumulado.compareTo(BigDecimal.valueOf(95)) <= 0) {
-            return "B";
+        String sql = """
+                SELECT p.id, p.nome, p.estoque, p.estoque_minimo, COALESCE(SUM(i.quantidade), 0) AS vendido
+                  FROM produtos p
+                  LEFT JOIN venda_itens i ON i.produto_id = p.id
+                  LEFT JOIN vendas v ON v.id = i.venda_id AND v.status = 'CONCLUIDA' AND v.data_hora >= ? AND v.data_hora < ?
+                 WHERE p.ativo = TRUE
+                 GROUP BY p.id, p.nome, p.estoque, p.estoque_minimo
+                 HAVING p.estoque <= p.estoque_minimo OR COALESCE(SUM(i.quantidade), 0) > 0
+                 ORDER BY (p.estoque <= p.estoque_minimo) DESC, p.nome""";
+        List<SugestaoCompra> lista = new ArrayList<>();
+        long dias = Math.max(1, ChronoUnit.DAYS.between(inicio, fim) + 1);
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setObject(1, inicio.atStartOfDay());
+            preparada.setObject(2, fim.plusDays(1).atStartOfDay());
+            try (ResultSet resultado = preparada.executeQuery()) {
+                while (resultado.next()) {
+                    int vendido = resultado.getInt("vendido");
+                    int estoqueAtual = resultado.getInt("estoque");
+                    int estoqueMinimo = resultado.getInt("estoque_minimo");
+                    int mediaDiaria = (int) Math.ceil((double) vendido / (double) dias);
+                    int sugerido = Math.max(0, estoqueMinimo - estoqueAtual);
+                    if (sugerido == 0 && vendido > 0 && estoqueAtual < mediaDiaria * 7) {
+                        sugerido = Math.max(1, mediaDiaria * 7 - estoqueAtual);
+                    }
+                    if (estoqueAtual > estoqueMinimo && vendido == 0) {
+                        continue;
+                    }
+                    if (estoqueAtual > estoqueMinimo && sugerido == 0) {
+                        continue;
+                    }
+                    lista.add(new SugestaoCompra(
+                            resultado.getLong("id"),
+                            resultado.getString("nome"),
+                            estoqueAtual,
+                            estoqueMinimo,
+                            vendido,
+                            mediaDiaria,
+                            sugerido));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao gerar sugestão de compra", e);
         }
-        return "C";
+        return lista;
     }
-
-    private static final java.time.format.DateTimeFormatter DATA =
-            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
-}
 
