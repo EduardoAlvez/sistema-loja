@@ -219,6 +219,10 @@ instalar driver do fabricante: cadastre a impressora no Windows como **Generic /
 
 ### Promoções
 
+Existem dois tipos de promoção no sistema.
+
+**1. Preço promocional no cadastro do produto**
+
 O cadastro de produto aceita um **preço promocional** com critérios opcionais:
 
 - **Vigência**: data de início e fim, ambas inclusivas; vazio = sem limite.
@@ -231,9 +235,26 @@ Regras aplicadas na venda:
   re-adicionar o mesmo produto, o preço é recalculado.
 - O preço promocional é preço de loja e **não consome o limite de desconto manual** do perfil;
   o limite é calculado sobre o preço vigente.
-- Cadastro inconsistente (preço promocional maior ou igual ao de venda, datas invertidas,
+- Cadastro inconsistido (preço promocional maior ou igual ao de venda, datas invertidas,
   apenas um horário, promoção sem preço) é recusado.
 - O **CSV de produtos continua com 7 colunas**; promoções são editadas na tela de cadastro.
+
+**2. Promoções por quantidade (aba do admin)**
+
+O admin tem a aba **Promoções**, onde cadastra descontos que só entram em vigor a partir de uma
+quantidade — por exemplo, "Refrigerante 3 por R$ 7,00". As regras ficam gravadas em
+`promocao_produto` (migração `V20`) e valem **na hora**, sem reiniciar o sistema.
+
+- **Semântica**: quando o carrinho atinge a **quantidade mínima**, **cada unidade** do item passa
+  a ser cobrada pelo **preço promocional** (o preço promocional é unitário, não um valor de pacote).
+- **Vigência**: data de início e fim, dias da semana e horário, com as mesmas regras do preço
+  promocional do produto (vazio = sem limite, nenhum dia marcado = todos os dias).
+- **Preço final**: vale sempre o **menor** preço entre a promoção por quantidade, a promoção do
+  próprio produto e o preço de venda; a venda é registrada com o preço efetivo.
+- **PDV**: o carrinho mostra o preço unitário já recalculado e marca a linha com **(promo)**.
+- **Auditoria**: criação e remoção geram eventos `PROMOCAO_SALVA` / `PROMOCAO_REMOVIDA`.
+- Cadastro inconsistido (quantidade mínima zero, preço promocional maior ou igual ao preço de venda,
+  datas invertidas, apenas um horário) é recusado.
 
 ### Configurações da loja (aba do admin)
 
@@ -351,7 +372,7 @@ O PDV agora suporta venda a prazo (fiado) para clientes cadastrados:
 mvn test
 ```
 
-**291 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**321 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -381,9 +402,9 @@ Projeto em **quatro camadas**, com dependência sempre de cima para baixo:
 | Camada | Pacote | Responsabilidade |
 |--------|--------|------------------|
 | UI | `ui` | `TelaLogin`, `TelaPrincipal` com abas, painéis e diálogos |
-| Serviço | `service` | `VendaService`, `ProdutoService`, `ClienteService`, `CaixaService`, `PausaService`, `DevolucaoService`, `UsuarioService`, `CupomService`, `CupomTermicoService` (+ `PixPayload`, `QrAscii`), `RelatorioService`, `AuthService`, `AuditoriaService`, `Cpf` |
+| Serviço | `service` | `VendaService`, `ProdutoService`, `ClienteService`, `CaixaService`, `PausaService`, `DevolucaoService`, `UsuarioService`, `CupomService`, `CupomTermicoService` (+ `PixPayload`, `QrAscii`), `RelatorioService`, `AuthService`, `AuditoriaService`, `PromocaoService`, `Cpf` |
 | Impressão | `impressao` | `EscPos`, `CupomEscPosService`, `ImpressaoCupomService`, `ImpressoraConfig`, `ImpressorasSpool` (+ `ImpressoraSpool`) |
-| Repositório | `repository` | `ProdutoRepository`, `VendaRepository`, `VendaPausadaRepository`, `DevolucaoRepository`, `CaixaRepository`, `ClienteRepository`, `UsuarioRepository`, `CategoriaRepository`, `RelatorioRepository`, `AuditoriaRepository` |
+| Repositório | `repository` | `ProdutoRepository`, `VendaRepository`, `VendaPausadaRepository`, `DevolucaoRepository`, `CaixaRepository`, `ClienteRepository`, `UsuarioRepository`, `CategoriaRepository`, `RelatorioRepository`, `AuditoriaRepository`, `PromocaoProdutoRepository` |
 | Modelo | `model` | `Produto`, `Cliente`, `Venda`, `VendaItem`, `VendaPagamento`, `Caixa`, `Devolucao`, `Usuario`, enums |
 | Infra | `db` | `Banco` (fonte de conexão), `Migrador` (Flyway + seed), `Senhas` |
 
@@ -411,9 +432,9 @@ sistema-loja/
 │   │   │   ├── service/                     # Regras de negócio e validações
 │   │   │   └── ui/                          # Classes Swing (telas, painéis, diálogos)
 │   │   └── resources/
-│   │       ├── db/migration/                # V1 a V16 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações)
+│   │       ├── db/migration/                # V1 a V20 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 291 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 321 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -504,7 +525,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 291 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 321 testes JUnit (serviços, UI, migrações e integração sobre H2)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
