@@ -20,14 +20,15 @@ class PainelRelatoriosTest {
         Aplicacao adminApp = BancoTeste.criar("reladmin" + System.nanoTime());
         adminApp.getAuth().autenticar("admin", "admin123");
         JTabbedPane abasAdmin = abas(new PainelRelatorios(adminApp));
-        assertEquals(8, abasAdmin.getTabCount(), "admin deve ver a aba Auditoria");
+        assertEquals(9, abasAdmin.getTabCount(), "admin deve ver a aba Auditoria");
         assertEquals("Auditoria", abasAdmin.getTitleAt(abasAdmin.getTabCount() - 1));
+        assertEquals("Taxas TEF", abasAdmin.getTitleAt(abasAdmin.getTabCount() - 2));
 
         Aplicacao operadorApp = BancoTeste.criar("relop" + System.nanoTime());
         operadorApp.getAuth().autenticar("operador", "caixa123");
         JTabbedPane abasOperador = abas(new PainelRelatorios(operadorApp));
-        assertEquals(7, abasOperador.getTabCount(), "operador nao deve ver a aba Auditoria");
-        assertEquals("Indicadores", abasOperador.getTitleAt(abasOperador.getTabCount() - 1));
+        assertEquals(8, abasOperador.getTabCount(), "operador nao deve ver a aba Auditoria");
+        assertEquals("Taxas TEF", abasOperador.getTitleAt(abasOperador.getTabCount() - 1));
     }
 
     @Test
@@ -61,6 +62,7 @@ class PainelRelatoriosTest {
         PainelRelatorios painel = new PainelRelatorios(app);
         JTabbedPane abas = abas(painel);
         assertEquals("Auditoria", abas.getTitleAt(abas.getTabCount() - 1));
+        assertEquals("Taxas TEF", abas.getTitleAt(abas.getTabCount() - 2));
 
         JTable tabela = tabelaDaAbaAuditoria(abas);
         assertEquals(2, tabela.getRowCount());
