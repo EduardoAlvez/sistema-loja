@@ -6,6 +6,7 @@ import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.PerfilUsuario;
 import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.model.PromocaoProduto;
 import com.portfolio.sistemaloja.model.Autorizacao;
 import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.Usuario;
@@ -131,6 +132,29 @@ class AuditoriaAcoesTest {
         assertEquals("USUARIO_CRIADO", eventos.get(0).acao());
         assertEquals(criado.getId(), eventos.get(0).entidadeId());
         assertEquals("novo", eventos.get(0).detalhe());
+    }
+
+    @Test
+    void promocaoSalvaERemovidaRegistramAuditoria() {
+        app.getAuth().autenticar("admin", "admin123");
+        Produto refrigerante = app.getProdutos().buscarPorCodigoBarras("7891000100103");
+        PromocaoProduto promocao = new PromocaoProduto();
+        promocao.setNome("Refrigerante 3 por 7");
+        promocao.setProdutoId(refrigerante.getId());
+        promocao.setQuantidadeMinima(3);
+        promocao.setPrecoPromocional(new BigDecimal("7.00"));
+        promocao.setAtiva(true);
+
+        PromocaoProduto salva = app.getPromocoes().salvar(promocao);
+        app.getPromocoes().remover(salva.getId());
+
+        List<EventoAuditoria> eventos = hoje();
+        assertTrue(eventos.stream().anyMatch(e -> "PROMOCAO_SALVA".equals(e.acao())
+                && salva.getId().equals(e.entidadeId())), "promocao salva ausente: " + eventos);
+        assertTrue(eventos.stream().anyMatch(e -> "PROMOCAO_REMOVIDA".equals(e.acao())
+                && salva.getId().equals(e.entidadeId())), "promocao removida ausente: " + eventos);
+        assertTrue(eventos.stream().allMatch(e -> "admin".equals(e.usuarioLogin())),
+                "usuario da auditoria inesperado: " + eventos);
     }
 
     private List<EventoAuditoria> hoje() {

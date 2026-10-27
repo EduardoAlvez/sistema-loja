@@ -4,6 +4,7 @@ import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.BancoTeste;
 import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.model.PromocaoProduto;
 import com.portfolio.sistemaloja.model.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,68 @@ class PainelPDVTest {
         painel.adicionarProduto(agua);
 
         assertEquals(Ui.moeda(agua.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
+    }
+
+    @Test
+    void aplicaPromocaoPorQuantidadeNoCarrinho() {
+        Produto refrigerante = app.getProdutos().buscarPorCodigoBarras("7891000100103");
+        app.getPromocoes().salvar(promocao(refrigerante, "Refrigerante 3 por 7", 3, "7.00", true));
+
+        PainelPDV painel = new PainelPDV(app, operador);
+        painel.adicionarProduto(refrigerante);
+        painel.adicionarProduto(refrigerante);
+        assertEquals(Ui.moeda(refrigerante.getPrecoVenda()), painel.itemDoCarrinho(0, 3),
+                "abaixo da quantidade minima o preco normal deve prevalecer");
+
+        painel.adicionarProduto(refrigerante);
+
+        assertEquals(Ui.moeda(new BigDecimal("7.00")), painel.itemDoCarrinho(0, 3));
+        assertTrue(String.valueOf(painel.itemDoCarrinho(0, 0)).contains("(promo)"),
+                String.valueOf(painel.itemDoCarrinho(0, 0)));
+    }
+
+    @Test
+    void promocaoInativaNaoAlteraOPrecoNemMarcaOCarrinho() {
+        Produto refrigerante = app.getProdutos().buscarPorCodigoBarras("7891000100103");
+        app.getPromocoes().salvar(promocao(refrigerante, "Refrigerante 3 por 7", 3, "7.00", false));
+
+        PainelPDV painel = new PainelPDV(app, operador);
+        painel.adicionarProduto(refrigerante);
+        painel.adicionarProduto(refrigerante);
+        painel.adicionarProduto(refrigerante);
+
+        assertEquals(Ui.moeda(refrigerante.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
+        assertFalse(String.valueOf(painel.itemDoCarrinho(0, 0)).contains("(promo)"),
+                String.valueOf(painel.itemDoCarrinho(0, 0)));
+    }
+
+    @Test
+    void editarQuantidadeAbaixoDoMinimoVoltaAoPrecoNormal() {
+        Produto refrigerante = app.getProdutos().buscarPorCodigoBarras("7891000100103");
+        app.getPromocoes().salvar(promocao(refrigerante, "Refrigerante 3 por 7", 3, "7.00", true));
+
+        PainelPDV painel = new PainelPDV(app, operador);
+        painel.adicionarProduto(refrigerante);
+        painel.adicionarProduto(refrigerante);
+        painel.adicionarProduto(refrigerante);
+        assertEquals(Ui.moeda(new BigDecimal("7.00")), painel.itemDoCarrinho(0, 3));
+
+        painel.definirQuantidadeNoCarrinho(0, 2);
+
+        assertEquals(Ui.moeda(refrigerante.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
+        assertFalse(String.valueOf(painel.itemDoCarrinho(0, 0)).contains("(promo)"),
+                String.valueOf(painel.itemDoCarrinho(0, 0)));
+    }
+
+    private PromocaoProduto promocao(Produto produto, String nome, int quantidade, String preco,
+                                     boolean ativa) {
+        PromocaoProduto promocao = new PromocaoProduto();
+        promocao.setNome(nome);
+        promocao.setProdutoId(produto.getId());
+        promocao.setQuantidadeMinima(quantidade);
+        promocao.setPrecoPromocional(new BigDecimal(preco));
+        promocao.setAtiva(ativa);
+        return promocao;
     }
 
     @Test
