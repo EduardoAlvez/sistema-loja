@@ -34,7 +34,7 @@ regras de negócio e testes automatizados.
 
 ### Dashboard
 - Cards de **vendas do dia**, **faturamento**, **ticket médio** e **itens com estoque baixo**
-- Tabelas de **produtos mais vendidos** e **estoque crítico** (≤ 5 un.)
+- Tabelas de **produtos mais vendidos** e **estoque crítico** (por `estoque_minimo`)
 - **Gráfico de faturamento dos últimos 14 dias** logo abaixo das tabelas, com tooltip por dia
 
 ### PDV (Ponto de Venda)
