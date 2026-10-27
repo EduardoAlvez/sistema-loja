@@ -96,6 +96,7 @@ public class PainelPDV extends JPanel {
 
     private final List<VendaItem> carrinho = new ArrayList<>();
     private final Set<Long> produtosComPromocao = new HashSet<>();
+    private BigDecimal valorPontosMostrado = BigDecimal.ZERO;
     private final List<VendaPagamento> pagamentosDivididos = new ArrayList<>();
     private BigDecimal subtotal = BigDecimal.ZERO;
     private final javax.swing.table.DefaultTableModel modeloCarrinho =
@@ -633,7 +634,7 @@ public class PainelPDV extends JPanel {
         produtosComPromocao.remove(produto.getId());
     }
 
-    private boolean reprecificarCarrinho() {
+    boolean reprecificarCarrinho() {
         BigDecimal antes = totalDoCarrinho();
         for (VendaItem item : carrinho) {
             Produto produto = aplicacao.getProdutoRepository().buscarPorId(item.getProdutoId()).orElse(null);
@@ -696,6 +697,18 @@ public class PainelPDV extends JPanel {
         sincronizarCarrinho();
     }
 
+    private String avisoDeRecalculo(boolean pontosMudaram, boolean precoMudou) {
+        StringBuilder aviso = new StringBuilder("Os valores do carrinho foram recalculados");
+        if (pontosMudaram && precoMudou) {
+            aviso.append(" (o valor do ponto e as promoções vigentes mudaram)");
+        } else if (pontosMudaram) {
+            aviso.append(" (o valor do ponto mudou)");
+        } else {
+            aviso.append(" (as promoções vigentes mudaram)");
+        }
+        return aviso.append(". Confira o total e finalize novamente.").toString();
+    }
+
     private void removerItemDoCarrinho(int linha) {
         VendaItem item = carrinho.remove(linha);
         produtosComPromocao.remove(item.getProdutoId());
@@ -748,12 +761,18 @@ public class PainelPDV extends JPanel {
         if (descontoValor.compareTo(subtotal) > 0) {
             descontoValor = subtotal;
         }
-        BigDecimal totalVenda = subtotal.subtract(descontoValor).subtract(valorDosPontosResgatados());
+        BigDecimal valorPontos = valorDosPontosResgatados();
+        valorPontosMostrado = valorPontos;
+        BigDecimal totalVenda = subtotal.subtract(descontoValor).subtract(valorPontos);
         if (totalVenda.compareTo(BigDecimal.ZERO) < 0) {
             totalVenda = BigDecimal.ZERO;
         }
         total.setText(Ui.moeda(totalVenda));
         calcularTroco();
+    }
+
+    boolean valoresDivergemDaTela() {
+        return valorDosPontosResgatados().compareTo(valorPontosMostrado) != 0;
     }
 
     private int pontosResgatados() {
@@ -915,6 +934,7 @@ public class PainelPDV extends JPanel {
 
     private void preencherComPausada(VendaPausada pausada) {
         Venda retomada = pausada.paraVenda();
+        BigDecimal valorPontosPausado = retomada.getValorPontos();
         limpar();
         carrinho.addAll(retomada.getItens());
         if (retomada.getDesconto().compareTo(BigDecimal.ZERO) > 0) {
@@ -939,6 +959,11 @@ public class PainelPDV extends JPanel {
             valorPago.setEnabled(false);
         }
         reprecificarCarrinho();
+        BigDecimal valorPontosAtual = valorDosPontosResgatados();
+        if (valorPontosAtual.compareTo(valorPontosPausado) != 0) {
+            Ui.info(this, "O valor do ponto mudou desde a pausa: o resgate agora vale "
+                    + Ui.moeda(valorPontosAtual) + ". Confira o total antes de finalizar.");
+        }
     }
 
     private void finalizar() {
@@ -946,9 +971,10 @@ public class PainelPDV extends JPanel {
             Ui.erro(this, "O carrinho está vazio.");
             return;
         }
-        if (reprecificarCarrinho()) {
-            Ui.info(this, "O preço do carrinho foi recalculado com as promoções vigentes agora. "
-                    + "Confira o total e finalize novamente.");
+        boolean pontosMudaram = valoresDivergemDaTela();
+        boolean precoMudou = reprecificarCarrinho();
+        if (pontosMudaram || precoMudou) {
+            Ui.info(this, avisoDeRecalculo(pontosMudaram, precoMudou));
             return;
         }
         Cliente selecionado = (Cliente) cliente.getSelectedItem();

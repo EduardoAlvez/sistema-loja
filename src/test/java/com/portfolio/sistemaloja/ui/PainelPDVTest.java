@@ -3,9 +3,11 @@ package com.portfolio.sistemaloja.ui;
 import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.BancoTeste;
 import com.portfolio.sistemaloja.model.Cliente;
+import com.portfolio.sistemaloja.model.ConfiguracoesAplicacao;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.PromocaoProduto;
 import com.portfolio.sistemaloja.model.Usuario;
+import com.portfolio.sistemaloja.service.FidelidadeConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -112,6 +114,38 @@ class PainelPDVTest {
         assertEquals(Ui.moeda(refrigerante.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
         assertFalse(String.valueOf(painel.itemDoCarrinho(0, 0)).contains("(promo)"),
                 String.valueOf(painel.itemDoCarrinho(0, 0)));
+    }
+
+    @Test
+    void detectaMudancaDoValorDoPontoEntreATelaEAFinalizacao() {
+        Cliente cliente = app.getClientes().salvar(new Cliente(null, "Maria Souza", "52998224725", null,
+                null, true));
+        app.getFidelidadeRepository().aplicarMovimentos(List.of(
+                app.getFidelidade().credito(cliente.getId(), null, 100, "Credito de teste")));
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+
+        PainelPDV painel = new PainelPDV(app, operador);
+        painel.adicionarProduto(agua);
+        painel.selecionarCliente(cliente);
+        painel.informarPontos(20);
+        assertEquals(Ui.moeda(new BigDecimal("1.50")), painel.totalAtual(),
+                "20 pontos a 0,05 valem 1,00 de desconto");
+        assertFalse(painel.valoresDivergemDaTela());
+
+        ConfiguracoesAplicacao config = app.getConfiguracoes().atual();
+        app.getAuth().autenticar("admin", "admin123");
+        app.getConfiguracoes().salvarLoja(
+                new FidelidadeConfig(config.fidelidade().pontosPorReal(), new BigDecimal("0.04")),
+                config.pix());
+
+        assertTrue(painel.valoresDivergemDaTela(),
+                "a mudanca do valor do ponto deve ser detectada antes de finalizar");
+
+        painel.reprecificarCarrinho();
+
+        assertFalse(painel.valoresDivergemDaTela());
+        assertEquals(Ui.moeda(new BigDecimal("1.70")), painel.totalAtual(),
+                "20 pontos a 0,04 valem 0,80 de desconto");
     }
 
     private PromocaoProduto promocao(Produto produto, String nome, int quantidade, String preco,
