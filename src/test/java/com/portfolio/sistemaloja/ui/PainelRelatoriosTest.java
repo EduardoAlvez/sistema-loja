@@ -20,13 +20,13 @@ class PainelRelatoriosTest {
         Aplicacao adminApp = BancoTeste.criar("reladmin" + System.nanoTime());
         adminApp.getAuth().autenticar("admin", "admin123");
         JTabbedPane abasAdmin = abas(new PainelRelatorios(adminApp));
-        assertEquals(7, abasAdmin.getTabCount(), "admin deve ver a aba Auditoria");
+        assertEquals(8, abasAdmin.getTabCount(), "admin deve ver a aba Auditoria");
         assertEquals("Auditoria", abasAdmin.getTitleAt(abasAdmin.getTabCount() - 1));
 
         Aplicacao operadorApp = BancoTeste.criar("relop" + System.nanoTime());
         operadorApp.getAuth().autenticar("operador", "caixa123");
         JTabbedPane abasOperador = abas(new PainelRelatorios(operadorApp));
-        assertEquals(6, abasOperador.getTabCount(), "operador nao deve ver a aba Auditoria");
+        assertEquals(7, abasOperador.getTabCount(), "operador nao deve ver a aba Auditoria");
         assertEquals("Indicadores", abasOperador.getTitleAt(abasOperador.getTabCount() - 1));
     }
 
