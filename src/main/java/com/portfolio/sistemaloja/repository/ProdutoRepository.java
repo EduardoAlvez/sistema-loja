@@ -202,6 +202,16 @@ public class ProdutoRepository {
         return null;
     }
 
+    public boolean alterarEstoque(long produtoId, int quantidade, Connection conexao) throws SQLException {
+        String sql = "UPDATE produtos SET estoque = estoque + ? WHERE id = ? AND estoque + ? >= 0";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setInt(1, quantidade);
+            preparada.setLong(2, produtoId);
+            preparada.setInt(3, quantidade);
+            return preparada.executeUpdate() == 1;
+        }
+    }
+
     private String insercao() {
         return "INSERT INTO produtos (codigo_barras, nome, categoria_id, preco_custo, preco_venda, "
                 + "estoque, ativo, estoque_minimo, preco_promocional, promo_inicio, promo_fim, promo_dias, "

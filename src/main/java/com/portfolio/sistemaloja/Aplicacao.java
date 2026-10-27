@@ -16,6 +16,8 @@ import com.portfolio.sistemaloja.repository.FidelidadeRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 import com.portfolio.sistemaloja.repository.PromocaoProdutoRepository;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
+import com.portfolio.sistemaloja.repository.DevolucaoRepository;
+import com.portfolio.sistemaloja.repository.FiadoRepository;
 import com.portfolio.sistemaloja.repository.RecebimentoFiadoRepository;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaPausadaRepository;

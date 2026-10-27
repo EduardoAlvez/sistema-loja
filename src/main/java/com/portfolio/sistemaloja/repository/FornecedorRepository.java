@@ -103,7 +103,6 @@ public class FornecedorRepository {
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao verificar fornecedor", e);
         }
-        return false;
     }
 
     public Fornecedor salvar(Fornecedor fornecedor) {

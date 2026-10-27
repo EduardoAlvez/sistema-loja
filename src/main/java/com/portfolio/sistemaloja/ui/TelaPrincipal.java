@@ -18,6 +18,7 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
 import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.PerfilUsuario;
 import com.portfolio.sistemaloja.model.Usuario;
 
 public class TelaPrincipal extends JFrame {
@@ -53,7 +54,7 @@ public class TelaPrincipal extends JFrame {
         abas.addTab("Clientes", new PainelClientes(aplicacao));
         abas.addTab("Relatórios", new PainelRelatorios(aplicacao));
         abas.addTab("Fiado / Recebíveis", new PainelFiado(aplicacao));
-        if (aplicacao.getSessao().temPerfil(PerfilUsuario.ADMINISTRADOR)) {
+        if (aplicacao.getUsuarioAtual() != null && aplicacao.getUsuarioAtual().getPerfil() == PerfilUsuario.ADMIN) {
             abas.addTab("Compras", new PainelCompras(aplicacao));
             abas.addTab("Configurações", new PainelConfiguracoes(aplicacao));
             abas.addTab("Promoções", new PainelPromocoes(aplicacao));

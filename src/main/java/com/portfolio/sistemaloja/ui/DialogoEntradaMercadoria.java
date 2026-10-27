@@ -7,16 +7,19 @@ import com.portfolio.sistemaloja.model.Fornecedor;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.service.ValidacaoException;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dialog;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
@@ -63,7 +66,7 @@ public class DialogoEntradaMercadoria extends JDialog {
     private void montar() {
         setLayout(new BorderLayout(10, 10));
         JPanel cabecalho = new JPanel(new GridBagLayout());
-        cabecalho.setBorder(Ui.bordaVazia(12, 12, 12, 12));
+        cabecalho.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(4, 4, 4, 4);
         gbc.anchor = GridBagConstraints.WEST;
@@ -76,14 +79,10 @@ public class DialogoEntradaMercadoria extends JDialog {
         add(cabecalho, BorderLayout.NORTH);
 
         JPanel centro = new JPanel(new BorderLayout(8, 8));
-        centro.setBorder(Ui.bordaVazia(0, 12, 0, 12));
+        centro.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
         JPanel botoesItens = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         JButton adicionarItem = new JButton("Adicionar item");
         adicionarItem.addActionListener(e -> adicionarItem());
-        JButton removerItem = new JButton("Remover item");
-        removerItem.addActionListener(e -> removerItem());
-        botoesItens.add(adicionarItem);
-        botoesItens.add(removerItem);
         centro.add(botoesItens, BorderLayout.NORTH);
         tabelaItens.getColumnModel().getColumn(0).setMinWidth(0);
         tabelaItens.getColumnModel().getColumn(0).setMaxWidth(0);
@@ -99,7 +98,7 @@ public class DialogoEntradaMercadoria extends JDialog {
         cancelar.addActionListener(e -> dispose());
         JButton registrar = new JButton("Registrar entrada");
         registrar.setBackground(Ui.COR_PRINCIPAL);
-        registrar.setForeground(java.awt.Color.WHITE);
+        registrar.setForeground(Color.WHITE);
         registrar.addActionListener(e -> registrar());
         botoes.add(cancelar);
         botoes.add(registrar);
@@ -130,16 +129,16 @@ public class DialogoEntradaMercadoria extends JDialog {
             if (produto == null) {
                 return;
             }
-            String qtdStr = javax.swing.JOptionPane.showInputDialog(this, "Quantidade:", "Adicionar item", javax.swing.JOptionPane.QUESTION_MESSAGE);
+            String qtdStr = JOptionPane.showInputDialog(this, "Quantidade:", "Adicionar item", JOptionPane.QUESTION_MESSAGE);
             if (qtdStr == null) {
                 return;
             }
             int quantidade = Integer.parseInt(qtdStr.trim());
-            String valorStr = javax.swing.JOptionPane.showInputDialog(this, "Valor unitário (custo):", produto.getPrecoCusto());
+            String valorStr = JOptionPane.showInputDialog(this, "Valor unitário (custo):", produto.getPrecoCusto());
             if (valorStr == null) {
                 return;
             }
-            BigDecimal valorUnitario = Ui.valorMonetario(valorStr);
+            BigDecimal valorUnitario = new BigDecimal(valorStr.trim().replace(",", "."));
             EntradaItem item = new EntradaItem();
             item.setProdutoId(produto.getId());
             item.setProdutoNome(produto.getNome());
@@ -196,7 +195,7 @@ public class DialogoEntradaMercadoria extends JDialog {
             entrada.setDataEntrada(LocalDateTime.now());
             entrada.getItens().addAll(itens);
             entrada.recalcularTotal();
-            aplicacao.getCompras().registrar(entrada, aplicacao.getSessao().getUsuario());
+            aplicacao.getCompras().registrar(entrada, aplicacao.getUsuarioAtual());
             registrado = true;
             Ui.informacao(this, "Entrada de mercadoria registrada com sucesso.");
             dispose();

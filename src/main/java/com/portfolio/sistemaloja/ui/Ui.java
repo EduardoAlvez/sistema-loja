@@ -78,6 +78,14 @@ public final class Ui {
         JOptionPane.showMessageDialog(pai, mensagem, "Erro", JOptionPane.ERROR_MESSAGE);
     }
 
+    public static void aviso(Component pai, String mensagem) {
+        JOptionPane.showMessageDialog(pai, mensagem, "Aviso", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    public static void informacao(Component pai, String mensagem) {
+        JOptionPane.showMessageDialog(pai, mensagem, "Informação", JOptionPane.INFORMATION_MESSAGE);
+    }
+
     public static void info(Component pai, String mensagem) {
         JOptionPane.showMessageDialog(pai, mensagem, "Aviso", JOptionPane.INFORMATION_MESSAGE);
     }
@@ -85,6 +93,10 @@ public final class Ui {
     public static boolean confirma(Component pai, String mensagem) {
         return JOptionPane.showConfirmDialog(pai, mensagem, "Confirmar",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
+    }
+
+    public static DefaultTableModel modelo(String... colunas) {
+        return modeloTabela(colunas);
     }
 
     public static DefaultTableModel modeloTabela(String... colunas) {

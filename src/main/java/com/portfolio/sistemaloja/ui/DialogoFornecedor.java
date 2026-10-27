@@ -4,12 +4,14 @@ import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.Fornecedor;
 import com.portfolio.sistemaloja.service.ValidacaoException;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dialog;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
@@ -61,7 +63,7 @@ public class DialogoFornecedor extends JDialog {
     private void montar() {
         setLayout(new BorderLayout(10, 10));
         JPanel formulario = new JPanel(new GridBagLayout());
-        formulario.setBorder(Ui.bordaVazia(12, 12, 12, 12));
+        formulario.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(4, 4, 4, 4);
         gbc.anchor = GridBagConstraints.WEST;
@@ -80,7 +82,7 @@ public class DialogoFornecedor extends JDialog {
         cancelar.addActionListener(e -> dispose());
         JButton salvar = new JButton("Salvar");
         salvar.setBackground(Ui.COR_PRINCIPAL);
-        salvar.setForeground(java.awt.Color.WHITE);
+        salvar.setForeground(Color.WHITE);
         salvar.addActionListener(e -> salvar());
         botoes.add(cancelar);
         botoes.add(salvar);

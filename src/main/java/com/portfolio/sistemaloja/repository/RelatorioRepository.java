@@ -14,6 +14,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 public class RelatorioRepository {
@@ -477,3 +478,21 @@ public class RelatorioRepository {
         return lista;
     }
 
+
+    private String classificarABC(BigDecimal acumulado, BigDecimal totalGeral) {
+        if (totalGeral.compareTo(BigDecimal.ZERO) <= 0) {
+            return "C";
+        }
+        BigDecimal percentualAcumulado = acumulado.multiply(BigDecimal.valueOf(100)).divide(totalGeral, 4, BigDecimal.ROUND_HALF_UP);
+        if (percentualAcumulado.compareTo(BigDecimal.valueOf(80)) <= 0) {
+            return "A";
+        }
+        if (percentualAcumulado.compareTo(BigDecimal.valueOf(95)) <= 0) {
+            return "B";
+        }
+        return "C";
+    }
+
+    private static final java.time.format.DateTimeFormatter DATA =
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+}

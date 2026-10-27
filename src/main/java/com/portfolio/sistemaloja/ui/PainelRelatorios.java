@@ -36,6 +36,7 @@ import javax.swing.JTable;
 import javax.swing.SpinnerDateModel;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
@@ -76,14 +77,7 @@ public class PainelRelatorios extends JPanel {
     private final javax.swing.table.DefaultTableModel modeloAuditoria =
             Ui.modelo("Data/Hora", "Usuário", "Ação", "Entidade", "Detalhe");
     private final JTable tabelaAuditoria = Ui.tabela(modeloAuditoria);
-    private final DefaultTableModel modeloSugestao = new DefaultTableModel(
-            new Object[]{"Produto", "Estoque", "Estoque mín.", "Vendido no período", "Média/dia", "Qtd. sugerida"}, 0) {
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            return false;
-        }
-    };
-    private final JTable tabelaSugestao = new JTable(modeloSugestao);
+    private final JTabbedPane abas = new JTabbedPane();
     private List<Venda> vendas = List.of();
     private List<ProdutoVendado> maisVendidos = List.of();
     private List<VendaDoDia> porDia = List.of();
@@ -105,11 +99,14 @@ public class PainelRelatorios extends JPanel {
             Ui.modeloTabela("Produto", "Categoria", "Estoque", "Mínimo", "Vendas", "Giro", "Ruptura");
     private final JTable tabelaGiroEstoque = Ui.tabela(modeloGiroEstoque);
     private final javax.swing.table.DefaultTableModel modeloSemMovimento =
-            Ui.modeloTabela("Produto", "Categoria", "Estoque", "Últ. movimento");
+            Ui.modeloTabela("Produto", "Estoque", "Última venda");
     private final JTable tabelaSemMovimento = Ui.tabela(modeloSemMovimento);
     private final javax.swing.table.DefaultTableModel modeloComparativo =
-            Ui.modeloTabela("Período", "Total", "Qtd. vendas", "Variação", "Variação %");
+            Ui.modeloTabela("Indicador", "Período atual", "Período anterior", "Variação", "%");
     private final JTable tabelaComparativo = Ui.tabela(modeloComparativo);
+    private final javax.swing.table.DefaultTableModel modeloSugestao =
+            Ui.modeloTabela("Produto", "Estoque", "Estoque mín.", "Vendido no período", "Média/dia", "Qtd. sugerida");
+    private final JTable tabelaSugestao = Ui.tabela(modeloSugestao);
 
     private List<VendaHora> listaVendaHora = List.of();
     private List<CurvaABC> listaCurvaProdutos = List.of();
@@ -163,7 +160,7 @@ public class PainelRelatorios extends JPanel {
     }
 
     private JTabbedPane montarCentro() {
-        JTabbedPane abas = new JTabbedPane();
+        abas.removeAll();
         abas.addTab("Resumo", montarResumo());
         abas.addTab("Vendas", new JScrollPane(tabelaVendas));
         abas.addTab("Mais vendidos", new JScrollPane(tabelaTop));
@@ -498,7 +495,9 @@ public class PainelRelatorios extends JPanel {
     private void carregarSugestao() {
         modeloSugestao.setRowCount(0);
         try {
-            List<SugestaoCompra> lista = aplicacao.getRelatorios().sugestaoCompra(inicio.getDate(), fim.getDate());
+            LocalDate i = ((java.util.Date) inicio.getValue()).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            LocalDate f = ((java.util.Date) fim.getValue()).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            List<SugestaoCompra> lista = aplicacao.getRelatorios().sugestaoCompra(i, f);
             for (SugestaoCompra s : lista) {
                 modeloSugestao.addRow(new Object[]{
                         s.nome(), s.estoqueAtual(), s.estoqueMinimo(), s.vendidoPeriodo(), s.mediaDiaria(), s.quantidadeSugerida()

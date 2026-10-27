@@ -4,13 +4,17 @@ import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.EntradaMercadoria;
 import com.portfolio.sistemaloja.model.EntradaItem;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dialog;
 import java.awt.FlowLayout;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -33,7 +37,7 @@ public class PainelCompras extends JPanel {
     public PainelCompras(Aplicacao aplicacao) {
         this.aplicacao = aplicacao;
         setLayout(new BorderLayout(10, 10));
-        setBorder(Ui.bordaVazia(16, 16, 16, 16));
+        setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         montarCabecalho();
         add(new JScrollPane(tabela), BorderLayout.CENTER);
         montarRodape();
@@ -50,7 +54,7 @@ public class PainelCompras extends JPanel {
         JPanel rodape = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
         JButton lancar = new JButton("Lançar entrada");
         lancar.setBackground(Ui.COR_PRINCIPAL);
-        lancar.setForeground(java.awt.Color.WHITE);
+        lancar.setForeground(Color.WHITE);
         lancar.addActionListener(e -> lancar());
         JButton visualizar = new JButton("Visualizar");
         visualizar.addActionListener(e -> visualizar());
@@ -83,7 +87,7 @@ public class PainelCompras extends JPanel {
     }
 
     private void lancar() {
-        DialogoEntradaMercadoria dialogo = new DialogoEntradaMercadoria(Ui.janela(this), aplicacao);
+        DialogoEntradaMercadoria dialogo = new DialogoEntradaMercadoria(SwingUtilities.getWindowAncestor(this), aplicacao);
         dialogo.setVisible(true);
         if (dialogo.isRegistrado()) {
             carregar(java.time.LocalDate.now(), java.time.LocalDate.now());
@@ -120,9 +124,8 @@ public class PainelCompras extends JPanel {
 
     private void fornecedores() {
         PainelFornecedores painel = new PainelFornecedores(aplicacao);
-        javax.swing.JDialog dialogo = new javax.swing.JDialog(Ui.janela(this), "Fornecedores", java.awt.Dialog.ModalityType.APPLICATION_MODAL);
-        dialogo.setLayout(new java.awt.BorderLayout());
-        dialogo.add(painel, java.awt.BorderLayout.CENTER);
+        javax.swing.JDialog dialogo = new javax.swing.JDialog(SwingUtilities.getWindowAncestor(this), "Fornecedores", Dialog.ModalityType.APPLICATION_MODAL);
+        dialogo.add(painel, BorderLayout.CENTER);
         dialogo.setSize(700, 400);
         dialogo.setLocationRelativeTo(this);
         dialogo.setVisible(true);

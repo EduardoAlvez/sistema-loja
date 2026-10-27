@@ -5,6 +5,8 @@ import com.portfolio.sistemaloja.repository.ComparativoPeriodo;
 import com.portfolio.sistemaloja.repository.CurvaABC;
 import com.portfolio.sistemaloja.repository.GiroEstoque;
 import com.portfolio.sistemaloja.repository.ProdutoEstoque;
+import com.portfolio.sistemaloja.repository.ProdutoSemMovimento;
+import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.SugestaoCompra;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
 import com.portfolio.sistemaloja.repository.ResumoOperador;

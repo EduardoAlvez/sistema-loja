@@ -4,12 +4,14 @@ import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.Fornecedor;
 import com.portfolio.sistemaloja.service.ValidacaoException;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -33,7 +35,7 @@ public class PainelFornecedores extends JPanel {
     public PainelFornecedores(Aplicacao aplicacao) {
         this.aplicacao = aplicacao;
         setLayout(new BorderLayout(10, 10));
-        setBorder(Ui.bordaVazia(16, 16, 16, 16));
+        setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         montarCabecalho();
         add(new JScrollPane(tabela), BorderLayout.CENTER);
         montarRodape();
@@ -83,7 +85,7 @@ public class PainelFornecedores extends JPanel {
     }
 
     private void novo() {
-        DialogoFornecedor dialogo = new DialogoFornecedor(Ui.janela(this), aplicacao);
+        DialogoFornecedor dialogo = new DialogoFornecedor(SwingUtilities.getWindowAncestor(this), aplicacao);
         dialogo.setVisible(true);
         if (dialogo.isConfirmado()) {
             carregar(busca.getText());
@@ -105,7 +107,7 @@ public class PainelFornecedores extends JPanel {
             Ui.erro(this, "Fornecedor não encontrado.");
             return;
         }
-        DialogoFornecedor dialogo = new DialogoFornecedor(Ui.janela(this), aplicacao, fornecedor);
+        DialogoFornecedor dialogo = new DialogoFornecedor(SwingUtilities.getWindowAncestor(this), aplicacao, fornecedor);
         dialogo.setVisible(true);
         if (dialogo.isConfirmado()) {
             carregar(busca.getText());
