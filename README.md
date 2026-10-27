@@ -169,8 +169,7 @@ Como a configuração é sempre `DB_URL`, `DB_USER` e `DB_PASS`, sair do contain
 > Sem JDK na máquina do balcão? O caminho é empacotar com **`jpackage`** (JRE embutida) —
 > também no roadmap. Hoje é necessário ter o **JDK 21** instalado.
 >
-> O `docker-compose.yml` ainda usa `mysql:8.0`, que chegou ao **EOL em abril/2026**; para
-> novas instalações o alvo é o **MySQL 8.4 LTS** (no roadmap).
+> O `docker-compose.yml` utiliza **MySQL 8.4 LTS** para o ambiente de desenvolvimento local.
 
 ### Credenciais padrão
 
