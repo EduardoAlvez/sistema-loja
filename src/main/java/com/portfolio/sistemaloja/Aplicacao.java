@@ -21,6 +21,7 @@ import com.portfolio.sistemaloja.repository.FiadoRepository;
 import com.portfolio.sistemaloja.repository.RecebimentoFiadoRepository;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaPausadaRepository;
+import com.portfolio.sistemaloja.repository.VendaRepository;
 import com.portfolio.sistemaloja.repository.TaxaCartaoRepository;
 import com.portfolio.sistemaloja.service.AuthService;
 import com.portfolio.sistemaloja.service.AutorizacaoService;
@@ -41,6 +42,7 @@ import com.portfolio.sistemaloja.service.ProdutoService;
 import com.portfolio.sistemaloja.service.PromocaoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
 import com.portfolio.sistemaloja.service.UsuarioService;
+import com.portfolio.sistemaloja.service.VendaService;
 import com.portfolio.sistemaloja.service.TaxaCartaoService;
 
 import java.time.Clock;

@@ -15,6 +15,12 @@ import com.portfolio.sistemaloja.repository.ProdutoRepository;
 import com.portfolio.sistemaloja.repository.RepositorioException;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaRepository;
+import com.portfolio.sistemaloja.tef.OperadoraCartaoFactory;
+import com.portfolio.sistemaloja.tef.RespostaTransacao;
+import com.portfolio.sistemaloja.tef.TransacaoCartao;
+import com.portfolio.sistemaloja.tef.OperadoraCartaoFactory;
+import com.portfolio.sistemaloja.tef.RespostaTransacao;
+import com.portfolio.sistemaloja.tef.TransacaoCartao;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
