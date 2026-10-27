@@ -39,6 +39,7 @@ public class VendaService {
     private final AuditoriaService auditoria;
     private final FidelidadeService fidelidade;
     private final AutorizacaoService autorizacoes;
+    private final PromocaoService promocoes;
     private final Clock relogio;
 
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
@@ -59,6 +60,12 @@ public class VendaService {
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
                         AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade,
                         AutorizacaoService autorizacoes) {
+        this(vendas, produtos, usuarios, auditoria, relogio, fidelidade, autorizacoes, null);
+    }
+
+    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
+                        AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade,
+                        AutorizacaoService autorizacoes, PromocaoService promocoes) {
         this.vendas = vendas;
         this.produtos = produtos;
         this.usuarios = usuarios;
@@ -66,6 +73,7 @@ public class VendaService {
         this.relogio = Objects.requireNonNull(relogio, "relogio");
         this.fidelidade = fidelidade;
         this.autorizacoes = autorizacoes;
+        this.promocoes = promocoes;
     }
 
     public Venda registrar(Venda venda) {
@@ -317,8 +325,15 @@ public class VendaService {
         for (VendaItem item : itens) {
             Produto produto = catalogo.get(item.getProdutoId());
             item.setProdutoNome(produto.getNome());
-            item.setPrecoUnitario(produto.precoVigente(momento));
+            item.setPrecoUnitario(precoUnitario(produto, item.getQuantidade(), momento));
         }
+    }
+
+    private BigDecimal precoUnitario(Produto produto, int quantidade, LocalDateTime momento) {
+        if (promocoes == null) {
+            return produto.precoVigente(momento);
+        }
+        return promocoes.precoUnitarioVigente(produto, quantidade, momento);
     }
 
     private void validarEstoque(Venda venda, Map<Long, Produto> catalogo) {

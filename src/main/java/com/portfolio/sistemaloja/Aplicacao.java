@@ -97,7 +97,7 @@ public class Aplicacao {
                 auditoria, relogio);
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
-                auditoria, relogio, fidelidade, autorizacoes);
+                auditoria, relogio, fidelidade, autorizacoes, this.promocoes);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria, autorizacoes);
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();
