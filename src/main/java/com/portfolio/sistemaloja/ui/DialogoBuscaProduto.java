@@ -3,14 +3,15 @@ package com.portfolio.sistemaloja.ui;
 import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.service.ProdutoService;
+import com.portfolio.sistemaloja.service.ValidacaoException;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.WindowConstants;
 import javax.swing.RowFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
@@ -18,20 +19,17 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dialog;
 import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Optional;
 
 public class DialogoBuscaProduto extends JDialog {
 
     private static final long serialVersionUID = 1L;
 
-    private final transient Aplicacao aplicacao;
     private final transient ProdutoService produtos;
     private final JTextField busca = new JTextField(24);
     private final DefaultTableModel modelo = new DefaultTableModel(
@@ -43,13 +41,14 @@ public class DialogoBuscaProduto extends JDialog {
     };
     private final JTable tabela = new JTable(modelo);
     private final TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(modelo);
+    private final JLabel status = new JLabel(" ");
     private Produto produtoSelecionado = null;
 
     public DialogoBuscaProduto(Window proprietario, Aplicacao aplicacao) {
         super(proprietario, "Buscar produto", Dialog.ModalityType.APPLICATION_MODAL);
-        this.aplicacao = aplicacao;
         this.produtos = aplicacao.getProdutos();
         montar();
+        carregar();
         pack();
         setLocationRelativeTo(proprietario);
         setMinimumSize(getPreferredSize());
@@ -100,7 +99,13 @@ public class DialogoBuscaProduto extends JDialog {
         adicionar.addActionListener(e -> confirmar());
         botoes.add(cancelar);
         botoes.add(adicionar);
-        add(botoes, BorderLayout.SOUTH);
+
+        JPanel rodape = new JPanel(new BorderLayout(8, 0));
+        rodape.setOpaque(false);
+        status.setForeground(Ui.COR_ESCURA);
+        rodape.add(status, BorderLayout.WEST);
+        rodape.add(botoes, BorderLayout.EAST);
+        add(rodape, BorderLayout.SOUTH);
 
         busca.addKeyListener(new KeyAdapter() {
             @Override
@@ -123,13 +128,61 @@ public class DialogoBuscaProduto extends JDialog {
         });
     }
 
+    private void carregar() {
+        modelo.setRowCount(0);
+        for (Produto produto : produtos.listarAtivos()) {
+            modelo.addRow(new Object[]{
+                    produto.getCodigoBarras(),
+                    produto.getNome(),
+                    produto.getEstoque(),
+                    Ui.moeda(produtos.precoVigente(produto, LocalDateTime.now()))
+            });
+        }
+        selecionarPrimeiraLinhaVisivel();
+        atualizarStatus("");
+    }
+
     private void filtrar() {
-        String texto = busca.getText().trim();
-        if (texto.isEmpty()) {
+        String termo = busca.getText().strip().toLowerCase(Locale.ROOT);
+        if (termo.isEmpty()) {
             sorter.setRowFilter(null);
         } else {
-            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + texto));
+            sorter.setRowFilter(new RowFilter<DefaultTableModel, Integer>() {
+                @Override
+                public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entrada) {
+                    for (int coluna = 0; coluna < entrada.getValueCount(); coluna++) {
+                        String valor = entrada.getStringValue(coluna);
+                        if (valor != null && valor.toLowerCase(Locale.ROOT).contains(termo)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
         }
+        selecionarPrimeiraLinhaVisivel();
+        atualizarStatus(termo);
+    }
+
+    private void atualizarStatus(String termo) {
+        int quantidade = tabela.getRowCount();
+        if (termo.isEmpty()) {
+            status.setText(quantidade + " produto(s) ativo(s)");
+            return;
+        }
+        if (quantidade == 0) {
+            status.setText("Nenhum produto encontrado para \"" + termo + "\"");
+            return;
+        }
+        status.setText(quantidade + " produto(s) encontrado(s)");
+    }
+
+    private void selecionarPrimeiraLinhaVisivel() {
+        tabela.clearSelection();
+        if (tabela.getRowCount() == 0) {
+            return;
+        }
+        tabela.setRowSelectionInterval(0, 0);
     }
 
     private void confirmar() {
@@ -138,14 +191,38 @@ public class DialogoBuscaProduto extends JDialog {
             Ui.erro(this, "Selecione um produto na lista.");
             return;
         }
-        String codigo = (String) tabela.getValueAt(linha, 0);
-        Produto produto = produtos.buscarPorCodigoBarras(codigo);
-        if (produto == null) {
-            Ui.erro(this, "Produto não encontrado: " + codigo);
+        String codigo = String.valueOf(tabela.getValueAt(linha, 0));
+        try {
+            produtoSelecionado = produtos.buscarPorCodigoBarras(codigo);
+        } catch (ValidacaoException e) {
+            Ui.erro(this, e.getMessage());
             return;
         }
-        produtoSelecionado = produto;
         dispose();
+    }
+
+    int totalLinhas() {
+        return tabela.getRowCount();
+    }
+
+    int totalProdutosCarregados() {
+        return modelo.getRowCount();
+    }
+
+    Object valor(int linha, int coluna) {
+        return tabela.getValueAt(linha, coluna);
+    }
+
+    void informarBusca(String texto) {
+        busca.setText(texto);
+    }
+
+    int linhaSelecionada() {
+        return tabela.getSelectedRow();
+    }
+
+    String textoStatus() {
+        return status.getText();
     }
 
     public Optional<Produto> getResultado() {
