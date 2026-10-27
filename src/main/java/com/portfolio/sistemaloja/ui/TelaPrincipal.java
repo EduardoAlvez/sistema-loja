@@ -55,6 +55,7 @@ public class TelaPrincipal extends JFrame {
         abas.addTab("Fiado / Recebíveis", new PainelFiado(aplicacao));
         if (usuario.isAdmin()) {
             abas.addTab("Configurações", new PainelConfiguracoes(aplicacao));
+            abas.addTab("Promoções", new PainelPromocoes(aplicacao));
         }
         add(abas, BorderLayout.CENTER);
         setJMenuBar(criarMenu(abas));
@@ -90,9 +91,13 @@ public class TelaPrincipal extends JFrame {
         produtos.addActionListener(e -> abas.setSelectedIndex(2));
         JMenuItem clientes = new JMenuItem("Clientes");
         clientes.addActionListener(e -> abas.setSelectedIndex(3));
+        JMenuItem promocoes = new JMenuItem("Promoções");
+        promocoes.setEnabled(usuario.isAdmin());
+        promocoes.addActionListener(e -> selecionarAba(abas, "Promoções"));
         cadastros.add(usuarios);
         cadastros.add(produtos);
         cadastros.add(clientes);
+        cadastros.add(promocoes);
 
         barra.add(sistema);
         barra.add(operacao);
@@ -103,6 +108,15 @@ public class TelaPrincipal extends JFrame {
     private void abrirPdv(JTabbedPane abas) {
         abas.setSelectedIndex(1);
         DialogoBuscaProduto.pedir(SwingUtilities.getWindowAncestor(this), aplicacao);
+    }
+
+    private void selecionarAba(JTabbedPane abas, String titulo) {
+        for (int i = 0; i < abas.getTabCount(); i++) {
+            if (titulo.equals(abas.getTitleAt(i))) {
+                abas.setSelectedIndex(i);
+                return;
+            }
+        }
     }
 
     private void abrirDialogo(java.awt.Dialog dialogo) {
