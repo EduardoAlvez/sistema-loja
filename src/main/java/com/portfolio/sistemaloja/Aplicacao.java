@@ -10,8 +10,8 @@ import com.portfolio.sistemaloja.repository.CaixaRepository;
 import com.portfolio.sistemaloja.repository.CategoriaRepository;
 import com.portfolio.sistemaloja.repository.ClienteRepository;
 import com.portfolio.sistemaloja.repository.ConfiguracaoRepository;
-import com.portfolio.sistemaloja.repository.DevolucaoRepository;
-import com.portfolio.sistemaloja.repository.FiadoRepository;
+import com.portfolio.sistemaloja.repository.EntradaMercadoriaRepository;
+import com.portfolio.sistemaloja.repository.FornecedorRepository;
 import com.portfolio.sistemaloja.repository.FidelidadeRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 import com.portfolio.sistemaloja.repository.PromocaoProdutoRepository;
@@ -30,6 +30,8 @@ import com.portfolio.sistemaloja.service.CupomService;
 import com.portfolio.sistemaloja.service.CupomTermicoService;
 import com.portfolio.sistemaloja.service.DevolucaoService;
 import com.portfolio.sistemaloja.service.ExportacaoService;
+import com.portfolio.sistemaloja.service.CompraService;
+import com.portfolio.sistemaloja.service.FornecedorService;
 import com.portfolio.sistemaloja.service.FiadoService;
 import com.portfolio.sistemaloja.service.FidelidadeService;
 import com.portfolio.sistemaloja.service.PausaService;
@@ -66,6 +68,8 @@ public class Aplicacao {
     private final AutorizacaoService autorizacoes;
     private final FiadoService fiados;
     private final PromocaoService promocoes;
+    private final FornecedorService fornecedores;
+    private final CompraService compras;
 
     public Aplicacao(ConexaoFonte fonte) {
         this(fonte, Clock.systemDefaultZone());
@@ -95,6 +99,8 @@ public class Aplicacao {
         this.fidelidade = new FidelidadeService(fidelidadeRepository, this.configuracoes);
         this.promocoes = new PromocaoService(new PromocaoProdutoRepository(fonte), produtoRepository,
                 auditoria, relogio);
+        this.fornecedores = new FornecedorService(new FornecedorRepository(fonte), auditoria);
+        this.compras = new CompraService(new EntradaMercadoriaRepository(fonte, produtoRepository), auditoria);
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
                 auditoria, relogio, fidelidade, autorizacoes, this.promocoes);
@@ -202,5 +208,13 @@ public class Aplicacao {
 
     public PromocaoService getPromocoes() {
         return promocoes;
+    }
+
+    public FornecedorService getFornecedores() {
+        return fornecedores;
+    }
+
+    public CompraService getCompras() {
+        return compras;
     }
 }
