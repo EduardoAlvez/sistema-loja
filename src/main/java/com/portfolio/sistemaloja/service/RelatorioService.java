@@ -21,8 +21,6 @@ import java.util.List;
 
 public class RelatorioService {
 
-    public static final int ESTOQUE_CRITICO = 5;
-
     private final VendaRepository vendas;
     private final RelatorioRepository relatorios;
 
@@ -86,7 +84,7 @@ public class RelatorioService {
     }
 
     public List<ProdutoEstoque> estoqueBaixo() {
-        return relatorios.estoqueBaixo(ESTOQUE_CRITICO);
+        return relatorios.estoqueBaixo();
     }
 
     public List<ResumoOperador> resumoPorOperador(LocalDate inicio, LocalDate fim) {

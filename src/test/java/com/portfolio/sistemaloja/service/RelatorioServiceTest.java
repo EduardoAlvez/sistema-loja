@@ -87,6 +87,7 @@ class RelatorioServiceTest {
         produtoBaixo.setPrecoCusto(BigDecimal.ONE);
         produtoBaixo.setPrecoVenda(new BigDecimal("3.00"));
         produtoBaixo.setEstoque(2);
+        produtoBaixo.setEstoqueMinimo(2);
         produtoBaixo.setAtivo(true);
         app.getProdutos().salvar(produtoBaixo);
 

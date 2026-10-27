@@ -114,16 +114,15 @@ public class RelatorioRepository {
         return lista;
     }
 
-    public List<ProdutoEstoque> estoqueBaixo(int limiteMinimo) {
+    public List<ProdutoEstoque> estoqueBaixo() {
         String sql = """
                 SELECT id, nome, estoque, preco_venda
                   FROM produtos
-                 WHERE ativo = TRUE AND estoque <= ?
+                 WHERE ativo = TRUE AND estoque <= estoque_minimo
                  ORDER BY estoque ASC""";
         List<ProdutoEstoque> lista = new ArrayList<>();
         try (Connection conexao = fonte.getConnection();
              PreparedStatement preparada = conexao.prepareStatement(sql)) {
-            preparada.setInt(1, limiteMinimo);
             try (ResultSet resultado = preparada.executeQuery()) {
                 while (resultado.next()) {
                     lista.add(new ProdutoEstoque(
