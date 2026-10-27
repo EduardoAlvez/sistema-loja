@@ -168,6 +168,7 @@ public class PainelRelatorios extends JPanel {
         abas.addTab("Sugestão de compra", montarSugestaoCompra());
         abas.addTab("Por operador", new JScrollPane(tabelaOperador));
         abas.addTab("Indicadores", montarIndicadores());
+        abas.addTab("Taxas TEF", montarTaxasTef());
         if (eAdmin()) {
             abas.addTab("Auditoria", new JScrollPane(tabelaAuditoria));
         }
@@ -476,6 +477,18 @@ public class PainelRelatorios extends JPanel {
         } catch (RuntimeException ex) {
             Ui.erro(this, "Falha ao cancelar: " + ex.getMessage(), ex);
         }
+    }
+
+    private JPanel montarTaxasTef() {
+        JPanel painel = new JPanel(new BorderLayout());
+        JTextArea area = new JTextArea("Relatório de taxas e valores a receber por adquirente/bandeira.\n" +
+                "Configuração em taxas_cartao (bandeira, tipo_cartao, parcelas, taxa_percentual, taxa_fixa).\n" +
+                "Cálculo: valorTaxa = (valorBruto * taxaPercentual/100) + taxaFixa | valorLiquido = valorBruto - valorTaxa.");
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        painel.add(new JScrollPane(area), BorderLayout.CENTER);
+        return painel;
     }
 
     private JPanel montarSugestaoCompra() {
