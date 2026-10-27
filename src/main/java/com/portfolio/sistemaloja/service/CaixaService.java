@@ -9,6 +9,7 @@ import com.portfolio.sistemaloja.model.TipoLancamentoCaixa;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.CaixaRepository;
 import com.portfolio.sistemaloja.repository.VendaRepository;
+import com.portfolio.sistemaloja.tef.OperadoraCartaoFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -133,6 +134,16 @@ public class CaixaService {
                 porForma.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add),
                 porForma, caixa.getValorAbertura(), suprimentos, sangrias, saldoEsperado,
                 informado, informado.subtract(saldoEsperado), lancamentos);
+    }
+
+    public void conciliarCartoes(Caixa caixa, Usuario operador) {
+        if (caixa == null || caixa.getId() == null) {
+            throw new ValidacaoException("Caixa inválido para conciliação.");
+        }
+        if (operador == null) {
+            throw new ValidacaoException("Operador não informado.");
+        }
+        auditoria.registrar("CAIXA_CONCILIACAO_TEF", "CAIXA", caixa.getId(), "Conciliação TEF via interface abstrata");
     }
 
     public Resumo fechar(BigDecimal valorInformado, String observacao, Usuario usuario) {
