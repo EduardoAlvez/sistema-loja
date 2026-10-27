@@ -17,12 +17,13 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -94,6 +95,7 @@ public class PainelPDV extends JPanel {
     private final Map<Integer, String> atalhos = new LinkedHashMap<>();
 
     private final List<VendaItem> carrinho = new ArrayList<>();
+    private final Set<Long> produtosComPromocao = new HashSet<>();
     private final List<VendaPagamento> pagamentosDivididos = new ArrayList<>();
     private BigDecimal subtotal = BigDecimal.ZERO;
     private final javax.swing.table.DefaultTableModel modeloCarrinho =
@@ -127,6 +129,10 @@ public class PainelPDV extends JPanel {
 
     Object itemDoCarrinho(int linha, int coluna) {
         return modeloCarrinho.getValueAt(linha, coluna);
+    }
+
+    void definirQuantidadeNoCarrinho(int linha, int quantidade) {
+        modeloCarrinho.setValueAt(quantidade, linha, 1);
     }
 
     String textoSaldoPontos() {
@@ -589,7 +595,6 @@ public class PainelPDV extends JPanel {
         if (produto == null) {
             return;
         }
-        BigDecimal preco = aplicacao.getProdutos().precoVigente(produto, LocalDateTime.now());
         for (VendaItem item : carrinho) {
             if (item.getProdutoId().equals(produto.getId())) {
                 if (produto.getEstoque() <= item.getQuantidade()) {
@@ -597,8 +602,11 @@ public class PainelPDV extends JPanel {
                             + ". Disponível: " + produto.getEstoque() + ".");
                     return;
                 }
+                int quantidade = item.getQuantidade() + 1;
+                BigDecimal preco = precoUnitario(produto, quantidade);
                 item.setPrecoUnitario(preco);
-                item.setQuantidade(item.getQuantidade() + 1);
+                item.setQuantidade(quantidade);
+                marcarPromocao(produto, preco);
                 sincronizarCarrinho();
                 return;
             }
@@ -607,8 +615,45 @@ public class PainelPDV extends JPanel {
             Ui.erro(this, "Produto sem estoque: " + produto.getNome());
             return;
         }
+        BigDecimal preco = precoUnitario(produto, 1);
+        marcarPromocao(produto, preco);
         carrinho.add(new VendaItem(produto.getId(), produto.getNome(), 1, preco));
         sincronizarCarrinho();
+    }
+
+    private BigDecimal precoUnitario(Produto produto, int quantidade) {
+        return aplicacao.getPromocoes().precoUnitarioVigente(produto, quantidade);
+    }
+
+    private void marcarPromocao(Produto produto, BigDecimal preco) {
+        if (produto.getPrecoVenda() != null && preco.compareTo(produto.getPrecoVenda()) < 0) {
+            produtosComPromocao.add(produto.getId());
+            return;
+        }
+        produtosComPromocao.remove(produto.getId());
+    }
+
+    private boolean reprecificarCarrinho() {
+        BigDecimal antes = totalDoCarrinho();
+        for (VendaItem item : carrinho) {
+            Produto produto = aplicacao.getProdutoRepository().buscarPorId(item.getProdutoId()).orElse(null);
+            if (produto == null) {
+                continue;
+            }
+            BigDecimal preco = precoUnitario(produto, item.getQuantidade());
+            item.setPrecoUnitario(preco);
+            marcarPromocao(produto, preco);
+        }
+        sincronizarCarrinho();
+        return antes.compareTo(totalDoCarrinho()) != 0;
+    }
+
+    private BigDecimal totalDoCarrinho() {
+        BigDecimal soma = BigDecimal.ZERO;
+        for (VendaItem item : carrinho) {
+            soma = soma.add(item.getSubtotal());
+        }
+        return soma;
     }
 
     private void atualizarQuantidade(int linha) {
@@ -624,7 +669,7 @@ public class PainelPDV extends JPanel {
         }
         VendaItem item = carrinho.get(linha);
         if (quantidade <= 0) {
-            carrinho.remove(linha);
+            removerItemDoCarrinho(linha);
         } else {
             Produto produto = aplicacao.getProdutoRepository().buscarPorId(item.getProdutoId()).orElse(null);
             if (produto != null && quantidade > produto.getEstoque()) {
@@ -632,15 +677,28 @@ public class PainelPDV extends JPanel {
                         + ". Disponível: " + produto.getEstoque() + ".");
                 quantidade = produto.getEstoque();
                 if (quantidade <= 0) {
-                    carrinho.remove(linha);
+                    removerItemDoCarrinho(linha);
                 } else {
                     item.setQuantidade(quantidade);
+                    BigDecimal preco = precoUnitario(produto, quantidade);
+                    item.setPrecoUnitario(preco);
+                    marcarPromocao(produto, preco);
                 }
             } else {
                 item.setQuantidade(quantidade);
+                if (produto != null) {
+                    BigDecimal preco = precoUnitario(produto, quantidade);
+                    item.setPrecoUnitario(preco);
+                    marcarPromocao(produto, preco);
+                }
             }
         }
         sincronizarCarrinho();
+    }
+
+    private void removerItemDoCarrinho(int linha) {
+        VendaItem item = carrinho.remove(linha);
+        produtosComPromocao.remove(item.getProdutoId());
     }
 
     private void atualizarDescontoItem(int linha) {
@@ -665,8 +723,12 @@ public class PainelPDV extends JPanel {
         modeloCarrinho.setRowCount(0);
         BigDecimal soma = BigDecimal.ZERO;
         for (VendaItem item : carrinho) {
+            String nome = item.getProdutoNome();
+            if (produtosComPromocao.contains(item.getProdutoId())) {
+                nome = nome + " (promo)";
+            }
             modeloCarrinho.addRow(new Object[]{
-                    item.getProdutoNome(),
+                    nome,
                     item.getQuantidade(),
                     Ui.moeda(item.getDesconto()),
                     Ui.moeda(item.getPrecoUnitario()),
@@ -876,12 +938,17 @@ public class PainelPDV extends JPanel {
             pagamento.setEnabled(false);
             valorPago.setEnabled(false);
         }
-        sincronizarCarrinho();
+        reprecificarCarrinho();
     }
 
     private void finalizar() {
         if (carrinho.isEmpty()) {
             Ui.erro(this, "O carrinho está vazio.");
+            return;
+        }
+        if (reprecificarCarrinho()) {
+            Ui.info(this, "O preço do carrinho foi recalculado com as promoções vigentes agora. "
+                    + "Confira o total e finalize novamente.");
             return;
         }
         Cliente selecionado = (Cliente) cliente.getSelectedItem();
@@ -978,6 +1045,7 @@ public class PainelPDV extends JPanel {
 
     private void limpar() {
         carrinho.clear();
+        produtosComPromocao.clear();
         pagamentosDivididos.clear();
         statusPagamento.setText(" ");
         pagamento.setEnabled(true);
