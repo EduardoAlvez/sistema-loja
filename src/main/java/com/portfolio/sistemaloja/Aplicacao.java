@@ -21,7 +21,7 @@ import com.portfolio.sistemaloja.repository.FiadoRepository;
 import com.portfolio.sistemaloja.repository.RecebimentoFiadoRepository;
 import com.portfolio.sistemaloja.repository.UsuarioRepository;
 import com.portfolio.sistemaloja.repository.VendaPausadaRepository;
-import com.portfolio.sistemaloja.repository.VendaRepository;
+import com.portfolio.sistemaloja.repository.TaxaCartaoRepository;
 import com.portfolio.sistemaloja.service.AuthService;
 import com.portfolio.sistemaloja.service.AutorizacaoService;
 import com.portfolio.sistemaloja.service.AuditoriaService;
@@ -41,7 +41,7 @@ import com.portfolio.sistemaloja.service.ProdutoService;
 import com.portfolio.sistemaloja.service.PromocaoService;
 import com.portfolio.sistemaloja.service.RelatorioService;
 import com.portfolio.sistemaloja.service.UsuarioService;
-import com.portfolio.sistemaloja.service.VendaService;
+import com.portfolio.sistemaloja.service.TaxaCartaoService;
 
 import java.time.Clock;
 
@@ -72,6 +72,7 @@ public class Aplicacao {
     private final PromocaoService promocoes;
     private final FornecedorService fornecedores;
     private final CompraService compras;
+    private final TaxaCartaoService taxasCartao;
 
     public Aplicacao(ConexaoFonte fonte) {
         this(fonte, Clock.systemDefaultZone());
@@ -103,6 +104,7 @@ public class Aplicacao {
                 auditoria, relogio);
         this.fornecedores = new FornecedorService(new FornecedorRepository(fonte), auditoria);
         this.compras = new CompraService(new EntradaMercadoriaRepository(fonte, produtoRepository), auditoria);
+        this.taxasCartao = new TaxaCartaoService(new TaxaCartaoRepository(fonte));
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
                 auditoria, relogio, fidelidade, autorizacoes, this.promocoes);
@@ -218,5 +220,9 @@ public class Aplicacao {
 
     public CompraService getCompras() {
         return compras;
+    }
+
+    public TaxaCartaoService getTaxasCartao() {
+        return taxasCartao;
     }
 }
