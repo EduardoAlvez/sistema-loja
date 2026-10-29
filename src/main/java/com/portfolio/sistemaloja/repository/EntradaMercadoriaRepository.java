@@ -19,6 +19,13 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Repositório para entrada de mercadoria.
+ * <p>
+ * Realiza a operação em transação: registra entrada, itens, atualiza estoque
+ * e recalcula o <strong>custo médio ponderado</strong>:
+ * <pre>custoMedioNovo = (estoqueAtual * custoMedioAtual + qtdEntrada * valorUnitario) / (estoqueAtual + qtdEntrada)</pre>
+ */
 public class EntradaMercadoriaRepository {
 
     private final ConexaoFonte fonte;

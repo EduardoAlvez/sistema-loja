@@ -8,6 +8,9 @@ import com.portfolio.sistemaloja.repository.EntradaMercadoriaRepository;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Serviço para entrada de mercadoria e integração com compras/estoque.
+ */
 public class CompraService {
 
     private final EntradaMercadoriaRepository entradas;
