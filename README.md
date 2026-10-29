@@ -565,7 +565,13 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 
 ---
 
-## Pendências conhecidas (follow-up)
+## Documentação
+
+- [Regras de Negócio](docs/REGRAS_NEGOCIO.md)
+- [Fluxos Complexos com Exemplos](docs/FLUXOS_COMPLEXOS.md)
+- [Arquitetura](docs/ARQUITETURA.md)
+- [Lições Aprendidas](docs/LICOES-APRENDIDAS.md)
+
 
 Itens de robustez levantados em revisão de código, sem impacto funcional hoje:
 
