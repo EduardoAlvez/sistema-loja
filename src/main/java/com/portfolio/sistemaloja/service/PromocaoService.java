@@ -13,6 +13,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Serviço para promoções por produto com vigência por data/horário e aplicação no carrinho.
+ * <p>
+ * Em caso de múltiplas promoções aplicáveis, prioriza o menor preço efetivo.
+ */
 public class PromocaoService {
 
     private final PromocaoProdutoRepository promocoes;

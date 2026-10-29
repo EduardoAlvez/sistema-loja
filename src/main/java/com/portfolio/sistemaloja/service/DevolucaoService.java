@@ -12,6 +12,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Serviço para devoluções com validação de unidades disponíveis e impacto no estoque.
+ */
 public class DevolucaoService {
 
     private final DevolucaoRepository devolucoes;
