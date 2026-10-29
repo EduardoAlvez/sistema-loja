@@ -7,7 +7,6 @@ import com.portfolio.sistemaloja.model.Devolucao;
 import com.portfolio.sistemaloja.model.DevolucaoItem;
 import com.portfolio.sistemaloja.model.FormaPagamento;
 import com.portfolio.sistemaloja.model.Produto;
-import com.portfolio.sistemaloja.model.Autorizacao;
 import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.model.Venda;
