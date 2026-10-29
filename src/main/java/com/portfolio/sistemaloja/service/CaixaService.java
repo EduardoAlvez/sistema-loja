@@ -18,6 +18,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Serviço responsável por abertura, movimentações e fechamento de caixa.
+ * <p>
+ * Regras principais:
+ * <ul>
+ *   <li>Não permite abrir novo caixa enquanto houver um aberto.</li>
+ *   <li>Sangria/suprimento exigem caixa aberto.</li>
+ *   <li>Fechamento calcula saldo esperado (fundo + suprimentos + vendas - sangrias).</li>
+ *   <li>Suporta conciliação TEF via interface abstrata.</li>
+ * </ul>
+ */
 public class CaixaService {
 
     private static final Logger LOG = LogManager.getLogger(CaixaService.class);

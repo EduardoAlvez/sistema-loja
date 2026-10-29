@@ -35,6 +35,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * Serviço responsável pelas regras de venda e PDV.
+ * <p>
+ * Principais regras:
+ * <ul>
+ *   <li>Exige caixa aberto para registrar qualquer venda.</li>
+ *   <li>Valida itens, formas de pagamento e valores.</li>
+ *   <li>Para pagamentos com cartão, autoriza via {@link com.portfolio.sistemaloja.tef.OperadoraCartao} (interface abstrata).</li>
+ *   <li>Aplica promoções vigentes e regras de autorização/fidelidade quando necessário.</li>
+ * </ul>
+ */
 public class VendaService {
 
     private static final Logger LOG = LogManager.getLogger(VendaService.class);
