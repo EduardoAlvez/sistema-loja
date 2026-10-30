@@ -85,3 +85,4 @@
 - **Commits pequenos**: Facilita debugging e mantém histórico limpo.
 - **Verificar enum/constantes**: Sempre conferir valores reais (`PerfilUsuario.ADMIN` vs `ADMINISTRADOR`).
 - **APIs existentes primeiro**: Antes de criar helpers novos, verificar se já existem na classe (`Ui`, `Aplicacao`, etc.).
+- **Preservar assinaturas públicas**: Ao enriquecer Javadoc/assinaturas, **não remover overloads existentes**. Sempre verificar chamadas na UI/testes e compilar localmente antes do push (evita quebra no CI).
