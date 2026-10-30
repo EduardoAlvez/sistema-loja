@@ -50,6 +50,14 @@ public class CaixaService {
         this.autorizacoes = autorizacoes;
     }
 
+    /**
+     * Abre um novo caixa.
+     * 
+     * @param valorAbertura fundo inicial
+     * @param usuario usuário que abre o caixa
+     * @return caixa aberto
+     * @throws ValidacaoException se já houver caixa aberto ou usuário inválido
+     */
     public Caixa abrir(BigDecimal valorAbertura, Usuario usuario) {
         if (usuario == null) {
             throw new ValidacaoException("É necessário estar autenticado para abrir o caixa.");
@@ -157,6 +165,15 @@ public class CaixaService {
         auditoria.registrar("CAIXA_CONCILIACAO_TEF", "CAIXA", caixa.getId(), "Conciliação TEF via interface abstrata");
     }
 
+    /**
+     * Fecha o caixa aberto, calculando diferença entre valor informado e saldo esperado.
+     * 
+     * @param valorInformado valor conferido pelo operador
+     * @param observacao observação opcional
+     * @param usuario usuário que fecha o caixa
+     * @return resumo do fechamento
+     * @throws ValidacaoException se não houver caixa aberto ou valor inválido
+     */
     public Resumo fechar(BigDecimal valorInformado, String observacao, Usuario usuario) {
         if (usuario == null) {
             throw new ValidacaoException("É necessário estar autenticado para fechar o caixa.");

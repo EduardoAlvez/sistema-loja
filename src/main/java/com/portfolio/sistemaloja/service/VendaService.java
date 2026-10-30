@@ -101,10 +101,22 @@ public class VendaService {
         this.caixas = caixas;
     }
 
-    public Venda registrar(Venda venda) {
-        return registrar(venda, null);
-    }
-
+    /**
+     * Registra uma venda no PDV.
+     * <p>
+     * Regras aplicadas:
+     * <ul>
+     *   <li>Exige caixa aberto.</li>
+     *   <li>Valida itens e formas de pagamento.</li>
+     *   <li>Para cartão (crédito/débito), autoriza via operadora TEF.</li>
+     *   <li>Aplica promoções, autorização e fidelidade conforme regras.</li>
+     * </ul>
+     * 
+     * @param venda dados da venda a ser registrada
+     * @param autorizacao autorização opcional para descontos/supervisão
+     * @return venda persistida
+     * @throws ValidacaoException caso exista violação de regra de negócio
+     */
     public Venda registrar(Venda venda, Autorizacao autorizacao) {
         if (venda == null) {
             throw new ValidacaoException("Venda inválida.");
