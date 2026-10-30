@@ -28,3 +28,16 @@ Arquivos em `src/main/resources/db/migration/` com Flyway (`V1__...`, `V23__taxa
 ## Configuração
 - `docker-compose.yml` com MySQL 8.4 LTS
 - Testes usam H2 em memória
+
+## Diagrama de fluxo (PDV)
+```mermaid
+flowchart TD
+    UI[PainelPDV] --> VS[VendaService]
+    VS --> OP[OperadoraCartao\nvia OperadoraCartaoFactory]
+    OP --> SIM[OperadoraCartaoSimulada\nou Adapter Real]
+    VS --> VR[VendaRepository]
+    VS --> CS[CaixaService]
+    CS --> CR[CaixaRepository]
+    VS --> PS[PromocaoService]
+    VS --> FS[FidelidadeService]
+```
