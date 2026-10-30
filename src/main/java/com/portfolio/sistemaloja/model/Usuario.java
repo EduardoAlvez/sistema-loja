@@ -93,6 +93,14 @@ public class Usuario {
         return perfil == PerfilUsuario.ADMIN;
     }
 
+    public boolean isGerente() {
+        return perfil == PerfilUsuario.GERENTE;
+    }
+
+    public boolean isGerenteOuAdmin() {
+        return perfil == PerfilUsuario.ADMIN || perfil == PerfilUsuario.GERENTE;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

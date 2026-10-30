@@ -1,7 +1,8 @@
 package com.portfolio.sistemaloja.model;
 
 public enum PerfilUsuario {
-    ADMIN("Administrador", 50, 2),
+    ADMIN("Administrador", 50, 3),
+    GERENTE("Gerente", 30, 2),
     OPERADOR("Operador de caixa", 10, 1);
 
     private final String descricao;

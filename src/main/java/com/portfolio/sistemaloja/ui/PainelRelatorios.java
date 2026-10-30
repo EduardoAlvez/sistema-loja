@@ -3,8 +3,10 @@ package com.portfolio.sistemaloja.ui;
 import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.Autorizacao;
 import com.portfolio.sistemaloja.model.StatusVenda;
+import com.portfolio.sistemaloja.model.PerfilUsuario;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.model.VendaItem;
+import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.ComparativoPeriodo;
 import com.portfolio.sistemaloja.repository.CurvaABC;
 import com.portfolio.sistemaloja.repository.EventoAuditoria;
@@ -177,7 +179,8 @@ public class PainelRelatorios extends JPanel {
     }
 
     private boolean eAdmin() {
-        return aplicacao.getUsuarioAtual() != null && aplicacao.getUsuarioAtual().isAdmin();
+        Usuario atual = aplicacao.getUsuarioAtual();
+        return atual != null && atual.isGerenteOuAdmin();
     }
 
     private JPanel montarResumo() {
