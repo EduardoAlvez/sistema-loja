@@ -4,7 +4,9 @@
 - [Regras de Negócio](REGRAS_NEGOCIO.md) - Regras por domínio
 - [Fluxos Complexos com Exemplos](FLUXOS_COMPLEXOS.md) - Custo médio ponderado, fechamento, devolução, TEF
 - [Arquitetura](ARQUITETURA.md) - Camadas, wiring, migrações e fluxo PDV
+- [Principais Validações](VALIDACOES.md) - Lista de ValidacaoException por domínio
 - [Lições Aprendidas](LICOES-APRENDIDAS.md) - Histórico de desafios e correções
+- [ADRs](adr/) - Decisões arquiteturais registradas
 
 ## Issues relacionadas
 - [#31](https://github.com/EduardoAlvez/sistema-loja/issues/31) - Regras de negócio principais
@@ -17,3 +19,4 @@
 - [#38](https://github.com/EduardoAlvez/sistema-loja/issues/38) - ADRs
 - [#39](https://github.com/EduardoAlvez/sistema-loja/issues/39) - Validações
 - [#40](https://github.com/EduardoAlvez/sistema-loja/issues/40) - Diagrama Mermaid
+
