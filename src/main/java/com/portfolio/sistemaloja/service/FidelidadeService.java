@@ -12,6 +12,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
+/**
+ * Serviço para acúmulo e resgate de pontos de fidelidade.
+ */
 public class FidelidadeService {
 
     private static final int LIMITE_EXTRATO = 20;

@@ -8,6 +8,12 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Serviço para cálculo de taxas por bandeira/tipo/cartão.
+ * <p>
+ * Cálculo: {@code valorTaxa = (valorBruto * taxaPercentual/100) + taxaFixa}, {@code valorLiquido = valorBruto - valorTaxa}.
+ * Configuração em {@code taxas_cartao}.
+ */
 public class TaxaCartaoService {
 
     private final TaxaCartaoRepository taxas;

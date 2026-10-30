@@ -12,6 +12,9 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Optional;
 
+/**
+ * Serviço para autorização de ações sensíveis conforme perfil e motivo.
+ */
 public class AutorizacaoService {
 
     private static final Logger LOG = LogManager.getLogger(AutorizacaoService.class);
