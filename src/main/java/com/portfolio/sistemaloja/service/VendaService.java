@@ -103,6 +103,13 @@ public class VendaService {
 
     /**
      * Registra uma venda no PDV.
+     */
+    public Venda registrar(Venda venda) {
+        return registrar(venda, null);
+    }
+
+    /**
+     * Registra uma venda no PDV.
      * <p>
      * Regras aplicadas:
      * <ul>
