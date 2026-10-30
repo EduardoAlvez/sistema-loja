@@ -2,6 +2,9 @@ package com.portfolio.sistemaloja.tef;
 
 import java.math.BigDecimal;
 
+/**
+ * Dados da transação enviada à operadora de cartão.
+ */
 public class TransacaoCartao {
 
     private String numeroVenda;

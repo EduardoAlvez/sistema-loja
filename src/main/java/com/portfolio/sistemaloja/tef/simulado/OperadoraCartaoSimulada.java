@@ -6,6 +6,13 @@ import com.portfolio.sistemaloja.tef.TransacaoCartao;
 
 import java.util.concurrent.ThreadLocalRandom;
 
+/**
+ * Implementação simulada de {@link com.portfolio.sistemaloja.tef.OperadoraCartao} para desenvolvimento e testes.
+ * <p>
+ * Gera NSU e código de autorização fictícios. Permite forçar negação via {@link #setForcarNegacao(boolean)}
+ * para cobrir cenários de teste.
+ * </p>
+ */
 public class OperadoraCartaoSimulada implements OperadoraCartao {
 
     private boolean forcarNegacao = false;

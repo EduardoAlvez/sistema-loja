@@ -3,6 +3,12 @@ package com.portfolio.sistemaloja.tef;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Resposta retornada pela operadora após autorização ou cancelamento.
+ * <p>
+ * Contém status, NSU, código de autorização, mensagem e dados da transação.
+ * </p>
+ */
 public class RespostaTransacao {
 
     private StatusTransacao status;
