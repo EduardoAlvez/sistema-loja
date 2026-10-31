@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Set;
 
 public class InventarioService {
+    public static final int OBSERVACAO_MAX = 255;
+
     private static final Set<String> MOTIVOS_VALIDOS = new HashSet<>(
             Arrays.asList("QUEBRA", "VENCIMENTO", "ROUBO", "AVARIA", "OUTROS")
     );
@@ -56,6 +58,10 @@ public class InventarioService {
         if (!MOTIVOS_VALIDOS.contains(motivoNormalizado)) {
             throw new ValidacaoException("Motivo inválido. Utilize: QUEBRA, VENCIMENTO, ROUBO, AVARIA ou OUTROS.");
         }
+        String observacaoNormalizada = observacao == null ? null : observacao.trim();
+        if (observacaoNormalizada != null && observacaoNormalizada.length() > OBSERVACAO_MAX) {
+            throw new ValidacaoException("Observação deve ter no máximo " + OBSERVACAO_MAX + " caracteres.");
+        }
 
         try (Connection conexao = fonteConexao.getConnection()) {
             conexao.setAutoCommit(false);
@@ -72,7 +78,7 @@ public class InventarioService {
                     throw new ValidacaoException("Não foi possível atualizar o estoque.");
                 }
                 PerdaEstoque perda = new PerdaEstoque(produtoId, quantidade, motivoNormalizado,
-                        observacao == null ? null : observacao.trim(), usuario.getId());
+                        observacaoNormalizada, usuario.getId());
                 perdaRepo.inserir(perda, conexao);
                 auditoria.registrarComo(usuario.getLogin(), "REGISTRAR_PERDA_ESTOQUE", "PRODUTO", produtoId,
                         "qtd=" + quantidade + ";motivo=" + motivoNormalizado, conexao);

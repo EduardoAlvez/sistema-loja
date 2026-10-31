@@ -4,6 +4,7 @@ import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.PerdaEstoque;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.Usuario;
+import com.portfolio.sistemaloja.service.InventarioService;
 import com.portfolio.sistemaloja.service.ValidacaoException;
 
 import javax.swing.BorderFactory;
@@ -48,6 +49,20 @@ public class PainelInventario extends JPanel {
         this.aplicacao = aplicacao;
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        observacao.setDocument(new javax.swing.text.PlainDocument() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void insertString(int offset, String str, javax.swing.text.AttributeSet atributos)
+                    throws javax.swing.text.BadLocationException {
+                if (str == null) {
+                    return;
+                }
+                if (getLength() + str.length() <= InventarioService.OBSERVACAO_MAX) {
+                    super.insertString(offset, str, atributos);
+                }
+            }
+        });
         montarFormulario();
         add(new JScrollPane(tabela), BorderLayout.CENTER);
         carregarProdutos();
