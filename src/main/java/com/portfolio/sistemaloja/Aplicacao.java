@@ -13,7 +13,7 @@ import com.portfolio.sistemaloja.repository.ConfiguracaoRepository;
 import com.portfolio.sistemaloja.repository.EntradaMercadoriaRepository;
 import com.portfolio.sistemaloja.repository.FornecedorRepository;
 import com.portfolio.sistemaloja.repository.FidelidadeRepository;
-import com.portfolio.sistemaloja.repository.PerdidaEstoqueRepository;
+import com.portfolio.sistemaloja.repository.PerdaEstoqueRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 import com.portfolio.sistemaloja.repository.PromocaoProdutoRepository;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
