@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class InventarioService {
@@ -29,6 +30,10 @@ public class InventarioService {
         this.produtoRepo = produtoRepo;
         this.auditoria = auditoria;
         this.fonteConexao = fonteConexao;
+    }
+
+    public List<PerdaEstoque> listarPerdas(long produtoId) {
+        return perdaRepo.listarPorProduto(produtoId);
     }
 
     public void registrarPerda(Usuario usuario, long produtoId, int quantidade, String motivo, String observacao) {
