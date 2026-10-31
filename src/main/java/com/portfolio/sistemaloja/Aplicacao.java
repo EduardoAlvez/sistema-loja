@@ -13,6 +13,7 @@ import com.portfolio.sistemaloja.repository.ConfiguracaoRepository;
 import com.portfolio.sistemaloja.repository.EntradaMercadoriaRepository;
 import com.portfolio.sistemaloja.repository.FornecedorRepository;
 import com.portfolio.sistemaloja.repository.FidelidadeRepository;
+import com.portfolio.sistemaloja.repository.PerdidaEstoqueRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 import com.portfolio.sistemaloja.repository.PromocaoProdutoRepository;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
@@ -37,6 +38,7 @@ import com.portfolio.sistemaloja.service.CompraService;
 import com.portfolio.sistemaloja.service.FornecedorService;
 import com.portfolio.sistemaloja.service.FiadoService;
 import com.portfolio.sistemaloja.service.FidelidadeService;
+import com.portfolio.sistemaloja.service.InventarioService;
 import com.portfolio.sistemaloja.service.PausaService;
 import com.portfolio.sistemaloja.service.ProdutoService;
 import com.portfolio.sistemaloja.service.PromocaoService;
@@ -75,6 +77,7 @@ public class Aplicacao {
     private final FornecedorService fornecedores;
     private final CompraService compras;
     private final TaxaCartaoService taxasCartao;
+    private final InventarioService inventario;
 
     public Aplicacao(ConexaoFonte fonte) {
         this(fonte, Clock.systemDefaultZone());
@@ -107,6 +110,8 @@ public class Aplicacao {
         this.fornecedores = new FornecedorService(new FornecedorRepository(fonte), auditoria);
         this.compras = new CompraService(new EntradaMercadoriaRepository(fonte, produtoRepository), auditoria);
         this.taxasCartao = new TaxaCartaoService(new TaxaCartaoRepository(fonte));
+        this.inventario = new InventarioService(new PerdaEstoqueRepository(fonte), produtoRepository,
+                auditoria, fonte);
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria, autorizacoes);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
@@ -226,5 +231,9 @@ public class Aplicacao {
 
     public TaxaCartaoService getTaxasCartao() {
         return taxasCartao;
+    }
+
+    public InventarioService getInventario() {
+        return inventario;
     }
 }
