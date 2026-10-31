@@ -2,6 +2,28 @@
 
 ## Lições aprendidas - Sistema Loja
 
+## Sessão: Issue #41 - Inventário (31/10/2026)
+
+### Diagnóstico das falhas de CI após múltiplos commits
+
+| Erro | Causa | Solução |
+|------|-------|---------|
+| CI falhou no `compile`: `cannot find symbol` em `Aplicacao.java` e `InventarioService.java` | Push de commits intermediários com wiring apontando para classes já removidas (`ContagemInventarioRepository`) e import com typo (`PerdidaEstoqueRepository` em vez de `PerdaEstoqueRepository`). | Corrigir imports e wiring, e **não fazer push de commits intermediários que não compilam**. |
+| 272 testes falhando com `Flyway Found more than one migration with version 24` | Duas migrações com a mesma versão: `V24__inventario_contagem.sql` e `V24__perdas_estoque.sql`. | Manter **uma única migração por versão**. Antes de criar `V<n>__x.sql`, conferir `ls src/main/resources/db/migration/`. |
+| Mesma falha de Flyway persistindo após deletar o arquivo duplicado | `target/classes/db/migration/` mantinha o `.sql` deletado (Maven copia recursos, mas **não remove** os obsoletos). | Rodar `mvn -o clean test` sempre que deletar/renomear recurso, antes de concluir que a correção não funcionou. |
+| Tabela `perda_estoque` criada duas vezes (V24 e V25) | A mesma tabela foi adicionada em duas migrações. | Separar responsabilidades: uma tabela por migração. `V24` = contagem, `V25` = perdas. |
+| FK para tabela inexistente (`produto`/`usuario` vs `produtos`/`usuarios`) | Tabelas reais são no plural (`V1__esquema_inicial.sql`). | Conferir o schema real em `V1__esquema_inicial.sql` antes de escrever FK. |
+| `usuario_id NOT NULL` no banco mas código passava `null` | Schema e código divergiram. | Validar `usuario.getId() != null` no service e sempre gravar `usuario_id`. |
+
+#### Lições aprendidas
+- **Push só com código verde**: `mvn -o clean test` local antes de cada push. Commits intermediários quebrados viram falhas vermelhas no GitHub e poluem o histórico.
+- **Uma migração por versão**: O Flyway aborta com "more than one migration with version N". Verificar a pasta de migrações antes de criar uma nova.
+- **Uma tabela por migração**: Não repetir `CREATE TABLE` em migrações diferentes, mesmo com schemas parecidos.
+- **Maven não limpa recursos deletados**: `mvn clean` é obrigatório ao remover/renomear arquivos de `src/main/resources`.
+- **Nome de tabela é plural**: `produtos`, `usuarios`, `clientes`, `vendas`. Sempre conferir em `V1__esquema_inicial.sql`.
+- **Revisar o diff completo antes de commitar**: `git status` + `git diff` revelam wiring quebrado e imports faltando que a compilação local não pegou (por causa de `target/` stale).
+- **Erros de digitação em imports**: `Perdida` vs `Perda`. Compilar logo após criar o arquivo pega isso na hora.
+
 ## Sessão: Issues #13, #14, #7 e #10 (27/10/2026)
 
 ### #10 – TEF por interface abstrata, taxa por bandeira e conciliação
