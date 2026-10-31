@@ -1,42 +1,40 @@
 package com.portfolio.sistemaloja.model;
 
 import java.time.LocalDateTime;
-import java.util.Objects;
 
 public class PerdaEstoque {
-
-    public enum Motivo {
-        QUEBRA,
-        VENCIMENTO,
-        FURTO,
-        DANIFICADO,
-        OUTRO
-    }
-
-    private Long id;
-    private Long produtoId;
+    private long id;
+    private long produtoId;
     private int quantidade;
-    private Motivo motivo;
-    private Long usuarioId;
+    private String motivo;
     private String observacao;
+    private Long usuarioId;
     private LocalDateTime dataHora;
 
     public PerdaEstoque() {
     }
 
-    public Long getId() {
+    public PerdaEstoque(long produtoId, int quantidade, String motivo, String observacao, Long usuarioId) {
+        this.produtoId = produtoId;
+        this.quantidade = quantidade;
+        this.motivo = motivo;
+        this.observacao = observacao;
+        this.usuarioId = usuarioId;
+    }
+
+    public long getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(long id) {
         this.id = id;
     }
 
-    public Long getProdutoId() {
+    public long getProdutoId() {
         return produtoId;
     }
 
-    public void setProdutoId(Long produtoId) {
+    public void setProdutoId(long produtoId) {
         this.produtoId = produtoId;
     }
 
@@ -48,20 +46,12 @@ public class PerdaEstoque {
         this.quantidade = quantidade;
     }
 
-    public Motivo getMotivo() {
+    public String getMotivo() {
         return motivo;
     }
 
-    public void setMotivo(Motivo motivo) {
+    public void setMotivo(String motivo) {
         this.motivo = motivo;
-    }
-
-    public Long getUsuarioId() {
-        return usuarioId;
-    }
-
-    public void setUsuarioId(Long usuarioId) {
-        this.usuarioId = usuarioId;
     }
 
     public String getObservacao() {
@@ -72,23 +62,19 @@ public class PerdaEstoque {
         this.observacao = observacao;
     }
 
+    public Long getUsuarioId() {
+        return usuarioId;
+    }
+
+    public void setUsuarioId(Long usuarioId) {
+        this.usuarioId = usuarioId;
+    }
+
     public LocalDateTime getDataHora() {
         return dataHora;
     }
 
     public void setDataHora(LocalDateTime dataHora) {
         this.dataHora = dataHora;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof PerdaEstoque that)) return false;
-        return Objects.equals(id, that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
     }
 }
