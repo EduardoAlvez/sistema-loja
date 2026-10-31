@@ -19,18 +19,28 @@ public class AuditoriaRepository {
     }
 
     public void registrar(String usuarioLogin, String acao, String entidade, Long entidadeId, String detalhe) {
+        try (Connection conexao = fonte.getConnection()) {
+            registrar(usuarioLogin, acao, entidade, entidadeId, detalhe, conexao);
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao registrar evento de auditoria", e);
+        }
+    }
+
+    /**
+     * Grava o evento de auditoria na transação corrente, para que ele seja confirmado
+     * ou revertido junto com as demais operações da transação.
+     */
+    public void registrar(String usuarioLogin, String acao, String entidade, Long entidadeId, String detalhe,
+                          Connection conexao) throws SQLException {
         String sql = "INSERT INTO auditoria (usuario_login, acao, entidade, entidade_id, detalhe) "
                 + "VALUES (?, ?, ?, ?, ?)";
-        try (Connection conexao = fonte.getConnection();
-             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setString(1, usuarioLogin);
             preparada.setString(2, acao);
             preparada.setString(3, entidade);
             preparada.setObject(4, entidadeId);
             preparada.setString(5, detalhe);
             preparada.executeUpdate();
-        } catch (SQLException e) {
-            throw new RepositorioException("Falha ao registrar evento de auditoria", e);
         }
     }
 
