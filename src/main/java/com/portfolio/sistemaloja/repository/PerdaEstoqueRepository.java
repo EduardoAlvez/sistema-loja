@@ -15,17 +15,14 @@ public class PerdaEstoqueRepository {
     }
 
     public void inserir(PerdaEstoque perda, Connection conexao) throws SQLException {
-        String sql = "INSERT INTO perda_estoque (produto_id, quantidade, motivo, observacao, usuario_id, data_hora) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)";
+        String sql = "INSERT INTO perda_estoque (produto_id, quantidade, motivo, observacao, usuario_id, data_hora) "
+                + "VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)";
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
             ps.setLong(1, perda.getProdutoId());
             ps.setInt(2, perda.getQuantidade());
             ps.setString(3, perda.getMotivo());
             ps.setString(4, perda.getObservacao());
-            if (perda.getUsuarioId() == null) {
-                ps.setObject(5, null);
-            } else {
-                ps.setLong(5, perda.getUsuarioId());
-            }
+            ps.setLong(5, perda.getUsuarioId());
             ps.executeUpdate();
         }
     }

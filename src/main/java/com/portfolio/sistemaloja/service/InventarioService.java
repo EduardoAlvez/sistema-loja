@@ -1,11 +1,10 @@
 package com.portfolio.sistemaloja.service;
 
 import com.portfolio.sistemaloja.db.ConexaoFonte;
-import com.portfolio.sistemaloja.service.ValidacaoException;
 import com.portfolio.sistemaloja.model.PerdaEstoque;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.Usuario;
-import com.portfolio.sistemaloja.repository.PerdidaEstoqueRepository;
+import com.portfolio.sistemaloja.repository.PerdaEstoqueRepository;
 import com.portfolio.sistemaloja.repository.ProdutoRepository;
 
 import java.sql.Connection;
@@ -39,6 +38,9 @@ public class InventarioService {
         if (!usuario.isGerenteOuAdmin()) {
             throw new ValidacaoException("Apenas GERENTE/ADMIN podem registrar perdas.");
         }
+        if (usuario.getId() == null) {
+            throw new ValidacaoException("Usuário sem identificador válido para auditoria.");
+        }
         if (quantidade <= 0) {
             throw new ValidacaoException("Quantidade deve ser maior que zero.");
         }
@@ -65,10 +67,10 @@ public class InventarioService {
                     throw new ValidacaoException("Não foi possível atualizar o estoque.");
                 }
                 PerdaEstoque perda = new PerdaEstoque(produtoId, quantidade, motivoNormalizado,
-                        observacao == null ? null : observacao.trim(), (long) usuario.getId());
+                        observacao == null ? null : observacao.trim(), usuario.getId());
                 perdaRepo.inserir(perda, conexao);
-                auditoria.registrar("REGISTRAR_PERDA_ESTOQUE", "PRODUTO", produtoId,
-                        "qtd=" + quantidade + ";motivo=" + motivoNormalizado + ";usuario=" + usuario.getLogin());
+                auditoria.registrarComo(usuario.getLogin(), "REGISTRAR_PERDA_ESTOQUE", "PRODUTO", produtoId,
+                        "qtd=" + quantidade + ";motivo=" + motivoNormalizado);
                 conexao.commit();
             } catch (Exception e) {
                 conexao.rollback();
