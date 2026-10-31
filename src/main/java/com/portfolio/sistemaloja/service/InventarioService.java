@@ -50,14 +50,14 @@ public class InventarioService {
             throw new ValidacaoException("Motivo inválido. Utilize: QUEBRA, VENCIMENTO, ROUBO, AVARIA ou OUTROS.");
         }
 
-        try (Connection conexao = fonteConexao.getConexao()) {
+        try (Connection conexao = fonteConexao.getConnection()) {
             conexao.setAutoCommit(false);
             try {
                 Produto produto = produtoRepo.buscarPorId(produtoId, conexao);
                 if (produto == null) {
                     throw new ValidacaoException("Produto não encontrado.");
                 }
-                if (produto.getQuantidadeEstoque() < quantidade) {
+                if (produto.getEstoque() < quantidade) {
                     throw new ValidacaoException("Estoque insuficiente para registrar a perda.");
                 }
                 boolean alterou = produtoRepo.alterarEstoque(produtoId, -quantidade, conexao);
@@ -67,7 +67,7 @@ public class InventarioService {
                 PerdaEstoque perda = new PerdaEstoque(produtoId, quantidade, motivoNormalizado,
                         observacao == null ? null : observacao.trim(), (long) usuario.getId());
                 perdaRepo.inserir(perda, conexao);
-                auditoria.registrar(usuario, "REGISTRAR_PERDA_ESTOQUE", "PRODUTO", produtoId,
+                auditoria.registrar(usuario.getLogin(), "REGISTRAR_PERDA_ESTOQUE", "PRODUTO", (long) produtoId,
                         "qtd=" + quantidade + ";motivo=" + motivoNormalizado);
                 conexao.commit();
             } catch (Exception e) {
