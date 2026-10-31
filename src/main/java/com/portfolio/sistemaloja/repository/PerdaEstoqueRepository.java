@@ -1,38 +1,32 @@
 package com.portfolio.sistemaloja.repository;
 
-import com.portfolio.sistemaloja.db.ConexaoFonte;
-import com.portfolio.sistemaloja.model.PerdidaEstoque;
+import com.portfolio.sistemaloja.db.FonteConexao;
+import com.portfolio.sistemaloja.model.PerdaEstoque;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 
 public class PerdaEstoqueRepository {
+    private final FonteConexao fonteConexao;
 
-    private final ConexaoFonte fonte;
-
-    public PerdaEstoqueRepository(ConexaoFonte fonte) {
-        this.fonte = fonte;
+    public PerdaEstoqueRepository(FonteConexao fonteConexao) {
+        this.fonteConexao = fonteConexao;
     }
 
-    public PerdaEstoque registrar(PerdaEstoque perda, Connection conexao) throws SQLException {
-        String sql = "INSERT INTO perda_estoque (produto_id, quantidade, motivo, usuario_id, observacao, data_hora) VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+    public void inserir(PerdaEstoque perda, Connection conexao) throws SQLException {
+        String sql = "INSERT INTO perda_estoque (produto_id, quantidade, motivo, observacao, usuario_id, data_hora) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)";
+        try (PreparedStatement ps = conexao.prepareStatement(sql)) {
             ps.setLong(1, perda.getProdutoId());
             ps.setInt(2, perda.getQuantidade());
-            ps.setString(3, perda.getMotivo() == null ? "OUTRO" : perda.getMotivo().name());
-            ps.setLong(4, perda.getUsuarioId());
-            ps.setString(5, perda.getObservacao());
-            ps.setTimestamp(6, Timestamp.valueOf(perda.getDataHora() == null ? LocalDateTime.now() : perda.getDataHora()));
-            ps.executeUpdate();
-            try (ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) perda.setId(rs.getLong(1));
+            ps.setString(3, perda.getMotivo());
+            ps.setString(4, perda.getObservacao());
+            if (perda.getUsuarioId() == null) {
+                ps.setObject(5, null);
+            } else {
+                ps.setLong(5, perda.getUsuarioId());
             }
-            return perda;
+            ps.executeUpdate();
         }
     }
 }
