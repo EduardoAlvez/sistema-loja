@@ -78,6 +78,13 @@ regras de negócio e testes automatizados.
   em diálogo próprio
 - **Usuários** (somente admin): criação com perfil, validação de senha e **comissão percentual**
 
+### Inventário (opcional)
+- **Perdas com motivo** (somente GERENTE/ADMIN): baixa de estoque e registro do motivo
+  (**quebra, vencimento, roubo, avaria, outros**) com observação, tudo em transação única
+- Módulo **opcional**: não é exigido para vender nem para fechar o caixa
+- Motivo validado no serviço (não apenas na interface) e **auditoria** de cada registro
+- Histórico das perdas do produto selecionado, com data, motivo, quantidade e observação
+
 ### Relatórios
 - Período livre (de/até) com **vendas, faturamento e ticket médio**
 - Histórico de vendas com status e **cancelamento de venda com devolução automática de estoque**
@@ -547,6 +554,8 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 
 - [ ] Fornecedores, entrada de mercadoria e sugestão de compra pelo consumo real
 - [ ] Inventário/contagem cíclica, perdas com motivo e transferência entre lojas
+  - [x] Perdas com motivo (quebra, vencimento, roubo, avaria, outros) — opcional, restrito a GERENTE/ADMIN
+  - [ ] Contagem cíclica com ajuste de estoque após conferência
 - [ ] Lote e validade com alerta de vencimento
 - [x] TEF por interface abstrata, taxa por bandeira e conciliação de cartões
 - [x] Fiado/crediário com limite, vencimento, recebimento parcial e juros
