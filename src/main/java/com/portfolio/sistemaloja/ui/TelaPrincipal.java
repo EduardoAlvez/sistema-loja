@@ -59,6 +59,7 @@ public class TelaPrincipal extends JFrame {
             abas.addTab("Compras", new PainelCompras(aplicacao));
             abas.addTab("Configurações", new PainelConfiguracoes(aplicacao));
             abas.addTab("Promoções", new PainelPromocoes(aplicacao));
+            abas.addTab("Inventário", new PainelInventario(aplicacao));
         } else {
             abas.addTab("Configurações", new PainelConfiguracoes(aplicacao));
         }
@@ -104,9 +105,17 @@ public class TelaPrincipal extends JFrame {
         cadastros.add(clientes);
         cadastros.add(promocoes);
 
+        JMenu gerencia = new JMenu("Gerência");
+        gerencia.setEnabled(usuario.isGerenteOuAdmin());
+        JMenuItem inventario = new JMenuItem("Inventário");
+        inventario.setEnabled(usuario.isGerenteOuAdmin());
+        inventario.addActionListener(e -> selecionarAba(abas, "Inventário"));
+        gerencia.add(inventario);
+
         barra.add(sistema);
         barra.add(operacao);
         barra.add(cadastros);
+        barra.add(gerencia);
         return barra;
     }
 
