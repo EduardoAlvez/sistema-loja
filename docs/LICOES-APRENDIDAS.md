@@ -30,6 +30,11 @@
 - **Testabilidade**: `OperadoraCartaoSimulada` com `forcarNegacao` facilita cenários sem maquininha.
 - **Migrações compatíveis**: V23 simples, roda em MySQL/H2.
 - **Pequenos commits**: Seguir plano por camada facilita revisão e rollback.
+- **Um arquivo por vez**: Criar 1 arquivo, compilar, corrigir. Só depois ir pro próximo.
+- **Checar APIs antes de usar**: Ler repositório/service antes de chamar. Não assumir `listarTodos()`.
+- **Não contornar com reflection**: Corrigir imports/assinaturas corretamente.
+- **Manter wiring consistente**: Manter `Aplicacao` sincronizado ao adicionar/remover serviços.
+- **Reverter ao invés de lutar**: Se virar teia, reverter para `HEAD` e refazer commit por commit.
 
 ## Sessão: Issues #13, #14 e #7 (27/10/2026)
 
@@ -76,13 +81,42 @@
 | Teste `PainelRelatoriosTest` falhando | Contagem de abas alterada | Atualizar expectativa: admin 7→8, operador 6→7. |
 | `inicio.getDate()` não existe | `JSpinner` usa `getValue()` | Converter com `toInstant().atZone(ZoneId.systemDefault()).toLocalDate()`. |
 
-## Lições aprendidas
+## Lições aprendidas - Sistema Loja
 
-- **Compilar frequentemente**: Em features grandes, compilar a cada bloco evita acumular centenas de erros.
-- **Seguir padrões existentes**: Olhar arquivos similares antes de criar novos (helpers `Ui.*`, estrutura de tabelas/modelos).
-- **Cuidado com transações**: Em operações multi-tabela (entrada + estoque + custo médio), usar transação atômica manual quando necessário.
-- **Testes espelham UI**: Adicionar abas/itens na UI quebra testes com contagem fixa. Sempre revisar testes relacionados.
-- **Commits pequenos**: Facilita debugging e mantém histórico limpo.
-- **Verificar enum/constantes**: Sempre conferir valores reais (`PerfilUsuario.ADMIN` vs `ADMINISTRADOR`).
-- **APIs existentes primeiro**: Antes de criar helpers novos, verificar se já existem na classe (`Ui`, `Aplicacao`, etc.).
-- **Preservar assinaturas públicas**: Ao enriquecer Javadoc/assinaturas, **não remover overloads existentes**. Sempre verificar chamadas na UI/testes e compilar localmente antes do push (evita quebra no CI).
+## Sessão: Issues #13, #14, #7 e #10 (27/10/2026)
+
+### #10 – TEF por interface abstrata, taxa por bandeira e conciliação
+
+#### Desafios encontrados
+| Desafio | Causa | Solução |
+|---------|-------|---------|
+| Integração com fluxo existente de venda | `VendaService` já possuía fluxo consolidado; precisava autorizar cartão sem quebrar dinheiro/fiado. | Integrar chamada via `OperadoraCartaoFactory` apenas para `CARTAO_CREDITO`/`CARTAO_DEBITO`, aditiva e isolada em `tef/`. |
+| Manter arquitetura limpa | Risco de acoplar PDV/serviços ao SDK da maquininha. | Criar pacote `com.portfolio.sistemaloja.tef` com contrato, DTOs, Factory e `simulado/`. Apenas interface + simulado nesta issue. |
+| Concilição de cartões no fechamento | Necessário distinguir TEF por adquirente/bandeira sem alterar vendas históricas. | Adicionar ponto de conciliação (`CaixaService.conciliarCartoes`) e aba "Taxas TEF" em `PainelRelatorios`. |
+| Configuração de taxas flexível | Taxas variam por bandeira, tipo e faixa de parcelas. | Criar `taxas_cartao` (V23) com `bandeira`, `tipo_cartao`, `parcelas_min/max`, `taxa_percentual`, `taxa_fixa`, `adquirente`. Serviço calcula `(valorBruto*%/100)+fixa`. |
+| Testes com contagem de abas | Adicionar aba no `PainelRelatorios` quebrou 3 testes. | Ajustar expectativas para 9 (admin) / 8 (operador) e apontar `Auditoria` para a última aba. |
+
+#### Erros e correções
+| Erro | Causa | Solução |
+|------|-------|---------|
+| Compilação: `VendaRepository` não encontrado em `VendaService`/`Aplicacao` | Imports ausentes após refatoração. | Adicionar `import com.portfolio.sistemaloja.repository.VendaRepository;`. |
+| Compilação: `VendaService` não encontrado em `Aplicacao` | Import ausente. | Adicionar `import com.portfolio.sistemaloja.service.VendaService;`. |
+| `PainelRelatorios` sem imports | Uso de `JTextArea` sem import. | Adicionar `import javax.swing.JTextArea;`. |
+| Testes UI quebrando | Ordem/quantidade de abas alterada. | Atualizar `PainelRelatoriosTest` para considerar "Taxas TEF" e posição de "Auditoria". |
+
+#### Lições aprendidas
+- **Abstração primeiro**: Interface + Factory permitem plugar SDK real futuramente sem tocar em PDV/VendaService.
+- **Isolamento reduz risco**: Todo código TEF em `tef/` mantém acoplamento zero com integrações concretas.
+- **Aditivo, não invasivo**: Autorizar apenas cartões novos; não alterar vendas já concluídas.
+- **Testabilidade**: `OperadoraCartaoSimulada` com `forcarNegacao` facilita cenários sem maquininha.
+- **Migrações compatíveis**: V23 simples, roda em MySQL/H2.
+- **Pequenos commits**: Seguir plano por camada facilita revisão e rollback.
+- **Um arquivo por vez**: Criar 1 arquivo, compilar, corrigir. Só depois ir pro próximo.
+- **Checar APIs antes de usar**: Ler repositório/service antes de chamar. Não assumir `listarTodos()`.
+- **Não contornar com reflection**: Corrigir imports/assinaturas corretamente.
+- **Manter wiring consistente**: Manter `Aplicacao` sincronizado ao adicionar/remover serviços.
+- **Reverter ao invés de lutar**: Se virar teia, reverter para `HEAD` e refazer commit por commit.
+
+## Sessão: Issues #13, #14 e #7 (27/10/2026)
+
+### #13 – Estoque crítico usando `estoque_minimo`
