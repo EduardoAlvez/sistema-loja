@@ -1,7 +1,7 @@
 package com.portfolio.sistemaloja.service;
 
 import com.portfolio.sistemaloja.db.ConexaoFonte;
-import com.portfolio.sistemaloja.exception.ValidacaoException;
+import com.portfolio.sistemaloja.service.ValidacaoException;
 import com.portfolio.sistemaloja.model.PerdaEstoque;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.Usuario;
