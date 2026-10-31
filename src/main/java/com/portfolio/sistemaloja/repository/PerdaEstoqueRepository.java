@@ -1,6 +1,6 @@
 package com.portfolio.sistemaloja.repository;
 
-import com.portfolio.sistemaloja.db.FonteConexao;
+import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.PerdaEstoque;
 
 import java.sql.Connection;
@@ -8,9 +8,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public class PerdaEstoqueRepository {
-    private final FonteConexao fonteConexao;
+    private final ConexaoFonte fonteConexao;
 
-    public PerdaEstoqueRepository(FonteConexao fonteConexao) {
+    public PerdaEstoqueRepository(ConexaoFonte fonteConexao) {
         this.fonteConexao = fonteConexao;
     }
 
