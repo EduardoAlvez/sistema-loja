@@ -67,7 +67,7 @@ public class InventarioService {
                 PerdaEstoque perda = new PerdaEstoque(produtoId, quantidade, motivoNormalizado,
                         observacao == null ? null : observacao.trim(), (long) usuario.getId());
                 perdaRepo.inserir(perda, conexao);
-                auditoria.registrar(usuario.getLogin(), "REGISTRAR_PERDA_ESTOQUE", "PRODUTO", (long) produtoId,
+                auditoria.registrar(usuario.getLogin(), "REGISTRAR_PERDA_ESTOQUE", "PRODUTO", produtoId,
                         "qtd=" + quantidade + ";motivo=" + motivoNormalizado);
                 conexao.commit();
             } catch (Exception e) {
