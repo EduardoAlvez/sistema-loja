@@ -202,6 +202,25 @@ public class ProdutoRepository {
         return null;
     }
 
+    /**
+     * Lê o estoque de um produto travando a linha, para que o ajuste do inventário seja
+     * calculado sobre o valor mais recente e não seja desfeito por uma venda concorrente.
+     *
+     * @return o estoque atual ou {@code null} quando o produto não existe
+     */
+    public Integer estoqueParaAjuste(long produtoId, Connection conexao) throws SQLException {
+        String sql = "SELECT estoque FROM produtos WHERE id = ? FOR UPDATE";
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, produtoId);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                if (resultado.next()) {
+                    return resultado.getInt("estoque");
+                }
+            }
+        }
+        return null;
+    }
+
     public boolean alterarEstoque(long produtoId, int quantidade, Connection conexao) throws SQLException {
         String sql = "UPDATE produtos SET estoque = estoque + ? WHERE id = ? AND estoque + ? >= 0";
         try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
