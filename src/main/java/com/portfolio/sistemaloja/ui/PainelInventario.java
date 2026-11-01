@@ -199,6 +199,36 @@ public class PainelInventario extends JPanel {
         }
     }
 
+    /**
+     * Seleciona o produto pelo identificador e recarrega o histórico.
+     */
+    public void selecionarProduto(long produtoId) {
+        for (int i = 0; i < produtos.getItemCount(); i++) {
+            Produto produto = produtos.getItemAt(i);
+            if (produto.getId() != null && produto.getId() == produtoId) {
+                produtos.setSelectedIndex(i);
+                carregarPerdas();
+                return;
+            }
+        }
+    }
+
+    public int totalLinhas() {
+        return modelo.getRowCount();
+    }
+
+    public Object valor(int linha, int coluna) {
+        return modelo.getValueAt(linha, coluna);
+    }
+
+    public String textoAlerta() {
+        return alerta.getText();
+    }
+
+    public JLabel componenteAlerta() {
+        return alerta;
+    }
+
     private void carregarPerdas() {
         modelo.setRowCount(0);
         Produto produto = (Produto) produtos.getSelectedItem();
