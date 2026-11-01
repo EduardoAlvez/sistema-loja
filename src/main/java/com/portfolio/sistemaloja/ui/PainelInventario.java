@@ -14,6 +14,7 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
@@ -44,8 +45,12 @@ public class PainelInventario extends JPanel {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         limitarObservacao();
-        montarFormulario();
-        add(new JScrollPane(tabela), BorderLayout.CENTER);
+
+        JTabbedPane abas = new JTabbedPane();
+        abas.addTab("Perdas de estoque", montarPerdas());
+        abas.addTab("Contagem cíclica", new PainelContagem(aplicacao));
+        add(abas, BorderLayout.CENTER);
+
         carregarProdutos();
         carregarPerdas();
     }
@@ -67,10 +72,29 @@ public class PainelInventario extends JPanel {
         });
     }
 
-    private void montarFormulario() {
+    private JPanel montarPerdas() {
         JPanel painel = new JPanel(new BorderLayout(10, 10));
         painel.add(Ui.titulo("Inventário - Registrar perda de estoque"), BorderLayout.NORTH);
 
+        JPanel superior = new JPanel(new BorderLayout(10, 10));
+        superior.add(montarFormulario(), BorderLayout.NORTH);
+        alerta.setForeground(Ui.COR_ESCURA);
+        superior.add(alerta, BorderLayout.CENTER);
+
+        JPanel acoes = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        JButton registrar = new JButton("Registrar perda");
+        registrar.setBackground(Ui.COR_PRINCIPAL);
+        registrar.setForeground(Color.WHITE);
+        registrar.addActionListener(e -> registrar());
+        acoes.add(registrar);
+        superior.add(acoes, BorderLayout.SOUTH);
+
+        painel.add(superior, BorderLayout.NORTH);
+        painel.add(new JScrollPane(tabela), BorderLayout.CENTER);
+        return painel;
+    }
+
+    private JPanel montarFormulario() {
         JPanel formulario = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(4, 4, 4, 4);
@@ -106,17 +130,7 @@ public class PainelInventario extends JPanel {
         gbc.gridwidth = 3;
         formulario.add(observacao, gbc);
 
-        painel.add(formulario, BorderLayout.CENTER);
-
-        JPanel acoes = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
-        JButton registrar = new JButton("Registrar perda");
-        registrar.setBackground(Ui.COR_PRINCIPAL);
-        registrar.setForeground(Color.WHITE);
-        registrar.addActionListener(e -> registrar());
-        acoes.add(registrar);
-        painel.add(acoes, BorderLayout.SOUTH);
-
-        add(painel, BorderLayout.NORTH);
+        return formulario;
     }
 
     private void carregarProdutos() {
