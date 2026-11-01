@@ -83,17 +83,23 @@ public class InventarioService {
                 auditoria.registrarComo(usuario.getLogin(), "REGISTRAR_PERDA_ESTOQUE", "PRODUTO", produtoId,
                         "qtd=" + quantidade + ";motivo=" + motivoNormalizado, conexao);
                 conexao.commit();
-            } catch (Exception e) {
-                conexao.rollback();
-                if (e instanceof ValidacaoException) {
-                    throw e;
-                }
-                throw new ValidacaoException("Erro ao registrar perda de estoque: " + e.getMessage());
-            } finally {
-                conexao.setAutoCommit(true);
+            } catch (RuntimeException e) {
+                rollbackSilencioso(conexao, e);
+                throw e;
+            } catch (SQLException e) {
+                rollbackSilencioso(conexao, e);
+                throw new ValidacaoException("Erro ao registrar perda de estoque.", e);
             }
         } catch (SQLException e) {
-            throw new ValidacaoException("Erro ao registrar perda de estoque: " + e.getMessage());
+            throw new ValidacaoException("Erro ao registrar perda de estoque.", e);
+        }
+    }
+
+    private void rollbackSilencioso(Connection conexao, Exception causa) {
+        try {
+            conexao.rollback();
+        } catch (SQLException rollback) {
+            causa.addSuppressed(rollback);
         }
     }
 }
