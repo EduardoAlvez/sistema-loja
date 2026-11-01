@@ -4,7 +4,6 @@ import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.MotivoPerda;
 import com.portfolio.sistemaloja.model.PerdaEstoque;
 import com.portfolio.sistemaloja.model.Produto;
-import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.service.InventarioService;
 import com.portfolio.sistemaloja.service.ValidacaoException;
 
@@ -35,19 +34,23 @@ public class PainelInventario extends JPanel {
     private final JTextField quantidade = new JTextField(8);
     private final JComboBox<MotivoPerda> motivos = new JComboBox<>(MotivoPerda.values());
     private final JTextField observacao = new JTextField(28);
-    private final DefaultTableModel modelo = new DefaultTableModel(
-            new Object[]{"Data", "Motivo", "Quantidade", "Observação"}, 0) {
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            return false;
-        }
-    };
-    private final JTable tabela = new JTable(modelo);
+    private final JLabel alerta = new JLabel(" ");
+    private final DefaultTableModel modelo = Ui.modeloTabela(
+            "Data", "Motivo", "Quantidade", "Responsável", "Observação");
+    private final JTable tabela = Ui.tabela(modelo);
 
     public PainelInventario(Aplicacao aplicacao) {
         this.aplicacao = aplicacao;
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        limitarObservacao();
+        montarFormulario();
+        add(new JScrollPane(tabela), BorderLayout.CENTER);
+        carregarProdutos();
+        carregarPerdas();
+    }
+
+    private void limitarObservacao() {
         observacao.setDocument(new javax.swing.text.PlainDocument() {
             private static final long serialVersionUID = 1L;
 
@@ -62,10 +65,6 @@ public class PainelInventario extends JPanel {
                 }
             }
         });
-        montarFormulario();
-        add(new JScrollPane(tabela), BorderLayout.CENTER);
-        carregarProdutos();
-        carregarPerdas();
     }
 
     private void montarFormulario() {
@@ -80,7 +79,7 @@ public class PainelInventario extends JPanel {
 
         gbc.gridx = 0;
         gbc.gridy = 0;
-        formulario.add(new JLabel("Produto *"), gbc);
+        formulario.add(Ui.rotulo("Produto *", produtos), gbc);
         gbc.gridx = 1;
         gbc.gridwidth = 3;
         gbc.weightx = 1.0;
@@ -91,18 +90,18 @@ public class PainelInventario extends JPanel {
         gbc.weightx = 0;
         gbc.gridx = 0;
         gbc.gridy = 1;
-        formulario.add(new JLabel("Quantidade *"), gbc);
+        formulario.add(Ui.rotulo("Quantidade *", quantidade), gbc);
         gbc.gridx = 1;
         formulario.add(quantidade, gbc);
 
         gbc.gridx = 2;
-        formulario.add(new JLabel("Motivo *"), gbc);
+        formulario.add(Ui.rotulo("Motivo *", motivos), gbc);
         gbc.gridx = 3;
         formulario.add(motivos, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 2;
-        formulario.add(new JLabel("Observação"), gbc);
+        formulario.add(Ui.rotulo("Observação", observacao), gbc);
         gbc.gridx = 1;
         gbc.gridwidth = 3;
         formulario.add(observacao, gbc);
@@ -123,7 +122,13 @@ public class PainelInventario extends JPanel {
     private void carregarProdutos() {
         Long selecionado = produtoSelecionadoId();
         DefaultComboBoxModel<Produto> modeloCombo = new DefaultComboBoxModel<>();
-        List<Produto> ativos = aplicacao.getProdutos().listarAtivos();
+        List<Produto> ativos;
+        try {
+            ativos = aplicacao.getProdutos().listarAtivos();
+        } catch (RuntimeException ex) {
+            Ui.erro(this, "Falha ao carregar os produtos.", ex);
+            return;
+        }
         for (Produto produto : ativos) {
             modeloCombo.addElement(produto);
         }
@@ -134,7 +139,8 @@ public class PainelInventario extends JPanel {
                                                                  int indice, boolean selecionado, boolean foco) {
                 super.getListCellRendererComponent(lista, valor, indice, selecionado, foco);
                 if (valor instanceof Produto produto) {
-                    setText(produto.getCodigoBarras() + " - " + produto.getNome() + " (estoque: " + produto.getEstoque() + ")");
+                    setText(produto.getCodigoBarras() + " - " + produto.getNome()
+                            + " (estoque: " + produto.getEstoque() + ")");
                 }
                 return this;
             }
@@ -173,14 +179,14 @@ public class PainelInventario extends JPanel {
             Ui.erro(this, "Informe uma quantidade válida.");
             return;
         }
-        Usuario usuario = aplicacao.getUsuarioAtual();
-        if (usuario == null) {
-            Ui.erro(this, "Nenhum usuário autenticado.");
+        MotivoPerda motivo = (MotivoPerda) motivos.getSelectedItem();
+        if (!Ui.confirma(this, "Registrar perda de " + quantidadePerda + " unidade(s) de \""
+                + produto.getNome() + "\" (" + motivo.getDescricao() + ")?")) {
             return;
         }
         try {
-            aplicacao.getInventario().registrarPerda(usuario, produto.getId(), quantidadePerda,
-                    ((MotivoPerda) motivos.getSelectedItem()).name(), observacao.getText());
+            aplicacao.getInventario().registrarPerda(produto.getId(), quantidadePerda,
+                    motivo.name(), observacao.getText());
             Ui.informacao(this, "Perda registrada com sucesso.");
             quantidade.setText("");
             observacao.setText("");
@@ -188,6 +194,8 @@ public class PainelInventario extends JPanel {
             carregarPerdas();
         } catch (ValidacaoException ex) {
             Ui.erro(this, ex.getMessage());
+        } catch (RuntimeException ex) {
+            Ui.erro(this, "Falha ao registrar a perda de estoque.", ex);
         }
     }
 
@@ -195,15 +203,28 @@ public class PainelInventario extends JPanel {
         modelo.setRowCount(0);
         Produto produto = (Produto) produtos.getSelectedItem();
         if (produto == null) {
+            alerta.setText("Nenhum produto ativo cadastrado.");
             return;
         }
-        for (PerdaEstoque perda : aplicacao.getInventario().listarPerdas(produto.getId())) {
+        List<PerdaEstoque> perdas;
+        try {
+            perdas = aplicacao.getInventario().listarPerdas(produto.getId());
+        } catch (RuntimeException ex) {
+            alerta.setText("Falha ao carregar o histórico de perdas.");
+            Ui.erro(this, "Falha ao carregar o histórico de perdas.", ex);
+            return;
+        }
+        for (PerdaEstoque perda : perdas) {
             modelo.addRow(new Object[]{
                     perda.getDataHora() == null ? "" : Ui.dataHora(perda.getDataHora().toString()),
                     perda.getMotivo(),
                     perda.getQuantidade(),
+                    perda.getUsuarioNome() == null ? "" : perda.getUsuarioNome(),
                     perda.getObservacao() == null ? "" : perda.getObservacao()
             });
         }
+        alerta.setText(perdas.isEmpty()
+                ? "Nenhuma perda registrada para " + produto.getNome() + "."
+                : perdas.size() + " perda(s) registrada(s) para " + produto.getNome() + ".");
     }
 }

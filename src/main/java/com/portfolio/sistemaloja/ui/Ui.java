@@ -143,6 +143,15 @@ public final class Ui {
         return rotulo;
     }
 
+    /**
+     * Rótulo associado a um campo, para que leitores de tela anunciem o nome do controle.
+     */
+    public static JLabel rotulo(String texto, JComponent campo) {
+        JLabel rotulo = rotulo(texto);
+        rotulo.setLabelFor(campo);
+        return rotulo;
+    }
+
     public static JLabel titulo(String texto) {
         JLabel rotulo = new JLabel(texto);
         rotulo.setFont(rotulo.getFont().deriveFont(Font.BOLD, 20f));
