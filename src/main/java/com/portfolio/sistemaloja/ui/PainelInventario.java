@@ -1,6 +1,7 @@
 package com.portfolio.sistemaloja.ui;
 
 import com.portfolio.sistemaloja.Aplicacao;
+import com.portfolio.sistemaloja.model.MotivoPerda;
 import com.portfolio.sistemaloja.model.PerdaEstoque;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.Usuario;
@@ -29,12 +30,10 @@ public class PainelInventario extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    private static final String[] MOTIVOS = {"QUEBRA", "VENCIMENTO", "ROUBO", "AVARIA", "OUTROS"};
-
     private final Aplicacao aplicacao;
     private final JComboBox<Produto> produtos = new JComboBox<>();
     private final JTextField quantidade = new JTextField(8);
-    private final JComboBox<String> motivos = new JComboBox<>(MOTIVOS);
+    private final JComboBox<MotivoPerda> motivos = new JComboBox<>(MotivoPerda.values());
     private final JTextField observacao = new JTextField(28);
     private final DefaultTableModel modelo = new DefaultTableModel(
             new Object[]{"Data", "Motivo", "Quantidade", "Observação"}, 0) {
@@ -181,7 +180,7 @@ public class PainelInventario extends JPanel {
         }
         try {
             aplicacao.getInventario().registrarPerda(usuario, produto.getId(), quantidadePerda,
-                    (String) motivos.getSelectedItem(), observacao.getText());
+                    ((MotivoPerda) motivos.getSelectedItem()).name(), observacao.getText());
             Ui.informacao(this, "Perda registrada com sucesso.");
             quantidade.setText("");
             observacao.setText("");

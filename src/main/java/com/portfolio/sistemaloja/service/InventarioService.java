@@ -1,6 +1,7 @@
 package com.portfolio.sistemaloja.service;
 
 import com.portfolio.sistemaloja.db.ConexaoFonte;
+import com.portfolio.sistemaloja.model.MotivoPerda;
 import com.portfolio.sistemaloja.model.PerdaEstoque;
 import com.portfolio.sistemaloja.model.Produto;
 import com.portfolio.sistemaloja.model.Usuario;
@@ -9,17 +10,10 @@ import com.portfolio.sistemaloja.repository.ProdutoRepository;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class InventarioService {
     public static final int OBSERVACAO_MAX = 255;
-
-    private static final Set<String> MOTIVOS_VALIDOS = new HashSet<>(
-            Arrays.asList("QUEBRA", "VENCIMENTO", "ROUBO", "AVARIA", "OUTROS")
-    );
 
     private final PerdaEstoqueRepository perdaRepo;
     private final ProdutoRepository produtoRepo;
@@ -54,11 +48,15 @@ public class InventarioService {
         if (motivo == null || motivo.trim().isEmpty()) {
             throw new ValidacaoException("Motivo da perda é obrigatório.");
         }
-        String motivoNormalizado = motivo.trim().toUpperCase();
-        if (!MOTIVOS_VALIDOS.contains(motivoNormalizado)) {
-            throw new ValidacaoException("Motivo inválido. Utilize: QUEBRA, VENCIMENTO, ROUBO, AVARIA ou OUTROS.");
+        MotivoPerda motivoPerda = MotivoPerda.porNome(motivo);
+        if (motivoPerda == null) {
+            throw new ValidacaoException("Motivo inválido. Utilize: "
+                    + String.join(", ", nomesValidos()) + ".");
         }
         String observacaoNormalizada = observacao == null ? null : observacao.trim();
+        if (motivoPerda.exigeObservacao() && (observacaoNormalizada == null || observacaoNormalizada.isEmpty())) {
+            throw new ValidacaoException("Informe a observação para perdas com motivo OUTROS.");
+        }
         if (observacaoNormalizada != null && observacaoNormalizada.length() > OBSERVACAO_MAX) {
             throw new ValidacaoException("Observação deve ter no máximo " + OBSERVACAO_MAX + " caracteres.");
         }
@@ -77,11 +75,11 @@ public class InventarioService {
                 if (!alterou) {
                     throw new ValidacaoException("Não foi possível atualizar o estoque.");
                 }
-                PerdaEstoque perda = new PerdaEstoque(produtoId, quantidade, motivoNormalizado,
+                PerdaEstoque perda = new PerdaEstoque(produtoId, quantidade, motivoPerda.name(),
                         observacaoNormalizada, usuario.getId());
                 perdaRepo.inserir(perda, conexao);
                 auditoria.registrarComo(usuario.getLogin(), "REGISTRAR_PERDA_ESTOQUE", "PRODUTO", produtoId,
-                        "qtd=" + quantidade + ";motivo=" + motivoNormalizado, conexao);
+                        "qtd=" + quantidade + ";motivo=" + motivoPerda.name(), conexao);
                 conexao.commit();
             } catch (RuntimeException e) {
                 rollbackSilencioso(conexao, e);
@@ -95,8 +93,15 @@ public class InventarioService {
         }
     }
 
-    private void rollbackSilencioso(Connection conexao, Exception causa) {
-        try {
+    private static String nomesValidos() {
+        List<String> nomes = new java.util.ArrayList<>();
+        for (MotivoPerda motivo : MotivoPerda.values()) {
+            nomes.add(motivo.name());
+        }
+        return String.join(", ", nomes);
+    }
+
+    private void rollbackSilencioso(Connection conexao, Exception causa) {        try {
             conexao.rollback();
         } catch (SQLException rollback) {
             causa.addSuppressed(rollback);
