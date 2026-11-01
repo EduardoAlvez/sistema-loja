@@ -542,7 +542,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 329 testes JUnit (serviços, UI, migrações e integração sobre H2)
+- [x] 351 testes JUnit (serviços, UI, migrações e integração sobre H2 e MySQL 8.4)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
@@ -551,22 +551,35 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
 - [x] Impressora ESC/POS (corte, negrito e comando de abrir gaveta) com impressora falsa nos testes
 - [x] Promoções com vigência e preço por dia/horário (happy hour)
 - [x] Fidelidade por pontos, com resgate como desconto na venda
-- [x] Tela de Configurações do admin (fidelidade e PIX persistidos no banco, valendo na hora)
+- [x] Tela de Configurações (fidelidade e PIX persistidos no banco, valendo na hora)
+  - [ ] Aba restrita ao admin na interface (hoje a proteção real está no serviço)
 - [x] Autorização de supervisor por PIN (desconto acima da alçada, cancelamento e sangria)
 - [x] Conferência cega no fechamento de caixa, com a divergência registrada
-- [x] Indicadores: vendas por hora, curva ABC, giro/ruptura, produtos sem movimentação, comparativo mensal
+- [x] Indicadores: vendas por hora, curva ABC, giro de estoque, produtos sem movimentação e comparativo com o período anterior
+  - [ ] Taxa agregada de ruptura (hoje há apenas um flag por produto)
+  - [ ] Comparativo mensal e anual explícito
 
 **Onda 2 — médio esforço**
 
-- [ ] Fornecedores, entrada de mercadoria e sugestão de compra pelo consumo real
+- [x] Fornecedores, entrada de mercadoria e sugestão de compra pelo consumo real
+  - [x] CRUD de fornecedores e entrada com custo médio ponderado e estoque em transação
+  - [x] Sugestão de compra por consumo médio e ponto de pedido
+  - [ ] Histórico de custo por produto
+  - [ ] Testes de entrada, custo médio e sugestão
 - [ ] Inventário/contagem cíclica, perdas com motivo e transferência entre lojas
   - [x] Perdas com motivo (quebra, vencimento, roubo, avaria, outros) — opcional, restrito a GERENTE/ADMIN
   - [ ] Contagem cíclica com ajuste de estoque após conferência
 - [ ] Lote e validade com alerta de vencimento
-- [x] TEF por interface abstrata, taxa por bandeira e conciliação de cartões
+- [ ] TEF por interface abstrata, taxa por bandeira e conciliação de cartões
+  - [x] Interface `OperadoraCartao` + implementação simulada (pacote `tef/`)
+  - [x] Tabela de taxas por bandeira/tipo/parcelas (`V23__taxas_cartao.sql`) e cálculo da taxa
+  - [ ] Autorização via TEF integrada ao fluxo de venda
+  - [ ] Conciliação por forma de pagamento no fechamento (hoje há apenas um stub nunca chamado)
+  - [ ] Relatório de taxas e valores a receber por adquirente (a aba hoje exibe só texto explicativo)
+  - [ ] Testes da interface simulada, das taxas e da conciliação
 - [x] Fiado/crediário com limite, vencimento, recebimento parcial e juros
 - [ ] Multi-caixa e multi-loja com preço centralizado
-- [ ] Relatórios de estoque crítico usando o `estoque_minimo` de cada produto
+- [x] Relatórios de estoque crítico usando o `estoque_minimo` de cada produto
 - [x] Subir o `docker-compose.yml` para MySQL 8.4 LTS
 
 **Onda 3 — alto esforço**
