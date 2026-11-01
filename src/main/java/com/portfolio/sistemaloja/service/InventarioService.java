@@ -1,5 +1,6 @@
 package com.portfolio.sistemaloja.service;
 
+import com.portfolio.sistemaloja.Sessao;
 import com.portfolio.sistemaloja.db.ConexaoFonte;
 import com.portfolio.sistemaloja.model.MotivoPerda;
 import com.portfolio.sistemaloja.model.PerdaEstoque;
@@ -10,38 +11,41 @@ import com.portfolio.sistemaloja.repository.ProdutoRepository;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Serviço do inventário: registra perdas de estoque com motivo.
+ *
+ * <p>Módulo opcional: nenhuma venda ou fechamento de caixa depende dele.
+ * A autorização usa o usuário da sessão corrente, de modo que a identidade do
+ * responsável não possa ser informada pelo chamador.
+ */
 public class InventarioService {
     public static final int OBSERVACAO_MAX = 255;
 
     private final PerdaEstoqueRepository perdaRepo;
     private final ProdutoRepository produtoRepo;
     private final AuditoriaService auditoria;
+    private final Sessao sessao;
     private final ConexaoFonte fonteConexao;
 
     public InventarioService(PerdaEstoqueRepository perdaRepo, ProdutoRepository produtoRepo,
-                             AuditoriaService auditoria, ConexaoFonte fonteConexao) {
+                             AuditoriaService auditoria, Sessao sessao, ConexaoFonte fonteConexao) {
         this.perdaRepo = perdaRepo;
         this.produtoRepo = produtoRepo;
         this.auditoria = auditoria;
+        this.sessao = sessao;
         this.fonteConexao = fonteConexao;
     }
 
     public List<PerdaEstoque> listarPerdas(long produtoId) {
+        exigirGerenteOuAdmin();
         return perdaRepo.listarPorProduto(produtoId);
     }
 
-    public void registrarPerda(Usuario usuario, long produtoId, int quantidade, String motivo, String observacao) {
-        if (usuario == null) {
-            throw new ValidacaoException("Usuário não informado.");
-        }
-        if (!usuario.isGerenteOuAdmin()) {
-            throw new ValidacaoException("Apenas GERENTE/ADMIN podem registrar perdas.");
-        }
-        if (usuario.getId() == null) {
-            throw new ValidacaoException("Usuário sem identificador válido para auditoria.");
-        }
+    public void registrarPerda(long produtoId, int quantidade, String motivo, String observacao) {
+        Usuario usuario = exigirGerenteOuAdmin();
         if (quantidade <= 0) {
             throw new ValidacaoException("Quantidade deve ser maior que zero.");
         }
@@ -50,8 +54,7 @@ public class InventarioService {
         }
         MotivoPerda motivoPerda = MotivoPerda.porNome(motivo);
         if (motivoPerda == null) {
-            throw new ValidacaoException("Motivo inválido. Utilize: "
-                    + String.join(", ", nomesValidos()) + ".");
+            throw new ValidacaoException("Motivo inválido. Utilize: " + String.join(", ", nomesValidos()) + ".");
         }
         String observacaoNormalizada = observacao == null ? null : observacao.trim();
         if (motivoPerda.exigeObservacao() && (observacaoNormalizada == null || observacaoNormalizada.isEmpty())) {
@@ -93,15 +96,30 @@ public class InventarioService {
         }
     }
 
+    private Usuario exigirGerenteOuAdmin() {
+        Usuario usuario = sessao.getAtual();
+        if (usuario == null) {
+            throw new ValidacaoException("Nenhum usuário autenticado.");
+        }
+        if (!usuario.isAtivo()) {
+            throw new ValidacaoException("Usuário inativo não pode registrar perdas.");
+        }
+        if (!usuario.isGerenteOuAdmin()) {
+            throw new ValidacaoException("Apenas GERENTE/ADMIN podem registrar perdas.");
+        }
+        return usuario;
+    }
+
     private static String nomesValidos() {
-        List<String> nomes = new java.util.ArrayList<>();
+        List<String> nomes = new ArrayList<>();
         for (MotivoPerda motivo : MotivoPerda.values()) {
             nomes.add(motivo.name());
         }
         return String.join(", ", nomes);
     }
 
-    private void rollbackSilencioso(Connection conexao, Exception causa) {        try {
+    private void rollbackSilencioso(Connection conexao, Exception causa) {
+        try {
             conexao.rollback();
         } catch (SQLException rollback) {
             causa.addSuppressed(rollback);

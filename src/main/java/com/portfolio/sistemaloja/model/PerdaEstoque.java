@@ -9,6 +9,7 @@ public class PerdaEstoque {
     private String motivo;
     private String observacao;
     private Long usuarioId;
+    private String usuarioNome;
     private LocalDateTime dataHora;
 
     public PerdaEstoque() {
@@ -68,6 +69,14 @@ public class PerdaEstoque {
 
     public void setUsuarioId(Long usuarioId) {
         this.usuarioId = usuarioId;
+    }
+
+    public String getUsuarioNome() {
+        return usuarioNome;
+    }
+
+    public void setUsuarioNome(String usuarioNome) {
+        this.usuarioNome = usuarioNome;
     }
 
     public LocalDateTime getDataHora() {

@@ -33,10 +33,12 @@ public class PerdaEstoqueRepository {
 
     public List<PerdaEstoque> listarPorProduto(long produtoId) {
         String sql = """
-                SELECT id, produto_id, quantidade, motivo, observacao, usuario_id, data_hora
-                  FROM perda_estoque
-                 WHERE produto_id = ?
-                 ORDER BY data_hora DESC, id DESC""";
+                SELECT p.id, p.produto_id, p.quantidade, p.motivo, p.observacao, p.usuario_id, p.data_hora,
+                       u.nome AS usuario_nome
+                  FROM perda_estoque p
+                  JOIN usuarios u ON u.id = p.usuario_id
+                 WHERE p.produto_id = ?
+                 ORDER BY p.data_hora DESC, p.id DESC""";
         List<PerdaEstoque> lista = new ArrayList<>();
         try (Connection conexao = fonte.getConnection();
              PreparedStatement ps = conexao.prepareStatement(sql)) {
@@ -59,6 +61,7 @@ public class PerdaEstoqueRepository {
         perda.setQuantidade(resultado.getInt("quantidade"));
         perda.setMotivo(resultado.getString("motivo"));
         perda.setObservacao(resultado.getString("observacao"));
+        perda.setUsuarioNome(resultado.getString("usuario_nome"));
         long usuarioId = resultado.getLong("usuario_id");
         perda.setUsuarioId(resultado.wasNull() ? null : usuarioId);
         Timestamp dataHora = resultado.getTimestamp("data_hora");

@@ -111,7 +111,7 @@ public class Aplicacao {
         this.compras = new CompraService(new EntradaMercadoriaRepository(fonte, produtoRepository), auditoria);
         this.taxasCartao = new TaxaCartaoService(new TaxaCartaoRepository(fonte));
         this.inventario = new InventarioService(new PerdaEstoqueRepository(fonte), produtoRepository,
-                auditoria, fonte);
+                auditoria, sessao, fonte);
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria, autorizacoes);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
