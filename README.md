@@ -80,10 +80,16 @@ regras de negócio e testes automatizados.
 
 ### Inventário (opcional)
 - **Perdas com motivo** (somente GERENTE/ADMIN): baixa de estoque e registro do motivo
-  (**quebra, vencimento, roubo, avaria, outros**) com observação, tudo em transação única
+  (**quebra, vencimento, roubo, avaria, outros**) com observação
 - Módulo **opcional**: não é exigido para vender nem para fechar o caixa
-- Motivo validado no serviço (não apenas na interface) e **auditoria** de cada registro
-- Histórico das perdas do produto selecionado, com data, motivo, quantidade e observação
+- Motivo validado no serviço (não apenas na interface), vem de um **enum único** compartilhado
+  com a interface, e motivo **OUTROS exige observação**
+- **Tudo em uma única transação**: baixa de estoque, registro da perda e **auditoria** são
+  confirmados ou revertidos juntos
+- Autorização pela **sessão do usuário autenticado** (e checagem de usuário ativo), de modo que
+  a identidade do responsável não possa ser informada por quem executa a ação
+- Histórico do produto selecionado com data, motivo, quantidade, **responsável** e observação
+- Confirmação antes de registrar, campos com **rótulo acessível** e estado vazio na tabela
 
 ### Relatórios
 - Período livre (de/até) com **vendas, faturamento e ticket médio**

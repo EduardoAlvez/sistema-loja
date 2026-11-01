@@ -11,13 +11,15 @@ Fase 2 (contagem cíclica) — planejada, ainda não iniciada.
 - Toda ação registrada em auditoria
 
 ## Schema (migrações)
-- V24__inventario_contagem.sql
-  - contagem_inventario(id, numero, status(ABERTA/FECHADA/CANCELADA), usuario_id, iniciado_em, fechado_em, observacao)
-  - contagem_item(id, contagem_id, produto_id, estoque_sistema, quantidade_contada, diferenca, ajustado)
-- V25__perdas_estoque.sql
+- V24__perdas_estoque.sql
   - perda_estoque(id, produto_id, quantidade, motivo, usuario_id, observacao, data_hora)
+- V25__inventario_contagem.sql (**Fase 2, ainda não criada**)
+  - contagem_inventario(id, numero, status, usuario_id, iniciado_em, fechado_em, observacao)
+  - contagem_item(id, contagem_id, produto_id, estoque_sistema, quantidade_contada, diferenca, ajustado)
 
 > Atenção: tabelas reais são no plural (`produtos`, `usuarios`). Uma migração por versão.
+> As tabelas de contagem foram removidas do schema na Fase 1 para não deixar schema morto:
+> a Fase 2 cria a `V25` com o schema definitivo.
 
 ## Camadas
 - model: ContagemInventario, ContagemItem, PerdaEstoque
@@ -57,8 +59,22 @@ Fase 2 (contagem cíclica) — planejada, ainda não iniciada.
 - [x] `ui/PainelInventario.java` (seleção de produto, quantidade, motivo, observação, histórico)
 - [x] `ui/TelaPrincipal.java`: aba "Inventário" e menu "Gerência" > "Inventário" (GERENTE/ADMIN)
 - [x] `Aplicacao`: wiring + `getInventario()`
-- [x] `InventarioServiceTest` com 9 testes (permissão, validações, baixa de estoque, auditoria)
-- [x] 338 testes verdes no total
+- [x] `InventarioServiceTest` com 17 testes (permissão, validações, baixa de estoque, auditoria,
+      limite da observação, OUTROS sem observação, responsável no histórico)
+- [x] `PainelInventarioTest` com 5 testes (estado vazio, histórico, nome acessível dos campos,
+      design system da tabela)
+- [x] 351 testes verdes no total
+
+### Correções aplicadas após revisão por agentes (31/10/2026)
+- [x] Auditoria gravada **na mesma transação** da baixa de estoque (overloads transacionais em
+      `AuditoriaRepository` e `AuditoriaService`)
+- [x] Limite de 255 caracteres na observação, validado no serviço e limitado na digitação
+- [x] `rollbackSilencioso` com `addSuppressed`; causa original preservada em `ValidacaoException`
+- [x] Autorização pela **sessão** (com checagem de `ativo`), em vez de `Usuario` vindo do chamador
+- [x] `enum MotivoPerda` como fonte única; `OUTROS` exige observação
+- [x] Campos com `setLabelFor` (nome acessível), confirmação antes de registrar,
+      `catch (RuntimeException)` em todos os caminhos e `Ui.modeloTabela`/`Ui.tabela`
+- [x] Histórico exibe o **responsável** (JOIN em `usuarios`) e estado vazio na tabela
 
 ### Motivos de perda
 | Motivo | Uso |
