@@ -10,6 +10,7 @@ import com.portfolio.sistemaloja.repository.CaixaRepository;
 import com.portfolio.sistemaloja.repository.CategoriaRepository;
 import com.portfolio.sistemaloja.repository.ClienteRepository;
 import com.portfolio.sistemaloja.repository.ConfiguracaoRepository;
+import com.portfolio.sistemaloja.repository.ContagemInventarioRepository;
 import com.portfolio.sistemaloja.repository.EntradaMercadoriaRepository;
 import com.portfolio.sistemaloja.repository.FornecedorRepository;
 import com.portfolio.sistemaloja.repository.FidelidadeRepository;
@@ -110,8 +111,8 @@ public class Aplicacao {
         this.fornecedores = new FornecedorService(new FornecedorRepository(fonte), auditoria);
         this.compras = new CompraService(new EntradaMercadoriaRepository(fonte, produtoRepository), auditoria);
         this.taxasCartao = new TaxaCartaoService(new TaxaCartaoRepository(fonte));
-        this.inventario = new InventarioService(new PerdaEstoqueRepository(fonte), produtoRepository,
-                auditoria, sessao, fonte);
+        this.inventario = new InventarioService(new PerdaEstoqueRepository(fonte),
+                new ContagemInventarioRepository(fonte), produtoRepository, auditoria, sessao, fonte);
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria, autorizacoes);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
