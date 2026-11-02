@@ -206,6 +206,11 @@ class CaixaServiceTest {
         assertEquals(StatusCaixa.FECHADO, fechadoBanco.getStatus());
         assertEquals(0, new BigDecimal("100.00").compareTo(fechadoBanco.getValorConferido()));
         assertEquals(0, BigDecimal.ZERO.compareTo(fechadoBanco.getDiferenca()));
+
+        assertTrue(app.getAuditoria().listar(LocalDate.now(), LocalDate.now()).stream()
+                        .anyMatch(e -> "CAIXA_CONFERIDO".equals(e.acao())
+                                && e.detalhe() != null && e.detalhe().contains("diferenca 0.00")),
+                "conferencia exata tambem fica na trilha com diferenca zero");
     }
 
     @Test
@@ -223,8 +228,31 @@ class CaixaServiceTest {
         assertEquals(0, new BigDecimal("-10.00").compareTo(fechadoBanco.getDiferenca()));
 
         List<EventoAuditoria> eventos = app.getAuditoria().listar(LocalDate.now(), LocalDate.now());
-        assertTrue(eventos.stream().anyMatch(e -> "CAIXA_CONFERIDO".equals(e.acao())),
-                "evento CAIXA_CONFERIDO ausente: " + eventos);
+        assertTrue(eventos.stream().anyMatch(e -> "CAIXA_CONFERIDO".equals(e.acao())
+                        && e.detalhe() != null && e.detalhe().contains("diferenca -10.00")),
+                "divergencia precisa aparecer no detalhe auditavel: " + eventos);
+        assertTrue(eventos.stream().anyMatch(e -> "CAIXA_FECHADO".equals(e.acao())),
+                "evento CAIXA_FECHADO ausente: " + eventos);
+    }
+
+    @Test
+    void fechamentoConferidoMaiorQueEsperadoRegistraSobraEAuditoria() {
+        Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+
+        CaixaService.Resumo fechado = app.getCaixa().fechar(new BigDecimal("110.00"), "sobra", operador);
+
+        assertEquals(0, new BigDecimal("100.00").compareTo(fechado.saldoEsperado()));
+        assertEquals(0, new BigDecimal("110.00").compareTo(fechado.valorInformado()));
+        assertEquals(0, new BigDecimal("10.00").compareTo(fechado.diferenca()));
+        Caixa fechadoBanco = app.getCaixa().buscarPorId(caixa.getId());
+        assertEquals(StatusCaixa.FECHADO, fechadoBanco.getStatus());
+        assertEquals(0, new BigDecimal("110.00").compareTo(fechadoBanco.getValorConferido()));
+        assertEquals(0, new BigDecimal("10.00").compareTo(fechadoBanco.getDiferenca()));
+
+        List<EventoAuditoria> eventos = app.getAuditoria().listar(LocalDate.now(), LocalDate.now());
+        assertTrue(eventos.stream().anyMatch(e -> "CAIXA_CONFERIDO".equals(e.acao())
+                        && e.detalhe() != null && e.detalhe().contains("diferenca 10.00")),
+                "sobra com sinal positivo no detalhe: " + eventos);
         assertTrue(eventos.stream().anyMatch(e -> "CAIXA_FECHADO".equals(e.acao())),
                 "evento CAIXA_FECHADO ausente: " + eventos);
     }
