@@ -995,9 +995,7 @@ public class PainelPDV extends JPanel {
                 } catch (java.time.format.DateTimeParseException ex) {
                     throw new ValidacaoException("Data de vencimento inválida. Use o formato AAAA-MM-DD.");
                 }
-                Venda registrada = aplicacao.getVendas().registrar(venda);
-                aplicacao.getFiados().gerarFiado(selecionado.getId(), registrada.getId(),
-                        registrada.getTotal(), vencimento,
+                aplicacao.getVendas().registrarVendaFiado(venda, vencimento,
                         "Venda a prazo - PDV", null);
                 Ui.info(this, "Venda a prazo registrada. Fiado gerado para o cliente " + selecionado.getNome());
                 limpar();
@@ -1018,9 +1016,7 @@ public class PainelPDV extends JPanel {
                     } catch (java.time.format.DateTimeParseException ex) {
                         throw new ValidacaoException("Data de vencimento inválida. Use o formato AAAA-MM-DD.");
                     }
-                    Venda registrada = aplicacao.getVendas().registrar(venda, autorizacao.get());
-                    aplicacao.getFiados().gerarFiado(selecionado.getId(), registrada.getId(),
-                            registrada.getTotal(), vencimento,
+                    aplicacao.getVendas().registrarVendaFiado(venda, vencimento,
                             "Venda a prazo - PDV", autorizacao.get());
                     Ui.info(this, "Venda a prazo registrada. Fiado gerado para o cliente " + selecionado.getNome());
                     limpar();

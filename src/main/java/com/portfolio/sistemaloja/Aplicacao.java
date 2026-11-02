@@ -72,6 +72,7 @@ public class Aplicacao {
     private final FidelidadeRepository fidelidadeRepository;
     private final DevolucaoRepository devolucaoRepository;
     private final ContagemInventarioRepository contagemInventarioRepository;
+    private final FiadoRepository fiadoRepository;
     private final ConfiguracaoService configuracoes;
     private final AutorizacaoService autorizacoes;
     private final FiadoService fiados;
@@ -104,7 +105,8 @@ public class Aplicacao {
         this.fidelidadeRepository = new FidelidadeRepository(fonte);
         this.configuracoes = new ConfiguracaoService(configuracaoRepository, sessao, fonte);
         this.autorizacoes = new AutorizacaoService(usuarioRepository, sessao, auditoria);
-        this.fiados = new FiadoService(new FiadoRepository(fonte), new RecebimentoFiadoRepository(fonte),
+        this.fiadoRepository = new FiadoRepository(fonte);
+        this.fiados = new FiadoService(fiadoRepository, new RecebimentoFiadoRepository(fonte),
                 clienteRepository, configuracaoRepository, autorizacoes, auditoria, sessao);
         this.fidelidade = new FidelidadeService(fidelidadeRepository, this.configuracoes);
         this.promocoes = new PromocaoService(new PromocaoProdutoRepository(fonte), produtoRepository,
@@ -118,7 +120,7 @@ public class Aplicacao {
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria, autorizacoes);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
-                auditoria, relogio, fidelidade, autorizacoes, this.promocoes, this.caixa);
+                auditoria, relogio, fidelidade, autorizacoes, this.promocoes, this.caixa, fonte, this.fiados);
         this.pausas = new PausaService(vendaPausadaRepository, auditoria);
         this.cupom = new CupomService();
         this.devolucoes = new DevolucaoService(devolucaoRepository, vendaRepository, auditoria);
@@ -215,6 +217,10 @@ public class Aplicacao {
 
     public ContagemInventarioRepository getContagemInventarioRepository() {
         return contagemInventarioRepository;
+    }
+
+    public FiadoRepository getFiadoRepository() {
+        return fiadoRepository;
     }
 
     public ConfiguracaoService getConfiguracoes() {

@@ -27,6 +27,7 @@ import org.apache.logging.log4j.Logger;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -59,15 +60,19 @@ public class VendaService {
     private final PromocaoService promocoes;
     private final CaixaService caixas;
     private final Clock relogio;
+    private final com.portfolio.sistemaloja.db.ConexaoFonte fonte;
+    private final FiadoService fiados;
 
     /**
      * Construtor único: {@code caixas} não é opcional — a guarda de caixa aberto exige
      * o caixa, e um construtor que o permite nulo é o buraco de fiação que deixou a
-     * regra anterior virar no-op silencioso.
+     * regra anterior virar no-op silencioso. {@code fonte} e {@code fiados} existem
+     * porque a venda a prazo precisa compor venda + fiado em uma transação só (issue #42).
      */
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
                         AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade,
-                        AutorizacaoService autorizacoes, PromocaoService promocoes, CaixaService caixas) {
+                        AutorizacaoService autorizacoes, PromocaoService promocoes, CaixaService caixas,
+                        com.portfolio.sistemaloja.db.ConexaoFonte fonte, FiadoService fiados) {
         this.vendas = vendas;
         this.produtos = produtos;
         this.usuarios = usuarios;
@@ -77,6 +82,8 @@ public class VendaService {
         this.autorizacoes = autorizacoes;
         this.promocoes = promocoes;
         this.caixas = caixas;
+        this.fonte = fonte;
+        this.fiados = fiados;
     }
 
     /**
@@ -103,6 +110,66 @@ public class VendaService {
      * @throws ValidacaoException caso exista violação de regra de negócio
      */
     public Venda registrar(Venda venda, Autorizacao autorizacao) {
+        List<FidelidadeMovimento> movimentos = prepararParaRegistro(venda, autorizacao);
+        Venda registrada = registrarComMovimentos(venda, movimentos);
+        LOG.info("Venda registrada: numero {} total {} forma {}",
+                registrada.getNumero(), registrada.getTotal(), registrada.getFormaPagamento());
+        auditarRegistro(registrada);
+        return registrada;
+    }
+
+    /**
+     * Venda a prazo do PDV: valida tudo (inclusive o limite de credito do fiado) e so
+     * comete depois — venda, fiado e auditorias no MESMO commit (issue #42). Antes deste
+     * fluxo, o limite estourado sem PIN lancava depois do commit da venda e o retry do
+     * PDV re-registrava: venda duplicada e/ou venda sem recebivel (o fiado nao nasceu).
+     */
+    public Venda registrarVendaFiado(Venda venda, LocalDate vencimentoFiado,
+                                     String observacaoFiado, Autorizacao autorizacao) {
+        List<FidelidadeMovimento> movimentos = prepararParaRegistro(venda, autorizacao);
+        FiadoService.ContaFiado conta = fiados.preValidar(venda.getClienteId(), venda.getTotal(),
+                vencimentoFiado, autorizacao);
+        try (java.sql.Connection conexao = fonte.getConnection()) {
+            try {
+                conexao.setAutoCommit(false);
+                vendas.registrarSemCommit(venda, movimentos, conexao);
+                fiados.salvarPreValidado(venda.getClienteId(), venda.getId(), vencimentoFiado,
+                        conta, observacaoFiado, conexao);
+                auditoria.registrarTransacional("VENDA_REGISTRADA", "VENDA", venda.getId(),
+                        "numero " + venda.getNumero() + " total " + venda.getTotal(), conexao);
+                if (venda.getPontosResgatados() > 0) {
+                    auditoria.registrarTransacional("PONTOS_RESGATADOS", "CLIENTE", venda.getClienteId(),
+                            "Resgate de " + venda.getPontosResgatados() + " ponto(s) na venda "
+                                    + venda.getNumero(), conexao);
+                }
+                if (venda.getPontosCreditados() > 0) {
+                    auditoria.registrarTransacional("PONTOS_CREDITADOS", "CLIENTE", venda.getClienteId(),
+                            venda.getPontosCreditados() + " ponto(s) pela venda "
+                                    + venda.getNumero(), conexao);
+                }
+                conexao.commit();
+            } catch (RuntimeException e) {
+                rollbackSilencioso(conexao, e);
+                throw e;
+            } catch (java.sql.SQLException e) {
+                rollbackSilencioso(conexao, e);
+                throw new ValidacaoException("Erro ao registrar a venda a prazo.", e);
+            }
+        } catch (java.sql.SQLException e) {
+            throw new ValidacaoException("Erro ao registrar a venda a prazo.", e);
+        }
+        LOG.info("Venda a prazo registrada: numero {} total {} vencimento {}",
+                venda.getNumero(), venda.getTotal(), vencimentoFiado);
+        return vendas.buscarPorId(venda.getId()).orElse(venda);
+    }
+
+    /**
+     * Todo o pipeline de regras de uma venda, da guarda de caixa ao numero e aos
+     * movimentos de fidelidade — sem persistir nada. Compartilhado por registrar (que
+     * comete na transacao propria do repositorio) e registrarVendaFiado (que comete na
+     * nossa, junto com o fiado).
+     */
+    private List<FidelidadeMovimento> prepararParaRegistro(Venda venda, Autorizacao autorizacao) {
         if (venda == null) {
             throw new ValidacaoException("Venda inválida.");
         }
@@ -127,10 +194,10 @@ public class VendaService {
         finalizarPagamento(venda);
         venda.setStatus(StatusVenda.CONCLUIDA);
         venda.setNumero(vendas.proximoNumero());
-        List<FidelidadeMovimento> movimentos = movimentosDaVenda(venda);
-        Venda registrada = registrarComMovimentos(venda, movimentos);
-        LOG.info("Venda registrada: numero {} total {} forma {}",
-                registrada.getNumero(), registrada.getTotal(), registrada.getFormaPagamento());
+        return movimentosDaVenda(venda);
+    }
+
+    private void auditarRegistro(Venda registrada) {
         auditoria.registrar("VENDA_REGISTRADA", "VENDA", registrada.getId(),
                 "numero " + registrada.getNumero() + " total " + registrada.getTotal());
         if (registrada.getPontosResgatados() > 0) {
@@ -142,7 +209,14 @@ public class VendaService {
             auditoria.registrar("PONTOS_CREDITADOS", "CLIENTE", registrada.getClienteId(),
                     registrada.getPontosCreditados() + " ponto(s) pela venda " + registrada.getNumero());
         }
-        return registrada;
+    }
+
+    private void rollbackSilencioso(java.sql.Connection conexao, Exception causa) {
+        try {
+            conexao.rollback();
+        } catch (java.sql.SQLException rollback) {
+            causa.addSuppressed(rollback);
+        }
     }
 
     public void cancelar(long vendaId) {

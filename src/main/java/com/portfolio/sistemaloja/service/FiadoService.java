@@ -6,6 +6,7 @@ import com.portfolio.sistemaloja.model.Cliente;
 import com.portfolio.sistemaloja.model.Fiado;
 import com.portfolio.sistemaloja.model.MotivoAutorizacao;
 import com.portfolio.sistemaloja.model.RecebimentoFiado;
+import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.ClienteRepository;
 import com.portfolio.sistemaloja.repository.ConfiguracaoRepository;
 import com.portfolio.sistemaloja.repository.FiadoRepository;
@@ -44,6 +45,27 @@ public class FiadoService {
     public Fiado gerarFiado(Long clienteId, Long vendaId, BigDecimal valorTotal,
                             LocalDate dataVencimento, String observacao,
                             Autorizacao autorizacao) {
+        ContaFiado conta = preValidar(clienteId, valorTotal, dataVencimento, autorizacao);
+        Fiado fiado = new Fiado(null, vendaId, clienteId, conta.valorTotal(),
+                BigDecimal.ZERO, conta.valorDevedor(), conta.juros(),
+                dataVencimento, "ABERTO", observacao, conta.estampaInicialDeCalculo());
+        Fiado salvo = fiados.salvar(fiado);
+
+        auditoria.registrar("FIADO_GERADO", "FIADO", salvo.id(),
+                "cliente " + clienteId + " valor " + salvo.valorTotal().toPlainString()
+                        + " vencimento " + dataVencimento);
+
+        return salvo;
+    }
+
+    /**
+     * Conta do fiado pre-validada: tudo o que {@link #gerarFiado} precisa saber antes de
+     * existir um fiado, sem escrever nada. Existe para que a venda a prazo do PDV possa
+     * validar o limite ANTES de cometer a venda (issue #42: nada pode ser persistido para
+     * depois descobrir que faltava PIN).
+     */
+    public ContaFiado preValidar(Long clienteId, BigDecimal valorTotal,
+                                 LocalDate dataVencimento, Autorizacao autorizacao) {
         if (!configuracoes.fiadoHabilitado()) {
             throw new ValidacaoException("O fiado esta desabilitado para esta loja. Peca ao administrador habilitar.");
         }
@@ -63,16 +85,14 @@ public class FiadoService {
         // Verifica limite de credito (considerando ja o devedor com juros)
         BigDecimal limite = cliente.getLimiteCredito();
         BigDecimal saldoDevedorExistente = fiados.saldoDevedorTotalPorCliente(clienteId);
-        BigDecimal valorDevedorNovo = valorTotal.add(calcularJuros(valorTotal, dataVencimento, LocalDate.now()));
+        BigDecimal juros = calcularJuros(valorTotal, dataVencimento, LocalDate.now());
+        BigDecimal valorDevedor = valorTotal.add(juros);
         BigDecimal disponivel = limite.subtract(saldoDevedorExistente);
 
-        if (disponivel.compareTo(valorDevedorNovo) < 0) {
+        if (disponivel.compareTo(valorDevedor) < 0) {
             // Excede o limite: exige autorizacao de supervisor (PIN)
             autorizacoes.exigir(sessao.getAtual(), autorizacao, MotivoAutorizacao.LIMITE_CREDITO);
         }
-
-        BigDecimal juros = calcularJuros(valorTotal, dataVencimento, LocalDate.now());
-        BigDecimal valorDevedor = valorTotal.add(juros);
 
         // Se a criacao ja assou juros retroativos, o carimbo de calculo nasce agora:
         // sem ele, o primeiro receber recobraria o mesmo vencimento->hoje por cima.
@@ -80,16 +100,34 @@ public class FiadoService {
                 ? LocalDateTime.now()
                 : null;
 
-        Fiado fiado = new Fiado(null, vendaId, clienteId, valorTotal,
-                BigDecimal.ZERO, valorDevedor, juros,
-                dataVencimento, "ABERTO", observacao, estampaInicialDeCalculo);
-        Fiado salvo = fiados.salvar(fiado);
+        return new ContaFiado(valorTotal, valorDevedor, juros, estampaInicialDeCalculo);
+    }
 
-        auditoria.registrar("FIADO_GERADO", "FIADO", salvo.id(),
+    /**
+     * Persiste uma conta pre-validada dentro da transacao do chamador (venda + fiado
+     * atomicos, issue #42). Audita com a mesma conexao: se o commit nao vier, o evento
+     * tampouco existe.
+     */
+    public Fiado salvarPreValidado(Long clienteId, Long vendaId, LocalDate dataVencimento,
+                                   ContaFiado conta, String observacao,
+                                   java.sql.Connection conexao) throws java.sql.SQLException {
+        Fiado fiado = new Fiado(null, vendaId, clienteId, conta.valorTotal(),
+                BigDecimal.ZERO, conta.valorDevedor(), conta.juros(),
+                dataVencimento, "ABERTO", observacao, conta.estampaInicialDeCalculo());
+        Fiado salvo = fiados.salvar(fiado, conexao);
+        auditoria.registrarComo(loginDaSessao(), "FIADO_GERADO", "FIADO", salvo.id(),
                 "cliente " + clienteId + " valor " + salvo.valorTotal().toPlainString()
-                        + " vencimento " + dataVencimento);
-
+                        + " vencimento " + dataVencimento, conexao);
         return salvo;
+    }
+
+    private String loginDaSessao() {
+        Usuario atual = sessao.getAtual();
+        return atual == null ? "sistema" : atual.getLogin();
+    }
+
+    public record ContaFiado(BigDecimal valorTotal, BigDecimal valorDevedor, BigDecimal juros,
+                             LocalDateTime estampaInicialDeCalculo) {
     }
 
     public Fiado receber(Long fiadoId, BigDecimal valor, String formaPagamento,

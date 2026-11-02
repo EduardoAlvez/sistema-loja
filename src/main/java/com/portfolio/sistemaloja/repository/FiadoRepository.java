@@ -23,24 +23,38 @@ public class FiadoRepository {
               FROM fiados f""";
 
     private final ConexaoFonte fonte;
+    private java.util.function.Consumer<Connection> falharAoSalvar = conexao -> {
+    };
 
     public FiadoRepository(ConexaoFonte fonte) {
         this.fonte = fonte;
     }
 
+    public void falharAoSalvarParaTeste(java.util.function.Consumer<Connection> hook) {
+        this.falharAoSalvar = hook;
+    }
+
     public Fiado salvar(Fiado fiado) {
-        String sql;
         if (fiado.id() == null) {
-            sql = "INSERT INTO fiados (venda_id, cliente_id, valor_total, valor_pago, valor_devedor, "
-                    + "juros_aplicados, ultimo_calculo_juros, data_vencimento, status, observacao) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        } else {
-            sql = "UPDATE fiados SET venda_id = ?, cliente_id = ?, valor_total = ?, valor_pago = ?, "
-                    + "valor_devedor = ?, juros_aplicados = ?, ultimo_calculo_juros = ?, "
-                    + "data_vencimento = ?, status = ?, observacao = ? WHERE id = ?";
+            try (Connection conexao = fonte.getConnection()) {
+                return inserir(fiado, conexao);
+            } catch (SQLException e) {
+                throw new RepositorioException("Falha ao salvar fiado", e);
+            }
         }
-        try (Connection conexao = fonte.getConnection();
-             PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        return atualizar(fiado);
+    }
+
+    public Fiado salvar(Fiado fiado, Connection conexao) throws SQLException {
+        return inserir(fiado, conexao);
+    }
+
+    private Fiado inserir(Fiado fiado, Connection conexao) throws SQLException {
+        String sql = "INSERT INTO fiados (venda_id, cliente_id, valor_total, valor_pago, valor_devedor, "
+                + "juros_aplicados, ultimo_calculo_juros, data_vencimento, status, observacao) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        falharAoSalvar.accept(conexao);
+        try (PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparada.setLong(1, fiado.vendaId());
             preparada.setLong(2, fiado.clienteId());
             preparada.setBigDecimal(3, fiado.valorTotal());
@@ -51,20 +65,37 @@ public class FiadoRepository {
             preparada.setObject(8, fiado.dataVencimento());
             preparada.setString(9, fiado.status());
             preparada.setString(10, fiado.observacao());
-            if (fiado.id() != null) {
-                preparada.setLong(11, fiado.id());
-            }
             preparada.executeUpdate();
-            if (fiado.id() == null) {
-                try (ResultSet chaves = preparada.getGeneratedKeys()) {
-                    if (chaves.next()) {
-                        fiado = new Fiado(chaves.getLong(1), fiado.vendaId(), fiado.clienteId(),
-                                fiado.valorTotal(), fiado.valorPago(), fiado.valorDevedor(),
-                                fiado.jurosAplicados(), fiado.dataVencimento(), fiado.status(),
-                                fiado.observacao(), fiado.ultimoCalculoJuros());
-                    }
+            try (ResultSet chaves = preparada.getGeneratedKeys()) {
+                if (chaves.next()) {
+                    return new Fiado(chaves.getLong(1), fiado.vendaId(), fiado.clienteId(),
+                            fiado.valorTotal(), fiado.valorPago(), fiado.valorDevedor(),
+                            fiado.jurosAplicados(), fiado.dataVencimento(), fiado.status(),
+                            fiado.observacao(), fiado.ultimoCalculoJuros());
                 }
             }
+            return fiado;
+        }
+    }
+
+    private Fiado atualizar(Fiado fiado) {
+        String sql = "UPDATE fiados SET venda_id = ?, cliente_id = ?, valor_total = ?, valor_pago = ?, "
+                + "valor_devedor = ?, juros_aplicados = ?, ultimo_calculo_juros = ?, "
+                + "data_vencimento = ?, status = ?, observacao = ? WHERE id = ?";
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setLong(1, fiado.vendaId());
+            preparada.setLong(2, fiado.clienteId());
+            preparada.setBigDecimal(3, fiado.valorTotal());
+            preparada.setBigDecimal(4, fiado.valorPago());
+            preparada.setBigDecimal(5, fiado.valorDevedor());
+            preparada.setBigDecimal(6, fiado.jurosAplicados());
+            preparada.setObject(7, fiado.ultimoCalculoJuros());
+            preparada.setObject(8, fiado.dataVencimento());
+            preparada.setString(9, fiado.status());
+            preparada.setString(10, fiado.observacao());
+            preparada.setLong(11, fiado.id());
+            preparada.executeUpdate();
             return fiado;
         } catch (SQLException e) {
             throw new RepositorioException("Falha ao salvar fiado", e);

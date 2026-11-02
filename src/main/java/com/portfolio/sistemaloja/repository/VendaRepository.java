@@ -49,11 +49,7 @@ public class VendaRepository {
         try (Connection conexao = fonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
-                inserirVenda(venda, conexao);
-                inserirItens(venda, conexao);
-                inserirPagamentos(venda, conexao);
-                baixarEstoque(venda, conexao);
-                fidelidade.aplicarMovimentos(conexao, movimentos, venda.getId(), null);
+                registrarSemCommit(venda, movimentos, conexao);
                 conexao.commit();
             } catch (SQLException e) {
                 conexao.rollback();
@@ -63,6 +59,20 @@ public class VendaRepository {
             throw new RepositorioException("Falha ao registrar a venda", e);
         }
         return buscarPorId(venda.getId()).orElse(venda);
+    }
+
+    /**
+     * Insere venda, itens, pagamentos, baixa de estoque e movimentos de fidelidade na
+     * conexao e transacao do chamador, sem commit: e o ponto de composicao da venda a
+     * prazo, que precisa vender e gerar o fiado no mesmo commit (issue #42).
+     */
+    public void registrarSemCommit(Venda venda, List<FidelidadeMovimento> movimentos, Connection conexao)
+            throws SQLException {
+        inserirVenda(venda, conexao);
+        inserirItens(venda, conexao);
+        inserirPagamentos(venda, conexao);
+        baixarEstoque(venda, conexao);
+        fidelidade.aplicarMovimentos(conexao, movimentos, venda.getId(), null);
     }
 
     private void inserirVenda(Venda venda, Connection conexao) throws SQLException {

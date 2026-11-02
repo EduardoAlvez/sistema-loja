@@ -46,6 +46,16 @@ public class AuditoriaService {
         auditoria.registrar(usuarioLogin, acao, entidade, entidadeId, detalhe, conexao);
     }
 
+    /**
+     * Variante transacional que toma o login da sessão corrente — para serviços que
+     * compõem transação sem conhecer a Sessao diretamente.
+     */
+    public void registrarTransacional(String acao, String entidade, Long entidadeId,
+                                      String detalhe, Connection conexao) throws SQLException {
+        registrarComo(sessao.getAtual() == null ? "sistema" : sessao.getAtual().getLogin(),
+                acao, entidade, entidadeId, detalhe, conexao);
+    }
+
     public List<EventoAuditoria> listar(LocalDate inicio, LocalDate fim) {
         return auditoria.listar(inicio, fim);
     }
