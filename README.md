@@ -390,9 +390,13 @@ O PDV agora suporta venda a prazo (fiado) para clientes cadastrados:
 
 - **Busca por CPF**: no PDV, digite o CPF do cliente. Se já estiver cadastrado, é selecionado automaticamente; se não, um cadastro rápido é criado com CPF, telefone e rua (e-mail opcional).
 - **Limite de crédito**: cada cliente pode ter um limite definido na tela de cadastro. O sistema bloqueia vendas a prazo que excedam o limite disponível (saldo devedor atual), exceto com autorização de supervisor (PIN).
-- **Juros**: taxa de juros mensal configurável pelo admin, aplicada sobre valores em atraso a partir do vencimento.
-- **Recebimento**: a aba "Fiado / Recebíveis" lista fiados abertos e vencidos, permitindo registrar recebimentos parciais ou totais, com atualização automática do saldo devedor e status (Aberto / Parcial / Quitado / Inadimplente).
-- **Auditoria**: eventos `FIADO_GERADO`, `FIADO_RECEBIMENTO`, `FIADO_QUITADO`, `LIMITE_CREDITO_ALTERADO` e `JUROS_APLICADOS` são registrados na trilha de auditoria.
+- **Transação única na venda a prazo**: venda, fiado e auditorias cometem **juntos** — o limite
+  estourado sem PIN é detectado antes de qualquer INSERT e uma falha no fiado desfaz a venda
+  inteira (nada de venda órfã ou duplicada pelo retry do PIN — issue #42).
+- **Juros**: taxa de juros mensal configurável pelo admin, aplicada sobre valores em atraso **incrementalmente a partir do último cálculo** (recebimentos em dias distintos cobram só a pena nova; juros assados na criação do fiado já entram no saldo sem serem recobrados no primeiro recebimento).
+- **Recebimento**: a aba "Fiado / Recebíveis" lista os **pendentes** (Aberto, Parcial e Inadimplente — um parcial não pode sumir da fila de cobrança), permitindo registrar recebimentos parciais ou totais, com atualização automática do saldo devedor.
+- **Inadimplência no banco**: abrir/atualizar o painel marca como `INADIMPLENTE` os fiados com vencimento vencido (marcação idempotente, travada por `SELECT ... FOR UPDATE`); o status exibido é o persistido, e ele **conta no saldo devedor** — inadimplente não ganha crédito novo sem PIN.
+- **Auditoria**: eventos `FIADO_GERADO`, `FIADO_RECEBIMENTO`, `FIADO_QUITADO`, `FIADO_INADIMPLENTE`, `LIMITE_CREDITO_ALTERADO` e `JUROS_APLICADOS` são registrados na trilha de auditoria.
 - **Migração V19**: tabelas `fiados` e `recebimentos_fiado`, além da coluna `limite_credito` em `clientes`.
 
 ### Testes
@@ -401,7 +405,7 @@ O PDV agora suporta venda a prazo (fiado) para clientes cadastrados:
 mvn test
 ```
 
-**447 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**454 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -465,7 +469,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V25 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações, inventário)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 447 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 454 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -557,7 +561,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 447 testes JUnit (serviços, UI, migrações, concorrência, fiado/TEF e integração sobre H2 e MySQL 8.4)
+- [x] 454 testes JUnit (serviços, UI, migrações, concorrência, fiado/TEF e integração sobre H2 e MySQL 8.4)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
