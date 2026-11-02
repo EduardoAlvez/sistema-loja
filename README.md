@@ -62,7 +62,9 @@ regras de negócio e testes automatizados.
 - **Abertura de caixa** com valor inicial e um caixa aberto por vez
 - **Sangria e suprimento** lançados no caixa aberto, com saldo em espécie calculado na hora
 - **Fechamento com relatório do dia**: total de vendas por forma de pagamento, lançamentos e saldo
-- O caixa é um **controle financeiro independente**: vender não exige um caixa aberto
+- O caixa é um **controle financeiro independente** por design, mas desde 02/11 a venda
+  **exige um caixa aberto**: a guarda existia no código só no discurso (reflexão com nomes de
+  método inexistentes engolia a exceção) e foi corrigida com teste de regressão
 
 ### Cadastros
 - **Produtos**: código de barras único, categoria, preço de custo/venda, margem calculada,
@@ -399,13 +401,14 @@ O PDV agora suporta venda a prazo (fiado) para clientes cadastrados:
 mvn test
 ```
 
-**400 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**447 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
 as **promoções com vigência, dias e horários**, a **fidelidade por pontos** (crédito, resgate,
 saldo, extrato e estornos), o **inventário com contagem cíclica serializada** (abertura,
-informe, fechamento, cancelamento e as races de concorrência), as migrações do Flyway e a
+informe, fechamento, cancelamento e as races de concorrência), o **fiado/crediário** (limite composto, autorização de supervisor, juros incremental sem dupla cobrança, recebimento parcial
+e quitação) e o **TEF** (operadora simulada, cálculo de taxa por bandeira/tipo/parcelas e a conciliação audit-only), as migrações do Flyway e a
 trilha de auditoria — rodam sobre **H2 em modo MySQL**, ou seja, não dependem do Docker.
 
 ---
@@ -462,7 +465,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V25 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações, inventário)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 400 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 447 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -517,8 +520,9 @@ sistema-loja/
 - **Devolução parcial**: só venda concluída, quantidade limitada ao que ainda não foi devolvido,
   preço da própria venda, estorno de estoque e crédito opcional na conta do cliente — tudo na
   mesma transação.
-- **Ordem das regras**: o caixa tem seu próprio ciclo de vida; vender **não** exige caixa aberto,
-  o que mantém PDV e financeiro independentes.
+- **Ordem das regras**: o caixa tem seu próprio ciclo de vida, e a venda exige caixa aberto
+  (guarda travada por teste desde 02/11); fecho e conferência continuam independentes do
+  fluxo de venda em si.
 - **Sem SQL dinâmico**: todas as consultas usam `PreparedStatement`, inclusive os filtros de busca.
 
 ---
@@ -553,7 +557,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 400 testes JUnit (serviços, UI, migrações, concorrência e integração sobre H2 e MySQL 8.4)
+- [x] 447 testes JUnit (serviços, UI, migrações, concorrência, fiado/TEF e integração sobre H2 e MySQL 8.4)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
@@ -583,12 +587,15 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
         serializado no banco; cancelamento sem ajustar; validada em MySQL 8.4)
 - [ ] Lote e validade com alerta de vencimento
 - [ ] TEF por interface abstrata, taxa por bandeira e conciliação de cartões
-  - [x] Interface `OperadoraCartao` + implementação simulada (pacote `tef/`)
+  - [x] Interface `OperadoraCartao` + implementação simulada (pacote `tef/`) — agora com testes
   - [x] Tabela de taxas por bandeira/tipo/parcelas (`V23__taxas_cartao.sql`) e cálculo da taxa
+        (a busca de taxa tinha SQL quebrado — corrigido e coberto por cálculo numérico em 02/11)
   - [ ] Autorização via TEF integrada ao fluxo de venda
-  - [ ] Conciliação por forma de pagamento no fechamento (hoje há apenas um stub nunca chamado)
-  - [ ] Relatório de taxas e valores a receber por adquirente (a aba hoje exibe só texto explicativo)
-  - [ ] Testes da interface simulada, das taxas e da conciliação
+  - [ ] Conciliação por forma de pagamento no fechamento (o método é audit-only e está
+        caracterizado por testes; conciliação real exige persistir transações do TEF)
+  - [x] Relatório de taxas e valores a receber por adquirente — projeção pela configuração
+        vigente, com a limitação declarada na aba (vendas não guardam bandeira/adquirente)
+  - [x] Testes da interface simulada, das taxas e da conciliação
 - [x] Fiado/crediário com limite, vencimento, recebimento parcial e juros
 - [ ] Multi-caixa e multi-loja com preço centralizado
 - [x] Relatórios de estoque crítico usando o `estoque_minimo` de cada produto
