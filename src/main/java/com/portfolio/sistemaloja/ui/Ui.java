@@ -78,6 +78,14 @@ public final class Ui {
         JOptionPane.showMessageDialog(pai, mensagem, "Erro", JOptionPane.ERROR_MESSAGE);
     }
 
+    /**
+     * Falha de carga nao e uma acao do usuario: vai para o log e para o rotulo de estado,
+     * sem modal — um dialogo a cada recarga de painel com o banco fora seria insuportavel.
+     */
+    public static void erroDeCarga(String mensagem, Throwable causa) {
+        LOG.error(mensagem, causa);
+    }
+
     public static void aviso(Component pai, String mensagem) {
         JOptionPane.showMessageDialog(pai, mensagem, "Aviso", JOptionPane.INFORMATION_MESSAGE);
     }

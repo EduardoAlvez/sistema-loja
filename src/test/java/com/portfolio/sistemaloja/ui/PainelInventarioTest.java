@@ -90,6 +90,60 @@ class PainelInventarioTest {
         assertFalse(alerta.getText().isBlank());
     }
 
+    @Test
+    void painelTemDuasAbasComTitulos() {
+        PainelInventario painel = new PainelInventario(app);
+
+        javax.swing.JTabbedPane abas = abaDe(painel);
+        assertNotNull(abas, "o painel do inventário deve ter abas");
+        assertEquals(2, abas.getTabCount());
+        assertEquals("Perdas de estoque", abas.getTitleAt(0));
+        assertEquals("Contagem cíclica", abas.getTitleAt(1));
+    }
+
+    @Test
+    void tituloDasPerdasContinuaAposMontarOTab() {
+        PainelInventario painel = new PainelInventario(app);
+
+        JLabel titulo = painel.componenteTituloPerdas();
+        assertNotNull(titulo, "título não deve ter sido descartado do layout");
+        assertNotNull(titulo.getParent(), "o título precisa estar num container para ser desenhado");
+    }
+
+    @Test
+    void tituloDasPerdasEDesenhadoComLarguraReal() {
+        org.junit.jupiter.api.Assumptions.assumeFalse(java.awt.GraphicsEnvironment.isHeadless(),
+                "largura real exige um frame decorado");
+        PainelInventario painel = new PainelInventario(app);
+
+        javax.swing.JFrame quadro = new javax.swing.JFrame();
+        try {
+            quadro.setUndecorated(true);
+            quadro.add(painel);
+            quadro.pack();
+            quadro.validate();
+            assertTrue(painel.componenteTituloPerdas().getWidth() > 0,
+                    "o título das perdas deve ter largura maior que zero");
+        } finally {
+            quadro.dispose();
+        }
+    }
+
+    private javax.swing.JTabbedPane abaDe(Container raiz) {
+        for (Component filho : raiz.getComponents()) {
+            if (filho instanceof javax.swing.JTabbedPane abas) {
+                return abas;
+            }
+            if (filho instanceof Container container) {
+                javax.swing.JTabbedPane achada = abaDe(container);
+                if (achada != null) {
+                    return achada;
+                }
+            }
+        }
+        return null;
+    }
+
     private List<Component> componentesComRotulo(Container raiz) {
         List<Component> encontrados = new ArrayList<>();
         for (Component filho : raiz.getComponents()) {

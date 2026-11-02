@@ -312,12 +312,13 @@ public class PainelContagem extends JPanel {
             modeloHistorico.setRowCount(0);
             situacao.setText("Falha ao carregar a contagem.");
             progresso.setText("Nada carregado.");
+            feedback.setText("Recarregue a tela ao tentar novamente.");
             iniciar.setEnabled(true);
             informar.setEnabled(false);
             fechar.setEnabled(false);
             cancelar.setEnabled(false);
             observacao.setEnabled(false);
-            Ui.erro(this, "Falha ao carregar a contagem.", ex);
+            Ui.erroDeCarga("Falha ao carregar a contagem.", ex);
             return;
         }
         modeloItens.setRowCount(0);

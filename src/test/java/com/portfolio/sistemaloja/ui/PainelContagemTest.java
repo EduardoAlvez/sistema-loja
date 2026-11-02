@@ -119,6 +119,74 @@ class PainelContagemTest {
         assertFalse(situacao.getText().isBlank());
     }
 
+    @Test
+    void semContagemAbertaIniciarFicaHabilitadoEAcoesNao() {
+        PainelContagem painel = new PainelContagem(app);
+
+        assertTrue(painel.iniciarHabilitado());
+        assertFalse(painel.acoesDeContagemHabilitadas());
+    }
+
+    @Test
+    void comContagemAbertaIniciarFicaDesabilitado() {
+        app.getInventario().abrirContagem(List.of(refrigerante.getId()));
+
+        PainelContagem painel = new PainelContagem(app);
+
+        assertFalse(painel.iniciarHabilitado());
+        assertTrue(painel.acoesDeContagemHabilitadas());
+    }
+
+    @Test
+    void falhaDeCargaLimpaAsTabelasEDesabilitaAsAcoes() {
+        app.getAuth().autenticar("operador", "caixa123");
+
+        PainelContagem painel = new PainelContagem(app);
+
+        assertEquals(0, painel.totalLinhas());
+        assertEquals(0, painel.totalLinhasHistorico());
+        assertTrue(painel.textoSituacao().contains("Falha ao carregar"), painel.textoSituacao());
+        assertFalse(painel.acoesDeContagemHabilitadas());
+        assertTrue(painel.iniciarHabilitado());
+    }
+
+    @Test
+    void asDuasTabelasTemNomeAcessivel() {
+        PainelContagem painel = new PainelContagem(app);
+
+        List<JTable> tabelas = tabelasDe(painel);
+        assertEquals(2, tabelas.size());
+        List<String> nomes = tabelas.stream()
+                .map(tabela -> tabela.getAccessibleContext().getAccessibleName())
+                .toList();
+        assertTrue(nomes.contains("Itens da contagem em aberto"), nomes.toString());
+        assertTrue(nomes.contains("Contagens de inventário anteriores"), nomes.toString());
+    }
+
+    @Test
+    void historicoMostraStatusFechada() {
+        long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId()));
+        app.getInventario().informarContagem(contagemId, refrigerante.getId(), 40);
+        app.getInventario().fecharContagem(contagemId, "Fim do ciclo");
+
+        PainelContagem painel = new PainelContagem(app);
+
+        assertEquals("Fechada", painel.valorHistorico(0, 5));
+    }
+
+    @Test
+    void historicoDiferenciaCanceladaComMotivo() {
+        long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId()));
+        app.getInventario().cancelarContagem(contagemId, "Contagem refeita no dia seguinte");
+
+        PainelContagem painel = new PainelContagem(app);
+
+        assertEquals(1, painel.totalLinhasHistorico());
+        assertEquals("Cancelada", painel.valorHistorico(0, 5));
+        assertTrue(painel.valorHistorico(0, 4).toString().contains("Contagem refeita"),
+                painel.valorHistorico(0, 4).toString());
+    }
+
     private List<Component> componentesComRotulo(Container raiz) {
         List<Component> encontrados = new ArrayList<>();
         for (Component filho : raiz.getComponents()) {
