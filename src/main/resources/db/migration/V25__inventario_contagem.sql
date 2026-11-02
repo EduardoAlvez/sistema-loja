@@ -1,12 +1,14 @@
 CREATE TABLE contagem_inventario (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  numero VARCHAR(20),
+  numero VARCHAR(24),
   status VARCHAR(20) NOT NULL DEFAULT 'ABERTA',
   usuario_id BIGINT NOT NULL,
   observacao VARCHAR(255),
+  motivo_cancelamento VARCHAR(255),
   data_hora TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   data_fechamento TIMESTAMP,
   CONSTRAINT uk_contagem_inventario_numero UNIQUE (numero),
+  CONSTRAINT ck_contagem_inventario_status CHECK (status IN ('ABERTA', 'FECHADA', 'CANCELADA')),
   CONSTRAINT fk_contagem_inventario_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
 CREATE INDEX idx_contagem_inventario_status ON contagem_inventario(status);
@@ -24,3 +26,8 @@ CREATE TABLE contagem_item (
   CONSTRAINT fk_contagem_item_produto FOREIGN KEY (produto_id) REFERENCES produtos(id)
 );
 CREATE INDEX idx_contagem_item_produto ON contagem_item(produto_id);
+
+CREATE TABLE contagem_controle (
+  id INT PRIMARY KEY
+);
+INSERT INTO contagem_controle (id) VALUES (1);
