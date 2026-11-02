@@ -48,7 +48,7 @@ public class TaxaCartaoRepository {
         String sql = """
                 SELECT id, bandeira, tipo_cartao, parcelas_min, parcelas_max, taxa_percentual, taxa_fixa, adquirente, ativo, criado_em
                   FROM taxas_cartao
-                 WHERE ativo = TRUE AND UPPER(bandeira) = UPPER(?) AND UPPER(tipo_cartao) = UPPER(?) AND parcelas >= parcelas_min AND parcelas <= parcelas_max
+                 WHERE ativo = TRUE AND UPPER(bandeira) = UPPER(?) AND UPPER(tipo_cartao) = UPPER(?) AND ? >= parcelas_min AND ? <= parcelas_max
                  ORDER BY parcelas_max DESC
                  LIMIT 1""";
         try (Connection conexao = fonte.getConnection();
@@ -56,6 +56,7 @@ public class TaxaCartaoRepository {
             preparada.setString(1, bandeira == null ? "" : bandeira);
             preparada.setString(2, tipoCartao == null ? "DEBITO" : tipoCartao);
             preparada.setInt(3, parcelas);
+            preparada.setInt(4, parcelas);
             try (ResultSet resultado = preparada.executeQuery()) {
                 if (resultado.next()) {
                     return Optional.of(mapear(resultado));
