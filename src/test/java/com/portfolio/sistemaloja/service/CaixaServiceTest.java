@@ -281,4 +281,48 @@ class CaixaServiceTest {
         assertEquals(0, new BigDecimal("4.00").compareTo(resumo.porForma().get(FormaPagamento.PIX)));
         assertEquals(0, new BigDecimal("106.00").compareTo(resumo.saldoEsperado()));
     }
+
+    @Test
+    void conciliarCartoesRegistraAuditoriaSemAlterarCaixa() {
+        Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+
+        app.getCaixa().conciliarCartoes(caixa, operador);
+
+        List<EventoAuditoria> eventos = app.getAuditoria().listar(LocalDate.now(), LocalDate.now());
+        assertTrue(eventos.stream().anyMatch(e -> "CAIXA_CONCILIACAO_TEF".equals(e.acao())
+                        && "CAIXA".equals(e.entidade()) && caixa.getId().equals(e.entidadeId())),
+                "conciliacao sem evento de auditoria nao e conciliacao");
+        assertEquals(StatusCaixa.ABERTO, app.getCaixa().caixaAberto().orElseThrow().getStatus(),
+                "caracterizacao: conciliar hoje so audita, nao muda estado nem consulta operadora");
+    }
+
+    @Test
+    void conciliarCartoesRecusaCaixaSemIdOuOperadorNulo() {
+        Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+
+        assertThrows(ValidacaoException.class, () -> app.getCaixa().conciliarCartoes(null, operador));
+        Caixa semId = new Caixa();
+        assertThrows(ValidacaoException.class, () -> app.getCaixa().conciliarCartoes(semId, operador));
+        ValidacaoException erro = assertThrows(ValidacaoException.class,
+                () -> app.getCaixa().conciliarCartoes(caixa, null));
+        assertTrue(erro.getMessage().contains("Operador"), erro.getMessage());
+
+        List<EventoAuditoria> eventos = app.getAuditoria().listar(LocalDate.now(), LocalDate.now());
+        assertTrue(eventos.stream().noneMatch(e -> "CAIXA_CONCILIACAO_TEF".equals(e.acao())),
+                "falha de validacao nao pode gerar evento de conciliacao");
+    }
+
+    @Test
+    void conciliarTambemAceitaCaixaJaFechadoCaracterizacaoAtual() {
+        Caixa caixa = app.getCaixa().abrir(new BigDecimal("100.00"), operador);
+        app.getCaixa().fechar(new BigDecimal("100.00"), "fim", operador);
+        assertTrue(app.getCaixa().caixaAberto().isEmpty(), "pre-condicao: nao ha mais caixa aberto");
+
+        app.getCaixa().conciliarCartoes(caixa, operador);
+
+        List<EventoAuditoria> eventos = app.getAuditoria().listar(LocalDate.now(), LocalDate.now());
+        assertTrue(eventos.stream().anyMatch(e -> "CAIXA_CONCILIACAO_TEF".equals(e.acao())
+                        && caixa.getId().equals(e.entidadeId())),
+                "nao ha checagem de status hoje; se um fix a adicionar, este teste deve ser reescrito");
+    }
 }
