@@ -192,8 +192,8 @@ public class FiadoService {
         return atualizado;
     }
 
-    public List<Fiado> listarAbertos() {
-        return fiados.listarAbertos();
+    public List<Fiado> listarPendentes() {
+        return fiados.listarPendentes();
     }
 
     public List<Fiado> listarVencidos(LocalDate dataReferencia) {

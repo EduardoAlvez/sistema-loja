@@ -283,6 +283,22 @@ class FiadoServiceTest {
     }
 
     @Test
+    void listarPendentesVemPorVencimentoEExcluiQuitado() {
+        app.getFiados().definirLimiteCredito(cliente.getId(), new BigDecimal("500.00"), admin.getId());
+        long vendaId = registrarVendaPix();
+        Fiado longoPrazo = app.getFiados().gerarFiado(cliente.getId(), vendaId, new BigDecimal("100.00"),
+                LocalDate.now().plusDays(30), null, null);
+        app.getFiados().gerarFiado(cliente.getId(), vendaId, new BigDecimal("50.00"),
+                LocalDate.now().plusDays(5), null, null);
+        app.getFiados().receber(longoPrazo.id(), new BigDecimal("100.00"), "PIX", admin.getId(), null);
+
+        List<Fiado> pendentes = app.getFiados().listarPendentes();
+
+        assertEquals(1, pendentes.size(), "QUITADO nao pode voltar a fila");
+        assertEquals(0, new BigDecimal("50.00").compareTo(pendentes.get(0).valorTotal()));
+    }
+
+    @Test
     void configDeFiadoExigeAdmin() {
         app.getAuth().autenticar("operador", "caixa123");
         ValidacaoException erro = assertThrows(ValidacaoException.class,

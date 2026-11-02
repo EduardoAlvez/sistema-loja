@@ -22,10 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Lista de recebiveis do painel de fiado. O status exibido e derivado na UI:
- * "INADIMPLENTE" nunca e persistido (so ABERTO/PARCIAL/QUITADO existem no banco),
- * e a listagem usa listarAbertos() -- PARCIAL fica fora do painel ate que o backlog
- * das issues da fase de acerto seja tratado. Estes testes travam o comportamento real.
+ * Lista de recebiveis do painel de fiado. O painel lista PENDENTES (ABERTO/PARCIAL/
+ * INADIMPLENTE, issue #44): um fiado com recebimento parcial nao pode desaparecer da
+ * fila de cobranca. O status exibido ainda e derivado na UI (INADIMPLENTE so passa a
+ * existir no banco com a issue #43).
  */
 class PainelFiadoTest {
 
@@ -82,15 +82,18 @@ class PainelFiadoTest {
     }
 
     @Test
-    void parcialNaoApareceNaListaDeAbertos() {
+    void parcialApareceNaListaESegueRecebivel() {
         Fiado fiado = gerarFiado(LocalDate.now().plusDays(10));
         app.getFiados().receber(fiado.id(), new BigDecimal("20.00"), "PIX", admin.getId(), null);
 
         PainelFiado painel = new PainelFiado(app);
+        assertEquals(1, tabela(painel).getRowCount(), "PARCIAL nao pode sumir da fila");
+        assertEquals("PARCIAL", tabela(painel).getValueAt(0, 7));
 
-        assertEquals(0, tabela(painel).getRowCount(),
-                "listarAbertos so traz status=ABERTO: PARCIAL fica invisivel (gap rastreado na issue)");
-        assertEquals("PARCIAL", app.getFiados().listarPorCliente(cliente.getId()).get(0).status());
+        app.getFiados().receber(fiado.id(), new BigDecimal("80.00"), "PIX", admin.getId(), "resto");
+        painel = new PainelFiado(app);
+        assertEquals(0, tabela(painel).getRowCount(), "QUITADO sai da fila de pendentes");
+        assertEquals("QUITADO", app.getFiados().listarPorCliente(cliente.getId()).get(0).status());
     }
 
     private Fiado gerarFiado(LocalDate vencimento) {

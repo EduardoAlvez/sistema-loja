@@ -118,12 +118,17 @@ public class FiadoRepository {
         return Optional.empty();
     }
 
-    public List<Fiado> listarAbertos() {
-        return consultar(SELECT_BASE + " WHERE f.status = 'ABERTO' ORDER BY f.data_vencimento");
+    /**
+     * Fila de cobranca: tudo que ainda e devedor (issue #44). QUITADO fica fora;
+     * INADIMPLENTE so passa a existir no banco com a marcação da issue #43.
+     */
+    public List<Fiado> listarPendentes() {
+        return consultar(SELECT_BASE + " WHERE f.status IN ('ABERTO', 'PARCIAL', 'INADIMPLENTE') "
+                + "ORDER BY f.data_vencimento");
     }
 
     public List<Fiado> listarVencidos(LocalDate dataReferencia) {
-        String sql = SELECT_BASE + " WHERE f.status IN ('ABERTO', 'PARCIAL') AND f.data_vencimento < ? "
+        String sql = SELECT_BASE + " WHERE f.status IN ('ABERTO', 'PARCIAL', 'INADIMPLENTE') AND f.data_vencimento < ? "
                 + "ORDER BY f.data_vencimento";
         try (Connection conexao = fonte.getConnection();
              PreparedStatement preparada = conexao.prepareStatement(sql)) {

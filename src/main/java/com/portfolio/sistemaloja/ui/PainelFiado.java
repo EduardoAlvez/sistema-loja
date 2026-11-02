@@ -99,7 +99,7 @@ public class PainelFiado extends JPanel {
 
     private void carregar() {
         modelo.setRowCount(0);
-        List<Fiado> fiadosLista = fiados.listarAbertos();
+        List<Fiado> fiadosLista = fiados.listarPendentes();
         for (Fiado f : fiadosLista) {
             boolean atrasado = f.dataVencimento().isBefore(LocalDate.now()) && !f.isQuitado();
             String statusExibicao = atrasado ? "INADIMPLENTE" : f.status();
