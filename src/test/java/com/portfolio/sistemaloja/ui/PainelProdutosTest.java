@@ -102,5 +102,9 @@ class PainelProdutosTest {
         assertTrue(painel.textoAlerta().isEmpty(), painel.textoAlerta());
         assertFalse(app.getProdutos().listarComEstoqueBaixo().stream()
                 .anyMatch(produto -> produto.getNome().equals("Sabonete Glicerinado")));
+
+        painel.somenteEstoqueBaixo(true);
+        assertEquals(0, painel.totalLinhas(),
+                "o filtro da grade usa a mesma regra do alerta: inativo nao aparece");
     }
 }

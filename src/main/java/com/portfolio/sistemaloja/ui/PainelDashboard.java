@@ -91,7 +91,7 @@ public class PainelDashboard extends JPanel {
 
     private JPanel montarCentro() {
         JPanel esquerda = painelTabela("Mais vendidos (hoje)", new JScrollPane(tabelaTop));
-        JPanel direita = painelTabela("Estoque baixo (≤ 5 un.)", new JScrollPane(tabelaEstoque));
+        JPanel direita = painelTabela("Estoque baixo (≤ estoque mínimo)", new JScrollPane(tabelaEstoque));
         JSplitPane divisao = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, esquerda, direita);
         divisao.setResizeWeight(0.5);
         divisao.setDividerSize(8);

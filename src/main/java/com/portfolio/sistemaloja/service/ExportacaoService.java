@@ -232,7 +232,8 @@ public class ExportacaoService {
                 + "   |   Faturamento: " + moeda(resumo.faturamento())
                 + "   |   Ticket médio: " + moeda(resumo.ticketMedio())
                 + "   |   Clientes: " + resumo.clientes()
-                + "   |   Produtos: " + resumo.produtos();
+                + "   |   Produtos: " + resumo.produtos()
+                + "   |   Itens c/ estoque baixo: " + resumo.itensEstoqueBaixo();
     }
 
     private String moeda(BigDecimal valor) {

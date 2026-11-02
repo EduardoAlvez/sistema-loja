@@ -195,7 +195,7 @@ public class PainelProdutos extends JPanel {
     public final void atualizar() {
         linhas = aplicacao.getProdutos().listar(busca.getText(), categoriaSelecionada());
         if (apenasEstoqueBaixo.isSelected()) {
-            linhas = linhas.stream().filter(Produto::estoqueBaixo).toList();
+            linhas = linhas.stream().filter(p -> p.isAtivo() && p.estoqueBaixo()).toList();
         }
         modelo.setRowCount(0);
         for (Produto produto : linhas) {
