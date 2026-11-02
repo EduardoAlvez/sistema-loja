@@ -45,4 +45,45 @@ class PainelConfiguracoesTest {
         assertFalse(painel.valorPorPontoEditavel());
         assertTrue(painel.pontosPorRealEditavel());
     }
+
+    @Test
+    void desabilitaEdicaoParaNaoAdmin() {
+        Aplicacao app = BancoTeste.criar("cfgpainelnaoadmin" + System.nanoTime());
+        app.getAuth().autenticar("operador", "caixa123");
+
+        PainelConfiguracoes painel = new PainelConfiguracoes(app);
+
+        assertFalse(painel.pontosPorRealEditavel());
+        assertFalse(painel.valorPorPontoEditavel());
+        assertFalse(painel.salvarHabilitado());
+        assertTrue(painel.textoAviso().contains("administradores"), painel.textoAviso());
+    }
+
+    @Test
+    void gerenteNaoEditaPoisSoAdminAlteraConfiguracoes() {
+        Aplicacao app = BancoTeste.criar("cfgpainelgerente" + System.nanoTime());
+        app.getUsuarios().criar("Gerente Painel", "gerentepainel", "gerente123",
+                com.portfolio.sistemaloja.model.PerfilUsuario.GERENTE);
+        app.getAuth().autenticar("gerentepainel", "gerente123");
+
+        PainelConfiguracoes painel = new PainelConfiguracoes(app);
+
+        assertFalse(painel.salvarHabilitado(),
+                "o servico e exigirAdmin (isAdmin estrito); a UI nao pode insinuar que gerente edita");
+        assertFalse(painel.pontosPorRealEditavel());
+    }
+
+    @Test
+    void abaConfiguracoesEhSoAdmin() {
+        Aplicacao app = BancoTeste.criar("cfgvisibilidade" + System.nanoTime());
+        com.portfolio.sistemaloja.model.Usuario admin = app.getAuth().autenticar("admin", "admin123");
+        com.portfolio.sistemaloja.model.Usuario gerente = app.getUsuarios().criar("Gerente Aba",
+                "gerenteaba", "gerente123", com.portfolio.sistemaloja.model.PerfilUsuario.GERENTE);
+        com.portfolio.sistemaloja.model.Usuario operador = app.getAuth().autenticar("operador", "caixa123");
+
+        assertTrue(TelaPrincipal.deveMostrarConfiguracoes(admin));
+        assertFalse(TelaPrincipal.deveMostrarConfiguracoes(gerente));
+        assertFalse(TelaPrincipal.deveMostrarConfiguracoes(operador));
+        assertFalse(TelaPrincipal.deveMostrarConfiguracoes(null));
+    }
 }

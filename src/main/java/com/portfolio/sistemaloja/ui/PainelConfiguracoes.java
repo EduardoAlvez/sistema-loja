@@ -32,6 +32,7 @@ public class PainelConfiguracoes extends JPanel {
     private final JLabel aviso = new JLabel(" ");
     private final JCheckBox fiadoHabilitado = new JCheckBox("Habilitar fiado/crediário");
     private final JTextField taxaJurosFiado = new JTextField(10);
+    private final JButton salvar = new JButton("Salvar");
 
     public PainelConfiguracoes(Aplicacao aplicacao) {
         this.aplicacao = aplicacao;
@@ -75,7 +76,6 @@ public class PainelConfiguracoes extends JPanel {
         botoes.setBackground(Ui.COR_FUNDO);
         JButton recarregar = new JButton("Recarregar");
         recarregar.addActionListener(e -> carregar());
-        JButton salvar = new JButton("Salvar");
         salvar.addActionListener(e -> salvar());
         botoes.add(recarregar);
         botoes.add(salvar);
@@ -130,15 +130,25 @@ public class PainelConfiguracoes extends JPanel {
         fiadoHabilitado.setSelected(aplicacao.getConfiguracoes().fiadoHabilitado());
         taxaJurosFiado.setText(legivel(aplicacao.getConfiguracoes().taxaJurosFiado()));
 
+        boolean admin = aplicacao.getUsuarioAtual() != null
+                && aplicacao.getUsuarioAtual().isAdmin();
+
         Set<String> sobrescritas = aplicacao.getConfiguracoes().chavesSobrescritasPorAmbiente();
-        pontosPorReal.setEditable(!sobrescritas.contains("pontosPorReal"));
-        valorPorPonto.setEditable(!sobrescritas.contains("valorPorPonto"));
-        pixChave.setEditable(!sobrescritas.contains("pixChave"));
-        pixNome.setEditable(!sobrescritas.contains("pixNome"));
-        pixCidade.setEditable(!sobrescritas.contains("pixCidade"));
-        aviso.setText(sobrescritas.isEmpty()
-                ? " "
-                : "Campos desabilitados vêm de propriedade/variável de ambiente e têm prioridade sobre o banco.");
+        pontosPorReal.setEditable(admin && !sobrescritas.contains("pontosPorReal"));
+        valorPorPonto.setEditable(admin && !sobrescritas.contains("valorPorPonto"));
+        pixChave.setEditable(admin && !sobrescritas.contains("pixChave"));
+        pixNome.setEditable(admin && !sobrescritas.contains("pixNome"));
+        pixCidade.setEditable(admin && !sobrescritas.contains("pixCidade"));
+        fiadoHabilitado.setEnabled(admin);
+        taxaJurosFiado.setEditable(admin);
+        salvar.setEnabled(admin);
+        if (!admin) {
+            aviso.setText("Somente administradores podem alterar as configurações.");
+        } else {
+            aviso.setText(sobrescritas.isEmpty()
+                    ? " "
+                    : "Campos desabilitados vêm de propriedade/variável de ambiente e têm prioridade sobre o banco.");
+        }
     }
 
     final void salvar() {
@@ -187,5 +197,13 @@ public class PainelConfiguracoes extends JPanel {
 
     boolean valorPorPontoEditavel() {
         return valorPorPonto.isEditable();
+    }
+
+    boolean salvarHabilitado() {
+        return salvar.isEnabled();
+    }
+
+    String textoAviso() {
+        return aviso.getText();
     }
 }
