@@ -275,6 +275,59 @@ class InventarioContagemTest {
     }
 
     @Test
+    void naoPermiteInformarItemEmContagemCancelada() {
+        autenticarGerente();
+        long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId()));
+        app.getInventario().cancelarContagem(contagemId, "Erro na contagem");
+
+        ValidacaoException erro = assertThrows(ValidacaoException.class,
+                () -> app.getInventario().informarContagem(contagemId, refrigerante.getId(), 10));
+        assertTrue(erro.getMessage().toLowerCase().contains("cancelada"), erro.getMessage());
+    }
+
+    @Test
+    void naoPermiteFecharContagemCancelada() {
+        autenticarGerente();
+        long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId()));
+        app.getInventario().informarContagem(contagemId, refrigerante.getId(), 10);
+        app.getInventario().cancelarContagem(contagemId, "Desistir");
+
+        ValidacaoException erro = assertThrows(ValidacaoException.class,
+                () -> app.getInventario().fecharContagem(contagemId, null));
+        assertTrue(erro.getMessage().toLowerCase().contains("cancelada"), erro.getMessage());
+    }
+
+    @Test
+    void cancelarExigeMotivo() {
+        autenticarGerente();
+        long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId()));
+
+        assertThrows(ValidacaoException.class, () -> app.getInventario().cancelarContagem(contagemId, null));
+        assertThrows(ValidacaoException.class, () -> app.getInventario().cancelarContagem(contagemId, "   "));
+    }
+
+    @Test
+    void cancelarNaoAlteraEstoque() {
+        autenticarGerente();
+        int estoqueInicial = refrigerante.getEstoque();
+        long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId()));
+        app.getInventario().informarContagem(contagemId, refrigerante.getId(), 0);
+        app.getInventario().cancelarContagem(contagemId, "Contagem errada");
+
+        refrigerante = app.getProdutos().buscarPorCodigoBarras("7891000100103");
+        assertEquals(estoqueInicial, refrigerante.getEstoque());
+        ContagemInventario cancelada = null;
+        for (ContagemInventario c : app.getInventario().listarContagens()) {
+            if (c.getId() == contagemId) {
+                cancelada = c;
+                break;
+            }
+        }
+        assertNotNull(cancelada);
+        assertEquals(StatusContagem.CANCELADA, cancelada.getStatus());
+    }
+
+    @Test
     void contagemFechadaSaiDaBuscaDeContagensAbertas() {
         autenticarGerente();
         long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId()));
