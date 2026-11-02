@@ -352,6 +352,46 @@ class InventarioContagemTest {
     }
 
     @Test
+    void fechamentoComFalhaNoSegundoAjusteFazRollbackDeTudo() {
+        autenticarGerente();
+        java.util.concurrent.atomic.AtomicInteger ajustes = new java.util.concurrent.atomic.AtomicInteger();
+        app.getContagemInventarioRepository().falharEmAjusteParaTeste(conexao -> {
+            if (ajustes.incrementAndGet() == 2) {
+                throw new ValidacaoException("falha simulada no segundo ajuste");
+            }
+        });
+
+        long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId(), agua.getId()));
+        int estoqueRefrigerante = app.getProdutos().buscarPorCodigoBarras("7891000100103").getEstoque();
+        int estoqueAgua = app.getProdutos().buscarPorCodigoBarras("7891000100104").getEstoque();
+        app.getInventario().informarContagem(contagemId, refrigerante.getId(), estoqueRefrigerante + 5);
+        app.getInventario().informarContagem(contagemId, agua.getId(), estoqueAgua - 3);
+
+        assertThrows(ValidacaoException.class, () -> app.getInventario().fecharContagem(contagemId, null));
+
+        assertEquals(estoqueRefrigerante,
+                app.getProdutos().buscarPorCodigoBarras("7891000100103").getEstoque(),
+                "o primeiro ajuste ja aplicado deve ser desfeito pelo rollback");
+        assertEquals(estoqueAgua,
+                app.getProdutos().buscarPorCodigoBarras("7891000100104").getEstoque());
+        assertTrue(app.getInventario().buscarContagemAberta().estaAberta(),
+                "a contagem deve permanecer ABERTA");
+        for (ContagemItem item : app.getInventario().listarItens(contagemId)) {
+            assertNull(item.getDeltaAplicado(), "delta_aplicado deve seguir NULL");
+            assertFalse(item.isAjustado());
+        }
+
+        List<String> acoes = app.getAuditoria().listar(LocalDate.now().minusDays(1),
+                LocalDate.now().plusDays(1)).stream()
+                .map(evento -> evento.acao())
+                .toList();
+        assertFalse(acoes.contains("AJUSTAR_ESTOQUE_CONTAGEM"),
+                "nenhum evento de ajuste pode sobreviver ao rollback");
+        assertFalse(acoes.contains("FECHAR_CONTAGEM_INVENTARIO"),
+                "nenhum evento de fechamento pode sobreviver ao rollback");
+    }
+
+    @Test
     void registraAuditoriaDaAberturaDaContagemEAjusteEFechamento() {
         autenticarGerente();
         long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId()));
