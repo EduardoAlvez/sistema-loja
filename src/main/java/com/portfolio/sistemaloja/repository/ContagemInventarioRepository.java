@@ -13,6 +13,7 @@ import java.sql.Timestamp;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Persistência das contagens de inventário.
@@ -29,9 +30,27 @@ public class ContagemInventarioRepository {
               JOIN usuarios u ON u.id = c.usuario_id""";
 
     private final ConexaoFonte fonte;
+    private Consumer<Connection> aposTravaAbertura = conexao -> {
+    };
+    private Consumer<Connection> aposTravaCabecalho = conexao -> {
+    };
+    private Consumer<Connection> falharEmAjuste = conexao -> {
+    };
 
     public ContagemInventarioRepository(ConexaoFonte fonte) {
         this.fonte = fonte;
+    }
+
+    public void aposTravaAberturaParaTeste(Consumer<Connection> hook) {
+        this.aposTravaAbertura = hook;
+    }
+
+    public void aposTravaCabecalhoParaTeste(Consumer<Connection> hook) {
+        this.aposTravaCabecalho = hook;
+    }
+
+    public void falharEmAjusteParaTeste(Consumer<Connection> hook) {
+        this.falharEmAjuste = hook;
     }
 
     public long inserirCabecalho(long usuarioId, Connection conexao) throws SQLException {
@@ -77,20 +96,24 @@ public class ContagemInventarioRepository {
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
             try (ResultSet resultado = ps.executeQuery()) {
                 if (!resultado.next()) {
-                    throw new SQLException("Linha sentinela de contagem não encontrada.");
+                    throw new SQLException("Linha sentinela de contagem ausente (seed da V25).");
                 }
             }
         }
+        aposTravaAbertura.accept(conexao);
     }
 
-    public void travarCabecalho(long contagemId, Connection conexao) throws SQLException {
-        String sql = "SELECT id FROM contagem_inventario WHERE id = ? FOR UPDATE";
+    public StatusContagem travarCabecalho(long contagemId, Connection conexao) throws SQLException {
+        String sql = "SELECT status FROM contagem_inventario WHERE id = ? FOR UPDATE";
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
             ps.setLong(1, contagemId);
             try (ResultSet resultado = ps.executeQuery()) {
                 if (!resultado.next()) {
-                    throw new SQLException("Contagem não encontrada.");
+                    return null;
                 }
+                StatusContagem status = mapearStatus(resultado.getString("status"));
+                aposTravaCabecalho.accept(conexao);
+                return status;
             }
         }
     }
@@ -116,6 +139,20 @@ public class ContagemInventarioRepository {
     }
 
     public List<ContagemItem> listarItens(long contagemId, Connection conexao) throws SQLException {
+        return listarItens(contagemId, conexao, "ORDER BY p.nome, p.id");
+    }
+
+    /**
+     * Itens para o fechamento, sempre na ordem de {@code produto_id}: é a ordem em que as
+     * travas dos produtos serão adquiridas, e fixá-la reduz o risco de deadlock com vendas
+     * concorrentes.
+     */
+    public List<ContagemItem> listarItensParaAjuste(long contagemId, Connection conexao) throws SQLException {
+        return listarItens(contagemId, conexao, "ORDER BY ci.produto_id");
+    }
+
+    private List<ContagemItem> listarItens(long contagemId, Connection conexao, String ordenacao)
+            throws SQLException {
         String sql = """
                 SELECT ci.id, ci.contagem_id, ci.produto_id, ci.estoque_sistema, ci.quantidade_contada,
                        ci.delta_aplicado, ci.ajustado,
@@ -124,7 +161,7 @@ public class ContagemInventarioRepository {
                   FROM contagem_item ci
                   JOIN produtos p ON p.id = ci.produto_id
                  WHERE ci.contagem_id = ?
-                 ORDER BY p.nome, p.id""";
+                """ + ordenacao;
         List<ContagemItem> itens = new ArrayList<>();
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
             ps.setLong(1, contagemId);
@@ -138,15 +175,34 @@ public class ContagemInventarioRepository {
     }
 
     public void registrarQuantidadeContada(long itemId, int quantidade, Connection conexao) throws SQLException {
-        String sql = "UPDATE contagem_item SET quantidade_contada = ? WHERE id = ?";
+        String sql = """
+                UPDATE contagem_item ci
+                   SET quantidade_contada = ?
+                 WHERE ci.id = ?
+                   AND EXISTS (SELECT 1 FROM contagem_inventario c
+                                WHERE c.id = ci.contagem_id AND c.status = 'ABERTA')""";
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
             ps.setInt(1, quantidade);
             ps.setLong(2, itemId);
-            ps.executeUpdate();
+            if (ps.executeUpdate() == 0) {
+                throw new SQLException("O item informado não pertence a uma contagem aberta.");
+            }
+        }
+    }
+
+    public Long buscarItemId(long contagemId, long produtoId, Connection conexao) throws SQLException {
+        String sql = "SELECT id FROM contagem_item WHERE contagem_id = ? AND produto_id = ?";
+        try (PreparedStatement ps = conexao.prepareStatement(sql)) {
+            ps.setLong(1, contagemId);
+            ps.setLong(2, produtoId);
+            try (ResultSet resultado = ps.executeQuery()) {
+                return resultado.next() ? resultado.getLong("id") : null;
+            }
         }
     }
 
     public void registrarAjuste(long itemId, int deltaAplicado, Connection conexao) throws SQLException {
+        falharEmAjuste.accept(conexao);
         String sql = "UPDATE contagem_item SET delta_aplicado = ?, ajustado = TRUE WHERE id = ?";
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
             ps.setInt(1, deltaAplicado);
@@ -197,11 +253,19 @@ public class ContagemInventarioRepository {
         return contagens;
     }
 
+    private static StatusContagem mapearStatus(String nome) {
+        StatusContagem status = StatusContagem.porNome(nome);
+        if (status == null) {
+            throw new RepositorioException("Status de contagem desconhecido: '" + nome + "'.");
+        }
+        return status;
+    }
+
     private ContagemInventario mapearCabecalho(ResultSet resultado) throws SQLException {
         ContagemInventario contagem = new ContagemInventario();
         contagem.setId(resultado.getLong("id"));
         contagem.setNumero(resultado.getString("numero"));
-        contagem.setStatus(StatusContagem.porNome(resultado.getString("status")));
+        contagem.setStatus(mapearStatus(resultado.getString("status")));
         contagem.setUsuarioNome(resultado.getString("usuario_nome"));
         long usuarioId = resultado.getLong("usuario_id");
         contagem.setUsuarioId(resultado.wasNull() ? null : usuarioId);

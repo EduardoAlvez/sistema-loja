@@ -24,7 +24,7 @@ public final class BancoTeste {
 
     public static Aplicacao criar(String nomeBanco, Clock relogio) {
         String url = "jdbc:h2:mem:" + nomeBanco
-                + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
+                + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000";
         Banco banco = new Banco(url, null, null);
         try {
             Migrador.executar(banco);

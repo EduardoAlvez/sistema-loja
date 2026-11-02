@@ -71,6 +71,7 @@ public class Aplicacao {
     private final FidelidadeService fidelidade;
     private final FidelidadeRepository fidelidadeRepository;
     private final DevolucaoRepository devolucaoRepository;
+    private final ContagemInventarioRepository contagemInventarioRepository;
     private final ConfiguracaoService configuracoes;
     private final AutorizacaoService autorizacoes;
     private final FiadoService fiados;
@@ -111,8 +112,9 @@ public class Aplicacao {
         this.fornecedores = new FornecedorService(new FornecedorRepository(fonte), auditoria);
         this.compras = new CompraService(new EntradaMercadoriaRepository(fonte, produtoRepository), auditoria);
         this.taxasCartao = new TaxaCartaoService(new TaxaCartaoRepository(fonte));
+        this.contagemInventarioRepository = new ContagemInventarioRepository(fonte);
         this.inventario = new InventarioService(new PerdaEstoqueRepository(fonte),
-                new ContagemInventarioRepository(fonte), produtoRepository, auditoria, sessao, fonte);
+                contagemInventarioRepository, produtoRepository, auditoria, sessao, fonte);
         this.devolucaoRepository = new DevolucaoRepository(fonte, fidelidade);
         this.caixa = new CaixaService(caixaRepository, vendaRepository, auditoria, autorizacoes);
         this.vendas = new VendaService(vendaRepository, produtoRepository, usuarioRepository,
@@ -208,6 +210,10 @@ public class Aplicacao {
 
     public DevolucaoRepository getDevolucaoRepository() {
         return devolucaoRepository;
+    }
+
+    public ContagemInventarioRepository getContagemInventarioRepository() {
+        return contagemInventarioRepository;
     }
 
     public ConfiguracaoService getConfiguracoes() {

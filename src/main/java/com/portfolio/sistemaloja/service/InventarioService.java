@@ -7,6 +7,7 @@ import com.portfolio.sistemaloja.model.ContagemItem;
 import com.portfolio.sistemaloja.model.MotivoPerda;
 import com.portfolio.sistemaloja.model.PerdaEstoque;
 import com.portfolio.sistemaloja.model.Produto;
+import com.portfolio.sistemaloja.model.StatusContagem;
 import com.portfolio.sistemaloja.model.Usuario;
 import com.portfolio.sistemaloja.repository.ContagemInventarioRepository;
 import com.portfolio.sistemaloja.repository.PerdaEstoqueRepository;
@@ -114,6 +115,7 @@ public class InventarioService {
      * Abre uma contagem sobre todos os produtos ativos.
      */
     public long abrirContagem() {
+        exigirGerenteOuAdmin();
         List<Long> ids = new ArrayList<>();
         for (Produto produto : produtoRepo.listarAtivos()) {
             ids.add(produto.getId());
@@ -146,6 +148,10 @@ public class InventarioService {
                     Produto produto = produtoRepo.buscarPorId(produtoId, conexao);
                     if (produto == null) {
                         throw new ValidacaoException("Produto não encontrado.");
+                    }
+                    if (!produto.isAtivo()) {
+                        throw new ValidacaoException("Produto inativo não pode ser contado: "
+                                + produto.getNome() + ".");
                     }
                     contagemRepo.inserirItem(contagemId, produto.getId(), produto.getEstoque(), conexao);
                 }
@@ -200,12 +206,16 @@ public class InventarioService {
         try (Connection conexao = fonteConexao.getConnection()) {
             conexao.setAutoCommit(false);
             try {
+                StatusContagem status = contagemRepo.travarCabecalho(contagemId, conexao);
+                exigirAberta(status, contagemId);
                 ContagemInventario contagem = contagemRepo.buscarPorId(contagemId, conexao);
-                exigirAberta(contagem);
-                ContagemItem item = itemDaContagem(contagemId, produtoId, conexao);
-                contagemRepo.registrarQuantidadeContada(item.getId(), quantidade, conexao);
+                Long itemId = contagemRepo.buscarItemId(contagemId, produtoId, conexao);
+                if (itemId == null) {
+                    throw new ValidacaoException("O produto informado não faz parte desta contagem.");
+                }
+                contagemRepo.registrarQuantidadeContada(itemId, quantidade, conexao);
                 auditoria.registrarComo(usuario.getLogin(), "INFORMAR_CONTAGEM_INVENTARIO", "CONTAGEM_ITEM",
-                        item.getId(), "contagem=" + contagem.getNumero() + ";produto=" + produtoId
+                        itemId, "contagem=" + contagem.getNumero() + ";produto=" + produtoId
                                 + ";contada=" + quantidade, conexao);
                 conexao.commit();
             } catch (RuntimeException e) {
@@ -233,13 +243,15 @@ public class InventarioService {
         if (observacaoNormalizada != null && observacaoNormalizada.length() > OBSERVACAO_MAX) {
             throw new ValidacaoException("Observação deve ter no máximo " + OBSERVACAO_MAX + " caracteres.");
         }
+        ContagemInventario base = null;
         try (Connection conexao = fonteConexao.getConnection()) {
             conexao.setAutoCommit(false);
             try {
+                StatusContagem status = contagemRepo.travarCabecalho(contagemId, conexao);
+                exigirAberta(status, contagemId);
                 ContagemInventario contagem = contagemRepo.buscarPorId(contagemId, conexao);
-                exigirAberta(contagem);
-                contagemRepo.travarCabecalho(contagemId, conexao);
-                List<ContagemItem> itens = contagemRepo.listarItens(contagemId, conexao);
+                base = contagem;
+                List<ContagemItem> itens = contagemRepo.listarItensParaAjuste(contagemId, conexao);
 
                 int contados = 0;
                 for (ContagemItem item : itens) {
@@ -282,9 +294,6 @@ public class InventarioService {
                         contagemId, "numero=" + contagem.getNumero() + ";itens=" + contados
                                 + ";ajustes=" + ajustes, conexao);
                 conexao.commit();
-
-                ContagemInventario fechada = contagemRepo.buscarPorId(contagemId, conexao);
-                return fechada == null ? contagem : fechada;
             } catch (RuntimeException e) {
                 rollbackSilencioso(conexao, e);
                 throw e;
@@ -295,6 +304,25 @@ public class InventarioService {
         } catch (SQLException e) {
             throw new ValidacaoException("Erro ao fechar a contagem de inventário.", e);
         }
+        return lerCabecalhoAposFechamento(base);
+    }
+
+    /**
+     * Le o cabecalho ja fechado fora da transacao: se essa leitura final falhar, o
+     * fechamento (que ja comitou) nao pode ser reportado como erro — devolve o estado
+     * conhecido em memoria.
+     */
+    private ContagemInventario lerCabecalhoAposFechamento(ContagemInventario base) {
+        try (Connection conexao = fonteConexao.getConnection()) {
+            ContagemInventario fechada = contagemRepo.buscarPorId(base.getId(), conexao);
+            if (fechada != null) {
+                return fechada;
+            }
+        } catch (SQLException | RuntimeException e) {
+            // o fechamento ja comitou; a falha aqui e apenas de leitura
+        }
+        base.setStatus(StatusContagem.FECHADA);
+        return base;
     }
 
     /**
@@ -312,12 +340,14 @@ public class InventarioService {
         if (motivoNormalizado.length() > OBSERVACAO_MAX) {
             throw new ValidacaoException("Motivo do cancelamento deve ter no máximo " + OBSERVACAO_MAX + " caracteres.");
         }
+        ContagemInventario base = null;
         try (Connection conexao = fonteConexao.getConnection()) {
             conexao.setAutoCommit(false);
             try {
+                StatusContagem status = contagemRepo.travarCabecalho(contagemId, conexao);
+                exigirAberta(status, contagemId);
                 ContagemInventario contagem = contagemRepo.buscarPorId(contagemId, conexao);
-                exigirAberta(contagem);
-                contagemRepo.travarCabecalho(contagemId, conexao);
+                base = contagem;
 
                 if (!contagemRepo.cancelarSeAberta(contagemId, motivoNormalizado, conexao)) {
                     throw new ValidacaoException("A contagem " + contagem.getNumero() + " já foi fechada ou cancelada.");
@@ -325,9 +355,6 @@ public class InventarioService {
                 auditoria.registrarComo(usuario.getLogin(), "CANCELAR_CONTAGEM_INVENTARIO", "CONTAGEM_INVENTARIO",
                         contagemId, "numero=" + contagem.getNumero() + ";motivo=" + motivoNormalizado, conexao);
                 conexao.commit();
-
-                ContagemInventario cancelada = contagemRepo.buscarPorId(contagemId, conexao);
-                return cancelada == null ? contagem : cancelada;
             } catch (RuntimeException e) {
                 rollbackSilencioso(conexao, e);
                 throw e;
@@ -338,25 +365,31 @@ public class InventarioService {
         } catch (SQLException e) {
             throw new ValidacaoException("Erro ao cancelar a contagem de inventário.", e);
         }
+        try (Connection leitura = fonteConexao.getConnection()) {
+            ContagemInventario cancelada = contagemRepo.buscarPorId(base.getId(), leitura);
+            if (cancelada != null) {
+                return cancelada;
+            }
+        } catch (SQLException | RuntimeException e) {
+            // o cancelamento ja comitou; a falha aqui e apenas de leitura
+        }
+        base.setStatus(StatusContagem.CANCELADA);
+        base.setMotivoCancelamento(motivoNormalizado);
+        return base;
     }
 
-    private void exigirAberta(ContagemInventario contagem) {
-        if (contagem == null) {
+    /**
+     * Guarda do status lido **sob a trava de linha**: recusa qualquer coisa que não seja
+     * ABERTA sem depender de leitura anterior à trava.
+     */
+    private void exigirAberta(StatusContagem status, long contagemId) {
+        if (status == null) {
             throw new ValidacaoException("Contagem de inventário não encontrada.");
         }
-        if (!contagem.estaAberta()) {
-            throw new ValidacaoException("A contagem " + contagem.getNumero() + " já está "
-                    + contagem.getStatus().getDescricao().toLowerCase() + ".");
+        if (status != StatusContagem.ABERTA) {
+            throw new ValidacaoException("A contagem informada já está "
+                    + status.getDescricao().toLowerCase(java.util.Locale.ROOT) + ".");
         }
-    }
-
-    private ContagemItem itemDaContagem(long contagemId, long produtoId, Connection conexao) throws SQLException {
-        for (ContagemItem item : contagemRepo.listarItens(contagemId, conexao)) {
-            if (item.getProdutoId() == produtoId) {
-                return item;
-            }
-        }
-        throw new ValidacaoException("O produto informado não faz parte desta contagem.");
     }
 
     private Usuario exigirGerenteOuAdmin() {
