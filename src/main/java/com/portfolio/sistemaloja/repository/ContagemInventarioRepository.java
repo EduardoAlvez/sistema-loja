@@ -23,7 +23,7 @@ import java.util.List;
 public class ContagemInventarioRepository {
 
     private static final String SELECT_CABECALHO = """
-            SELECT c.id, c.numero, c.status, c.usuario_id, c.observacao, c.data_hora, c.data_fechamento,
+            SELECT c.id, c.numero, c.status, c.usuario_id, c.observacao, c.motivo_cancelamento, c.data_hora, c.data_fechamento,
                    u.nome AS usuario_nome
               FROM contagem_inventario c
               JOIN usuarios u ON u.id = c.usuario_id""";
@@ -170,6 +170,18 @@ public class ContagemInventarioRepository {
         }
     }
 
+    public boolean cancelarSeAberta(long contagemId, String motivo, Connection conexao) throws SQLException {
+        String sql = "UPDATE contagem_inventario SET status = ?, motivo_cancelamento = ?, data_fechamento = CURRENT_TIMESTAMP "
+                + "WHERE id = ? AND status = ?";
+        try (PreparedStatement ps = conexao.prepareStatement(sql)) {
+            ps.setString(1, StatusContagem.CANCELADA.name());
+            ps.setString(2, motivo);
+            ps.setLong(3, contagemId);
+            ps.setString(4, StatusContagem.ABERTA.name());
+            return ps.executeUpdate() == 1;
+        }
+    }
+
     public List<ContagemInventario> listarTodas() {
         String sql = SELECT_CABECALHO + " ORDER BY c.data_hora DESC, c.id DESC";
         List<ContagemInventario> contagens = new ArrayList<>();
@@ -194,6 +206,7 @@ public class ContagemInventarioRepository {
         long usuarioId = resultado.getLong("usuario_id");
         contagem.setUsuarioId(resultado.wasNull() ? null : usuarioId);
         contagem.setObservacao(resultado.getString("observacao"));
+        contagem.setMotivoCancelamento(resultado.getString("motivo_cancelamento"));
         Timestamp dataHora = resultado.getTimestamp("data_hora");
         contagem.setDataHora(dataHora == null ? null : dataHora.toLocalDateTime());
         Timestamp dataFechamento = resultado.getTimestamp("data_fechamento");

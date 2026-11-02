@@ -9,6 +9,7 @@ public class ContagemInventario {
     private Long usuarioId;
     private String usuarioNome;
     private String observacao;
+    private String motivoCancelamento;
     private LocalDateTime dataHora;
     private LocalDateTime dataFechamento;
 
@@ -61,6 +62,14 @@ public class ContagemInventario {
 
     public void setObservacao(String observacao) {
         this.observacao = observacao;
+    }
+
+    public String getMotivoCancelamento() {
+        return motivoCancelamento;
+    }
+
+    public void setMotivoCancelamento(String motivoCancelamento) {
+        this.motivoCancelamento = motivoCancelamento;
     }
 
     public LocalDateTime getDataHora() {

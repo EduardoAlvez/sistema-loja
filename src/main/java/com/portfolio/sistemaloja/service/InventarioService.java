@@ -297,13 +297,47 @@ public class InventarioService {
         }
     }
 
-    private ContagemItem itemDaContagem(long contagemId, long produtoId, Connection conexao) throws SQLException {
-        for (ContagemItem item : contagemRepo.listarItens(contagemId, conexao)) {
-            if (item.getProdutoId() == produtoId) {
-                return item;
-            }
+    /**
+     * Cancela a contagem em aberto sem alterar o estoque.
+     *
+     * <p>O cancelamento nunca gera ajustes: os itens contados são simplesmente ignorados
+     * e a contagem fica em estado CANCELADA com motivo registrado.
+     */
+    public ContagemInventario cancelarContagem(long contagemId, String motivo) {
+        Usuario usuario = exigirGerenteOuAdmin();
+        String motivoNormalizado = motivo == null ? null : motivo.trim();
+        if (motivoNormalizado == null || motivoNormalizado.isEmpty()) {
+            throw new ValidacaoException("Informe o motivo do cancelamento.");
         }
-        throw new ValidacaoException("O produto informado não faz parte desta contagem.");
+        if (motivoNormalizado.length() > OBSERVACAO_MAX) {
+            throw new ValidacaoException("Motivo do cancelamento deve ter no máximo " + OBSERVACAO_MAX + " caracteres.");
+        }
+        try (Connection conexao = fonteConexao.getConnection()) {
+            conexao.setAutoCommit(false);
+            try {
+                ContagemInventario contagem = contagemRepo.buscarPorId(contagemId, conexao);
+                exigirAberta(contagem);
+                contagemRepo.travarCabecalho(contagemId, conexao);
+
+                if (!contagemRepo.cancelarSeAberta(contagemId, motivoNormalizado, conexao)) {
+                    throw new ValidacaoException("A contagem " + contagem.getNumero() + " já foi fechada ou cancelada.");
+                }
+                auditoria.registrarComo(usuario.getLogin(), "CANCELAR_CONTAGEM_INVENTARIO", "CONTAGEM_INVENTARIO",
+                        contagemId, "numero=" + contagem.getNumero() + ";motivo=" + motivoNormalizado, conexao);
+                conexao.commit();
+
+                ContagemInventario cancelada = contagemRepo.buscarPorId(contagemId, conexao);
+                return cancelada == null ? contagem : cancelada;
+            } catch (RuntimeException e) {
+                rollbackSilencioso(conexao, e);
+                throw e;
+            } catch (SQLException e) {
+                rollbackSilencioso(conexao, e);
+                throw new ValidacaoException("Erro ao cancelar a contagem de inventário.", e);
+            }
+        } catch (SQLException e) {
+            throw new ValidacaoException("Erro ao cancelar a contagem de inventário.", e);
+        }
     }
 
     private void exigirAberta(ContagemInventario contagem) {
@@ -314,6 +348,15 @@ public class InventarioService {
             throw new ValidacaoException("A contagem " + contagem.getNumero() + " já está "
                     + contagem.getStatus().getDescricao().toLowerCase() + ".");
         }
+    }
+
+    private ContagemItem itemDaContagem(long contagemId, long produtoId, Connection conexao) throws SQLException {
+        for (ContagemItem item : contagemRepo.listarItens(contagemId, conexao)) {
+            if (item.getProdutoId() == produtoId) {
+                return item;
+            }
+        }
+        throw new ValidacaoException("O produto informado não faz parte desta contagem.");
     }
 
     private Usuario exigirGerenteOuAdmin() {
