@@ -74,16 +74,22 @@ public class FiadoService {
         BigDecimal juros = calcularJuros(valorTotal, dataVencimento, LocalDate.now());
         BigDecimal valorDevedor = valorTotal.add(juros);
 
+        // Se a criacao ja assou juros retroativos, o carimbo de calculo nasce agora:
+        // sem ele, o primeiro receber recobraria o mesmo vencimento->hoje por cima.
+        LocalDateTime estampaInicialDeCalculo = juros.compareTo(BigDecimal.ZERO) > 0
+                ? LocalDateTime.now()
+                : null;
+
         Fiado fiado = new Fiado(null, vendaId, clienteId, valorTotal,
                 BigDecimal.ZERO, valorDevedor, juros,
-                dataVencimento, "ABERTO", observacao, null);
-        fiados.salvar(fiado);
+                dataVencimento, "ABERTO", observacao, estampaInicialDeCalculo);
+        Fiado salvo = fiados.salvar(fiado);
 
-        auditoria.registrar("FIADO_GERADO", "FIADO", fiado.id(),
-                "cliente " + clienteId + " valor " + fiado.valorTotal().toPlainString()
+        auditoria.registrar("FIADO_GERADO", "FIADO", salvo.id(),
+                "cliente " + clienteId + " valor " + salvo.valorTotal().toPlainString()
                         + " vencimento " + dataVencimento);
 
-        return fiado;
+        return salvo;
     }
 
     public Fiado receber(Long fiadoId, BigDecimal valor, String formaPagamento,
@@ -227,12 +233,21 @@ public class FiadoService {
         LocalDateTime ultimoCalculo = fiado.ultimoCalculoJuros();
         LocalDate dataReferencia = LocalDate.now();
 
-        // Se ja calculou juros hoje, nao cobra de novo
+        // Guarda intra-dia: hoje ja calculado nao cobra de novo. Redundante com a base
+        // incremental abaixo (mesmo dia => 0 dias => ZERO), mas barata e mantem a
+        // protecao explicita contra recálculos repetidos no mesmo dia.
         if (ultimoCalculo != null && ultimoCalculo.toLocalDate().equals(dataReferencia)) {
             return BigDecimal.ZERO;
         }
 
-        return calcularJuros(fiado.valorTotal(), fiado.dataVencimento(), dataReferencia);
+        // Base incremental: cobra apenas do ultimo calculo (se posterior ao vencimento)
+        // ate hoje. Recalcular sempre vencimento->hoje faria recebimentos em dias
+        // distintos cobrarem o mesmo periodo de atraso mais de uma vez.
+        LocalDate base = fiado.dataVencimento();
+        if (ultimoCalculo != null && ultimoCalculo.toLocalDate().isAfter(base)) {
+            base = ultimoCalculo.toLocalDate();
+        }
+        return calcularJuros(fiado.valorTotal(), base, dataReferencia);
     }
 
     public boolean fiadoHabilitado() {
