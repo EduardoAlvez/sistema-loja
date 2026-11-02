@@ -138,7 +138,7 @@ public class PainelContagem extends JPanel {
             return;
         }
         try {
-            long contagemId = aplicacao.getInventario().abrirContagem(ids.get());
+            aplicacao.getInventario().abrirContagem(ids.get());
             observacao.setText("");
             carregar();
             Ui.informacao(this, "Contagem iniciada com " + ids.get().size() + " item(ns).");
@@ -155,7 +155,13 @@ public class PainelContagem extends JPanel {
             Ui.aviso(this, "Selecione um item da contagem para informar a quantidade.");
             return;
         }
-        int estoqueAtual = estoqueAtualDe(item);
+        int estoqueAtual;
+        try {
+            estoqueAtual = estoqueAtualDe(item);
+        } catch (RuntimeException ex) {
+            Ui.erro(this, "Falha ao consultar o estoque atual.", ex);
+            return;
+        }
         Optional<Integer> quantidade = DialogoContagemItem.pedir(
                 javax.swing.SwingUtilities.getWindowAncestor(this), item, estoqueAtual);
         if (quantidade.isEmpty()) {
@@ -218,6 +224,10 @@ public class PainelContagem extends JPanel {
     }
 
     private void carregar() {
+        int linhaSelecionada = tabelaItens.getSelectedRow();
+        Long produtoSelecionado = linhaSelecionada >= 0 && linhaSelecionada < itens.size()
+                ? itens.get(tabelaItens.convertRowIndexToModel(linhaSelecionada)).getProdutoId()
+                : null;
         try {
             contagemAberta = aplicacao.getInventario().buscarContagemAberta();
             itens = contagemAberta == null
@@ -225,7 +235,15 @@ public class PainelContagem extends JPanel {
                     : aplicacao.getInventario().listarItens(contagemAberta.getId());
             carregarHistorico();
         } catch (RuntimeException ex) {
+            contagemAberta = null;
+            itens = new ArrayList<>();
+            modeloItens.setRowCount(0);
+            modeloHistorico.setRowCount(0);
             situacao.setText("Falha ao carregar a contagem.");
+            progresso.setText("Nada carregado.");
+            informar.setEnabled(false);
+            fechar.setEnabled(false);
+            observacao.setEnabled(false);
             Ui.erro(this, "Falha ao carregar a contagem.", ex);
             return;
         }
@@ -242,6 +260,14 @@ public class PainelContagem extends JPanel {
                     item.previaDeDiferenca() == null ? "-" : formatarPrevisao(item.previaDeDiferenca()),
                     situacaoItem(item)
             });
+        }
+        if (produtoSelecionado != null) {
+            for (int i = 0; i < itens.size(); i++) {
+                if (itens.get(i).getProdutoId() == produtoSelecionado) {
+                    tabelaItens.setRowSelectionInterval(i, i);
+                    break;
+                }
+            }
         }
         if (contagemAberta == null) {
             situacao.setText("Nenhuma contagem em aberto.");

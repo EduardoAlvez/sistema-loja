@@ -39,6 +39,7 @@ public class PainelInventario extends JPanel {
     private final DefaultTableModel modelo = Ui.modeloTabela(
             "Data", "Motivo", "Quantidade", "Responsável", "Observação");
     private final JTable tabela = Ui.tabela(modelo);
+    private final JLabel tituloPerdas = Ui.titulo("Inventário - Registrar perda de estoque");
 
     public PainelInventario(Aplicacao aplicacao) {
         this.aplicacao = aplicacao;
@@ -74,7 +75,6 @@ public class PainelInventario extends JPanel {
 
     private JPanel montarPerdas() {
         JPanel painel = new JPanel(new BorderLayout(10, 10));
-        painel.add(Ui.titulo("Inventário - Registrar perda de estoque"), BorderLayout.NORTH);
 
         JPanel superior = new JPanel(new BorderLayout(10, 10));
         superior.add(montarFormulario(), BorderLayout.NORTH);
@@ -89,7 +89,10 @@ public class PainelInventario extends JPanel {
         acoes.add(registrar);
         superior.add(acoes, BorderLayout.SOUTH);
 
-        painel.add(superior, BorderLayout.NORTH);
+        JPanel topo = new JPanel(new BorderLayout(10, 10));
+        topo.add(tituloPerdas, BorderLayout.NORTH);
+        topo.add(superior, BorderLayout.CENTER);
+        painel.add(topo, BorderLayout.NORTH);
         painel.add(new JScrollPane(tabela), BorderLayout.CENTER);
         return painel;
     }
@@ -241,6 +244,10 @@ public class PainelInventario extends JPanel {
 
     public JLabel componenteAlerta() {
         return alerta;
+    }
+
+    public JLabel componenteTituloPerdas() {
+        return tituloPerdas;
     }
 
     private void carregarPerdas() {

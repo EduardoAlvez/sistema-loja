@@ -44,6 +44,8 @@ public class DialogoNovaContagem extends JDialog {
     private final DefaultListModel<Produto> modelo = new DefaultListModel<>();
     private final JList<Produto> lista = new JList<>(modelo);
     private final JLabel contador = new JLabel(" ");
+    private final java.util.Set<Long> selecionados = new java.util.LinkedHashSet<>();
+    private boolean restaurandoSelecao = false;
     private List<Long> resultado;
 
     public DialogoNovaContagem(Window proprietario, List<Produto> produtos) {
@@ -127,7 +129,12 @@ public class DialogoNovaContagem extends JDialog {
 
         todos.addActionListener(e -> atualizarEstado());
         lote.addActionListener(e -> atualizarEstado());
-        lista.addListSelectionListener(e -> atualizarContador());
+        lista.addListSelectionListener(e -> {
+            if (!restaurandoSelecao) {
+                sincronizarSelecionados();
+            }
+            atualizarContador();
+        });
         filtro.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
@@ -150,16 +157,53 @@ public class DialogoNovaContagem extends JDialog {
     }
 
     private void aplicarFiltro() {
-        String termo = filtro.getText() == null ? "" : filtro.getText().trim().toLowerCase();
+        String termo = filtro.getText() == null ? "" : filtro.getText().trim().toLowerCase(java.util.Locale.ROOT);
         modelo.clear();
         for (Produto produto : produtos) {
             if (termo.isEmpty()
-                    || produto.getNome().toLowerCase().contains(termo)
-                    || produto.getCodigoBarras().toLowerCase().contains(termo)) {
+                    || produto.getNome().toLowerCase(java.util.Locale.ROOT).contains(termo)
+                    || produto.getCodigoBarras().toLowerCase(java.util.Locale.ROOT).contains(termo)) {
                 modelo.addElement(produto);
             }
         }
+        restaurarSelecaoVisivel();
         atualizarContador();
+    }
+
+    /**
+     * Reabre a marcação dos produtos que continuam visiveis depois do filtro. Quem saiu de
+     * cena por causa do filtro permanece em {@code selecionados}: filtrar nunca apaga o
+     * trabalho de quem ja marcou cinco produtos.
+     */
+    private void restaurarSelecaoVisivel() {
+        restaurandoSelecao = true;
+        try {
+            lista.clearSelection();
+            for (int i = 0; i < modelo.size(); i++) {
+                if (selecionados.contains(modelo.get(i).getId())) {
+                    lista.addSelectionInterval(i, i);
+                }
+            }
+        } finally {
+            restaurandoSelecao = false;
+        }
+    }
+
+    private void sincronizarSelecionados() {
+        java.util.Set<Long> visiveis = new java.util.HashSet<>();
+        for (int i = 0; i < modelo.size(); i++) {
+            visiveis.add(modelo.get(i).getId());
+        }
+        java.util.Set<Long> marcadosAgora = lista.getSelectedValuesList().stream()
+                .map(Produto::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        for (Long id : visiveis) {
+            if (marcadosAgora.contains(id)) {
+                selecionados.add(id);
+            } else {
+                selecionados.remove(id);
+            }
+        }
     }
 
     private void atualizarEstado() {
@@ -173,8 +217,7 @@ public class DialogoNovaContagem extends JDialog {
             contador.setText(produtos.size() + " produto(s) ativo(s) entrarão na contagem.");
             return;
         }
-        int selecionados = lista.getSelectedValuesList().size();
-        contador.setText(selecionados + " produto(s) selecionado(s) de " + modelo.getSize() + " na lista.");
+        contador.setText(selecionados.size() + " produto(s) selecionado(s) de " + produtos.size() + ".");
     }
 
     private void iniciar() {
@@ -184,11 +227,9 @@ public class DialogoNovaContagem extends JDialog {
                 ids.add(produto.getId());
             }
         } else {
-            for (Produto produto : lista.getSelectedValuesList()) {
-                ids.add(produto.getId());
-            }
+            ids.addAll(selecionados);
             if (ids.isEmpty()) {
-                Ui.erro(this, "Selecione ao menos um produto para contar.");
+                Ui.aviso(this, "Selecione ao menos um produto para contar.");
                 return;
             }
         }
