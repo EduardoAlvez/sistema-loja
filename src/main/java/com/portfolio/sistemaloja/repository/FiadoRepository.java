@@ -162,9 +162,40 @@ public class FiadoRepository {
         }
     }
 
+    /**
+     * Marca como INADIMPLENTE os fiados ainda nao pagos com vencimento anterior a
+     * dataReferencia. O SELECT...FOR UPDATE (mesmo mecanismo de bloquearVenda) e o
+     * guard do UPDATE juntos garantem que cada fiado e marcado — e auditado — uma
+     * unica vez: um segundo concorrente bloqueia no SELECT e, ao retomar, nao encontra
+     * mais nada. Retorna os ids efetivamente marcados, para o chamador auditar.
+     */
+    public List<Long> marcarVencidos(LocalDate dataReferencia, Connection conexao) throws SQLException {
+        List<Long> ids = new ArrayList<>();
+        String select = "SELECT id FROM fiados WHERE status IN ('ABERTO', 'PARCIAL') "
+                + "AND data_vencimento < ? FOR UPDATE";
+        try (PreparedStatement preparada = conexao.prepareStatement(select)) {
+            preparada.setObject(1, dataReferencia);
+            try (ResultSet resultado = preparada.executeQuery()) {
+                while (resultado.next()) {
+                    ids.add(resultado.getLong(1));
+                }
+            }
+        }
+        if (ids.isEmpty()) {
+            return ids;
+        }
+        String update = "UPDATE fiados SET status = 'INADIMPLENTE' WHERE status IN ('ABERTO', 'PARCIAL') "
+                + "AND data_vencimento < ?";
+        try (PreparedStatement preparada = conexao.prepareStatement(update)) {
+            preparada.setObject(1, dataReferencia);
+            preparada.executeUpdate();
+        }
+        return ids;
+    }
+
     public BigDecimal saldoDevedorTotalPorCliente(long clienteId) {
         String sql = "SELECT COALESCE(SUM(valor_devedor), 0) FROM fiados WHERE cliente_id = ? "
-                + "AND status IN ('ABERTO', 'PARCIAL')";
+                + "AND status IN ('ABERTO', 'PARCIAL', 'INADIMPLENTE')";
         try (Connection conexao = fonte.getConnection();
              PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, clienteId);

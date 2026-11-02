@@ -24,7 +24,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Optional;
@@ -98,16 +97,15 @@ public class PainelFiado extends JPanel {
     }
 
     private void carregar() {
+        fiados.marcarVencidos();
         modelo.setRowCount(0);
         List<Fiado> fiadosLista = fiados.listarPendentes();
         for (Fiado f : fiadosLista) {
-            boolean atrasado = f.dataVencimento().isBefore(LocalDate.now()) && !f.isQuitado();
-            String statusExibicao = atrasado ? "INADIMPLENTE" : f.status();
             modelo.addRow(new Object[]{
                     f.clienteId(), f.vendaId(),
                     Ui.moeda(f.valorTotal()), Ui.moeda(f.valorPago()),
                     Ui.moeda(f.valorDevedor()), Ui.moeda(f.jurosAplicados()),
-                    f.dataVencimento(), statusExibicao
+                    f.dataVencimento(), f.status()
             });
         }
     }

@@ -103,7 +103,10 @@ class FiadoJurosTest {
                 "juros acumulados devem ser 10+1 dias = 1.84, nao dois periodos: "
                         + aposSegundo.jurosAplicados());
         assertEquals(0, new BigDecimal("1.84").compareTo(aposSegundo.valorDevedor()));
-        assertEquals("PARCIAL", aposSegundo.status());
+        // re-derivacao da issue #43: parcializou sem quitar e o vencimento ficou para
+        // tras -> o status no banco e a verdade do momento, nao um rebaixamento
+        assertEquals("INADIMPLENTE", aposSegundo.status(),
+                "pagar parcialmente um vencido mantem inadimplente (sem flap nem evento repetido)");
     }
 
     private void atrasarVencimentoEm(int dias) throws Exception {

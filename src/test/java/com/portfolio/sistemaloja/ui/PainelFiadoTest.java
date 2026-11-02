@@ -23,9 +23,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Lista de recebiveis do painel de fiado. O painel lista PENDENTES (ABERTO/PARCIAL/
- * INADIMPLENTE, issue #44): um fiado com recebimento parcial nao pode desaparecer da
- * fila de cobranca. O status exibido ainda e derivado na UI (INADIMPLENTE so passa a
- * existir no banco com a issue #43).
+ * INADIMPLENTE, issues #44/#43): um fiado com recebimento parcial nao pode
+ * desaparecer da fila de cobranca, e o abrir do painel marca a vencencia no banco —
+ * a tela nao deriva status nenhum, so mostra o que existe.
  */
 class PainelFiadoTest {
 
@@ -67,18 +67,19 @@ class PainelFiadoTest {
     }
 
     @Test
-    void vencidoExibeInadimplenteApenasNaTela() {
+    void vencidoEhInadimplenteNoBancoENaTela() {
         Fiado fiado = gerarFiado(LocalDate.now().minusDays(3));
 
         PainelFiado painel = new PainelFiado(app);
-        JTable tabela = tabela(painel);
 
-        assertEquals(1, tabela.getRowCount());
-        assertEquals("INADIMPLENTE", tabela.getValueAt(0, 7),
-                "vencimento atrasado e nao quitado deriva INADIMPLENTE na exibicao");
-        assertEquals("ABERTO", app.getFiados().listarPorCliente(cliente.getId()).get(0).status(),
-                "o banco nunca viu esse status: ele so existe na UI");
-        assertTrue(fiado.dataVencimento().isBefore(LocalDate.now()));
+        assertEquals(1, tabela(painel).getRowCount());
+        assertEquals("INADIMPLENTE", tabela(painel).getValueAt(0, 7));
+        assertEquals("INADIMPLENTE",
+                app.getFiados().listarPorCliente(cliente.getId()).get(0).status(),
+                "abrir o painel marca a vencencia no banco; a tela nao deriva mais nada");
+        assertEquals("INADIMPLENTE", app.getFiados().listarPendentes().get(0).status(),
+                "seguem na fila de cobranca");
+        org.junit.jupiter.api.Assertions.assertNotNull(fiado.id());
     }
 
     @Test

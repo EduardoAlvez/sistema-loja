@@ -29,10 +29,12 @@ public class FiadoService {
     private final AutorizacaoService autorizacoes;
     private final AuditoriaService auditoria;
     private final Sessao sessao;
+    private final com.portfolio.sistemaloja.db.ConexaoFonte fonte;
 
     public FiadoService(FiadoRepository fiados, RecebimentoFiadoRepository recebimentos,
                         ClienteRepository clientes, ConfiguracaoRepository configuracoes,
-                        AutorizacaoService autorizacoes, AuditoriaService auditoria, Sessao sessao) {
+                        AutorizacaoService autorizacoes, AuditoriaService auditoria, Sessao sessao,
+                        com.portfolio.sistemaloja.db.ConexaoFonte fonte) {
         this.fiados = fiados;
         this.recebimentos = recebimentos;
         this.clientes = clientes;
@@ -40,6 +42,7 @@ public class FiadoService {
         this.autorizacoes = autorizacoes;
         this.auditoria = auditoria;
         this.sessao = sessao;
+        this.fonte = fonte;
     }
 
     public Fiado gerarFiado(Long clienteId, Long vendaId, BigDecimal valorTotal,
@@ -163,9 +166,16 @@ public class FiadoService {
             throw new ValidacaoException("O valor recebido excede o devedor do fiado.");
         }
 
+        // Re-derivacao (issue #43): o status persistido eh sempre a verdade do momento,
+        // sem depender de o painel ter rodado a marcacao antes. Um vencido que recebe
+        // e nao quita segue INADIMPLENTE — rebaixar para PARCIAL o faria "esquentar"
+        // de novo na proxima marcacao, com evento de auditoria repetido a cada visita.
+        // O guard acima continua bloqueando apenas QUITADO: inadimplente tem de poder pagar.
         String novoStatus;
         if (valorDevedorNovo.compareTo(BigDecimal.ZERO) == 0) {
             novoStatus = "QUITADO";
+        } else if (fiado.isInadimplente() || fiado.dataVencimento().isBefore(LocalDate.now())) {
+            novoStatus = "INADIMPLENTE";
         } else {
             novoStatus = "PARCIAL";
         }
@@ -217,6 +227,48 @@ public class FiadoService {
             }
         }
         return resultado;
+    }
+
+    /**
+     * Marca fiados vencidos como INADIMPLENTE e audita cada transicao (issue #43).
+     * Chamado ao abrir/atualizar o painel — a marcação é idempotente: quem roda de
+     * novo nao encontra mais ABERTO/PARCIAL vencido, e o lock do SELECT impede que
+     * dois paineis emitam o mesmo evento.
+     */
+    public int marcarVencidos() {
+        return marcarVencidos(LocalDate.now());
+    }
+
+    public int marcarVencidos(LocalDate dataReferencia) {
+        LocalDate referencia = dataReferencia == null ? LocalDate.now() : dataReferencia;
+        try (java.sql.Connection conexao = fonte.getConnection()) {
+            try {
+                conexao.setAutoCommit(false);
+                List<Long> marcados = fiados.marcarVencidos(referencia, conexao);
+                for (Long id : marcados) {
+                    auditoria.registrarComo(loginDaSessao(), "FIADO_INADIMPLENTE", "FIADO", id,
+                            "vencimento anterior a " + referencia, conexao);
+                }
+                conexao.commit();
+                return marcados.size();
+            } catch (RuntimeException e) {
+                rollbackSilencioso(conexao, e);
+                throw e;
+            } catch (java.sql.SQLException e) {
+                rollbackSilencioso(conexao, e);
+                throw new ValidacaoException("Erro ao marcar fiados vencidos.", e);
+            }
+        } catch (java.sql.SQLException e) {
+            throw new ValidacaoException("Erro ao marcar fiados vencidos.", e);
+        }
+    }
+
+    private void rollbackSilencioso(java.sql.Connection conexao, Exception causa) {
+        try {
+            conexao.rollback();
+        } catch (java.sql.SQLException rollback) {
+            causa.addSuppressed(rollback);
+        }
     }
 
     public List<Fiado> listarPorCliente(Long clienteId) {

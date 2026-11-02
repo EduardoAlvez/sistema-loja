@@ -107,7 +107,7 @@ public class Aplicacao {
         this.autorizacoes = new AutorizacaoService(usuarioRepository, sessao, auditoria);
         this.fiadoRepository = new FiadoRepository(fonte);
         this.fiados = new FiadoService(fiadoRepository, new RecebimentoFiadoRepository(fonte),
-                clienteRepository, configuracaoRepository, autorizacoes, auditoria, sessao);
+                clienteRepository, configuracaoRepository, autorizacoes, auditoria, sessao, fonte);
         this.fidelidade = new FidelidadeService(fidelidadeRepository, this.configuracoes);
         this.promocoes = new PromocaoService(new PromocaoProdutoRepository(fonte), produtoRepository,
                 auditoria, relogio);

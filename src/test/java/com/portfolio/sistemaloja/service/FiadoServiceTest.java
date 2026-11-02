@@ -146,6 +146,44 @@ class FiadoServiceTest {
     }
 
     @Test
+    void marcadoFicaInadimplenteIdempotenteEAudita() {
+        app.getFiados().definirLimiteCredito(cliente.getId(), new BigDecimal("500.00"), admin.getId());
+        long vendaId = registrarVendaPix();
+        Fiado vencido = app.getFiados().gerarFiado(cliente.getId(), vendaId, new BigDecimal("80.00"),
+                LocalDate.now().minusDays(2), null, null);
+
+        assertEquals(1, app.getFiados().marcarVencidos(LocalDate.now()));
+        assertEquals("INADIMPLENTE",
+                app.getFiados().listarPorCliente(cliente.getId()).get(0).status());
+        assertTrue(acoesDeHoje().contains("FIADO_INADIMPLENTE"));
+
+        assertEquals(0, app.getFiados().marcarVencidos(LocalDate.now()), "re-rodar nao marca de novo");
+        long eventos = app.getAuditoria().listar(LocalDate.now(), LocalDate.now()).stream()
+                .filter(e -> "FIADO_INADIMPLENTE".equals(e.acao()) && vencido.id().equals(e.entidadeId()))
+                .count();
+        assertEquals(1, eventos, "um fiado, um evento de transicao");
+    }
+
+    @Test
+    void inadimplenteContaNoSaldoEConsomeLimite() {
+        app.getFiados().definirLimiteCredito(cliente.getId(), new BigDecimal("100.00"), admin.getId());
+        long vendaId = registrarVendaPix();
+        app.getFiados().gerarFiado(cliente.getId(), vendaId, new BigDecimal("100.00"),
+                LocalDate.now().minusDays(1), null, null);
+        app.getFiados().marcarVencidos();
+
+        assertEquals(0, new BigDecimal("100.00").compareTo(
+                app.getFiados().saldoDevedorPorCliente(cliente.getId())),
+                "INADIMPLENTE fora do saldo = credito de graca para o caloteiro");
+
+        app.getAuth().autenticar("operador", "caixa123");
+        assertThrows(AutorizacaoNecessariaException.class,
+                () -> app.getFiados().gerarFiado(cliente.getId(), vendaId, new BigDecimal("1.00"),
+                        LocalDate.now().plusDays(5), null, null),
+                "inadimplencia precisa bloquear nova compra a prazo sem PIN");
+    }
+
+    @Test
     void saldoDevedorCompoeAbertoEMaisParcialEExcluiQuitado() {
         app.getFiados().definirLimiteCredito(cliente.getId(), new BigDecimal("200.00"), admin.getId());
         long vendaId = registrarVendaPix();
