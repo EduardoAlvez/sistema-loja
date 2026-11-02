@@ -59,7 +59,8 @@ class AuditoriaAcoesTest {
 
     @Test
     void vendaRegistradaECanceladaRegistramAuditoria() {
-        app.getAuth().autenticar("operador", "caixa123");
+        Usuario operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
         Produto feijao = app.getProdutos().buscarPorCodigoBarras("7891000200101");
 
         Venda venda = new Venda();
@@ -71,7 +72,8 @@ class AuditoriaAcoesTest {
                 BancoTeste.autorizarSupervisor(app, MotivoAutorizacao.CANCELAMENTO_VENDA));
 
         List<EventoAuditoria> eventos = hoje();
-        assertEquals(5, eventos.size());
+        // CAIXA_ABERTO entrou na contagem quando a venda passou a exigir caixa aberto
+        assertEquals(6, eventos.size());
         assertTrue(eventos.stream().anyMatch(e -> "VENDA_CANCELADA".equals(e.acao())
                 && registrada.getId().equals(e.entidadeId())), "cancelamento ausente: " + eventos);
         assertTrue(eventos.stream().anyMatch(e -> "VENDA_REGISTRADA".equals(e.acao())

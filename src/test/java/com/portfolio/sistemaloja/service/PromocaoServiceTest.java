@@ -232,6 +232,7 @@ class PromocaoServiceTest {
     @Test
     void aplicaPrecoPromocionalPorQuantidadeNaVenda() {
         Usuario caixa = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, caixa);
         app.getPromocoes().salvar(promocao("Refrigerante 3 por 7", 3, "7.00"));
 
         Venda venda = new Venda();
@@ -250,6 +251,7 @@ class PromocaoServiceTest {
     @Test
     void mantemPrecoNormalNaVendaAbaixoDaQuantidadeMinima() {
         Usuario caixa = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, caixa);
         app.getPromocoes().salvar(promocao("Refrigerante 3 por 7", 3, "7.00"));
 
         Venda venda = new Venda();
@@ -267,6 +269,7 @@ class PromocaoServiceTest {
     @Test
     void usaOPrecoMaisBaratoEntrePromocaoDoProdutoEPromocaoPorQuantidade() {
         Usuario caixa = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, caixa);
         refrigerante.setPrecoPromocional(new BigDecimal("6.00"));
         refrigerante.setPromoInicio(MOMENTO.toLocalDate().minusDays(1));
         refrigerante.setPromoFim(MOMENTO.toLocalDate().plusDays(1));

@@ -37,6 +37,7 @@ class CupomEscPosServiceTest {
     void preparar() {
         app = BancoTeste.criar("escpos" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
         texto = new CupomTermicoService(CONFIG);
         cupom = new CupomEscPosService(texto);
     }

@@ -36,6 +36,7 @@ class FidelidadeEstornoTest {
     void preparar() {
         app = BancoTeste.criar("estorno" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
         admin = app.getAuth().autenticar("admin", "admin123");
         cliente = app.getClientes().salvar(new Cliente(null, "Maria Souza", "52998224725", "11999998888",
                 "maria@exemplo.com", true));

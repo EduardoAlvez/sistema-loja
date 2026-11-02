@@ -42,6 +42,7 @@ class ExportacaoServiceTest {
     void preparar() {
         app = BancoTeste.criar("export" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
         registrarVenda("7891000100103", 2);
         registrarVenda("7891000100104", 5);
     }

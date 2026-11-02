@@ -37,6 +37,7 @@ class VendaServiceTest {
     void preparar() {
         app = BancoTeste.criar("venda" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
     }
 
     @Test
@@ -425,6 +426,7 @@ class VendaServiceTest {
     void aplicaPromocaoVigenteSemConsumirOLimiteDoOperador() {
         Aplicacao promo = appNoHorario(LocalDateTime.of(2026, 10, 20, 12, 0));
         Usuario caixa = promo.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(promo, caixa);
         Produto agua = promo.getProdutos().buscarPorCodigoBarras("7891000100104");
         agua.setPrecoPromocional(new BigDecimal("1.50"));
         agua.setPromoInicio(LocalDate.of(2026, 10, 1));
@@ -447,6 +449,7 @@ class VendaServiceTest {
     void foraDaVigenciaGravaOPrecoCheio() {
         Aplicacao promo = appNoHorario(LocalDateTime.of(2026, 10, 20, 12, 0));
         Usuario caixa = promo.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(promo, caixa);
         Produto agua = promo.getProdutos().buscarPorCodigoBarras("7891000100104");
         agua.setPrecoPromocional(new BigDecimal("1.50"));
         agua.setPromoInicio(LocalDate.of(2026, 11, 1));

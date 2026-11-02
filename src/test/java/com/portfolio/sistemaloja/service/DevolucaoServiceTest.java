@@ -33,6 +33,7 @@ class DevolucaoServiceTest {
     void preparar() {
         app = BancoTeste.criar("devolucao" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
         maria = app.getClientes().salvar(new Cliente(null, "Maria Souza", "52998224725",
                 "11999998888", "maria@exemplo.com", true));
     }

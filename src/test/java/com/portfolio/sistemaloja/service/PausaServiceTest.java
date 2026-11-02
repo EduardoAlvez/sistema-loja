@@ -28,6 +28,7 @@ class PausaServiceTest {
     void preparar() {
         app = BancoTeste.criar("pausa" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
     }
 
     @Test

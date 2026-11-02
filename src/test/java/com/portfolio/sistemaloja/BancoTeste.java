@@ -3,13 +3,29 @@ package com.portfolio.sistemaloja;
 import com.portfolio.sistemaloja.db.Banco;
 import com.portfolio.sistemaloja.db.Migrador;
 import com.portfolio.sistemaloja.model.Autorizacao;
+import com.portfolio.sistemaloja.model.Caixa;
 import com.portfolio.sistemaloja.model.MotivoAutorizacao;
+import com.portfolio.sistemaloja.model.Usuario;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 
 public final class BancoTeste {
 
     private BancoTeste() {
+    }
+
+    private static String url(String nomeBanco) {
+        return "jdbc:h2:mem:" + nomeBanco
+                + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000";
+    }
+
+    public static java.sql.Connection conexao(String nomeBanco) throws java.sql.SQLException {
+        return java.sql.DriverManager.getConnection(url(nomeBanco));
+    }
+
+    public static Caixa abrirCaixa(Aplicacao app, Usuario usuario) {
+        return app.getCaixa().abrir(new BigDecimal("100.00"), usuario);
     }
 
     public static Autorizacao autorizarSupervisor(Aplicacao app, MotivoAutorizacao motivo) {
@@ -23,9 +39,7 @@ public final class BancoTeste {
     }
 
     public static Aplicacao criar(String nomeBanco, Clock relogio) {
-        String url = "jdbc:h2:mem:" + nomeBanco
-                + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000";
-        Banco banco = new Banco(url, null, null);
+        Banco banco = new Banco(url(nomeBanco), null, null);
         try {
             Migrador.executar(banco);
         } catch (java.sql.SQLException e) {

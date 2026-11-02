@@ -30,6 +30,7 @@ class PainelDevolucaoTest {
     void preparar() {
         app = BancoTeste.criar("paineldevolucao" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
     }
 
     @Test

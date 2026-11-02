@@ -35,6 +35,7 @@ class VendaFidelidadeTest {
     void preparar() {
         app = BancoTeste.criar("vendafidelidade" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
         admin = app.getAuth().autenticar("admin", "admin123");
         cliente = app.getClientes().salvar(new Cliente(null, "Maria Souza", "52998224725", "11999998888",
                 "maria@exemplo.com", true));
@@ -138,6 +139,7 @@ class VendaFidelidadeTest {
             local.getConfiguracoes().invalidar();
             local.getConfiguracoes().atual();
             Usuario adminLocal = local.getAuth().autenticar("admin", "admin123");
+            BancoTeste.abrirCaixa(local, adminLocal);
             Cliente clienteLocal = local.getClientes().salvar(new Cliente(null, "Joao Lima", "52998224725",
                     "11988887777", "joao@exemplo.com", true));
             local.getFidelidadeRepository().aplicarMovimentos(List.of(

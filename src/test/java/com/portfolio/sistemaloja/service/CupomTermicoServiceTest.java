@@ -40,6 +40,7 @@ class CupomTermicoServiceTest {
     void preparar() {
         app = BancoTeste.criar("termico" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
         cupom = new CupomTermicoService(CONFIG);
     }
 

@@ -60,33 +60,11 @@ public class VendaService {
     private final CaixaService caixas;
     private final Clock relogio;
 
-    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
-                        AuditoriaService auditoria) {
-        this(vendas, produtos, usuarios, auditoria, Clock.systemDefaultZone());
-    }
-
-    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
-                        AuditoriaService auditoria, Clock relogio) {
-        this(vendas, produtos, usuarios, auditoria, relogio, null, null);
-    }
-
-    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
-                        AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade) {
-        this(vendas, produtos, usuarios, auditoria, relogio, fidelidade, null);
-    }
-
-    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
-                        AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade,
-                        AutorizacaoService autorizacoes) {
-        this(vendas, produtos, usuarios, auditoria, relogio, fidelidade, autorizacoes, null);
-    }
-
-    public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
-                        AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade,
-                        AutorizacaoService autorizacoes, PromocaoService promocoes) {
-        this(vendas, produtos, usuarios, auditoria, relogio, fidelidade, autorizacoes, promocoes, null);
-    }
-
+    /**
+     * Construtor único: {@code caixas} não é opcional — a guarda de caixa aberto exige
+     * o caixa, e um construtor que o permite nulo é o buraco de fiação que deixou a
+     * regra anterior virar no-op silencioso.
+     */
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, UsuarioRepository usuarios,
                         AuditoriaService auditoria, Clock relogio, FidelidadeService fidelidade,
                         AutorizacaoService autorizacoes, PromocaoService promocoes, CaixaService caixas) {
@@ -128,38 +106,8 @@ public class VendaService {
         if (venda == null) {
             throw new ValidacaoException("Venda inválida.");
         }
-        if (caixas != null) {
-            try {
-                java.lang.reflect.Method m = caixas.getClass().getMethod("buscarAberto");
-                Object r = m.invoke(caixas);
-                if (r instanceof java.util.Optional<?> opt && opt.isEmpty()) {
-                    throw new ValidacaoException("Abra o caixa antes de registrar uma venda.");
-                }
-            } catch (ValidacaoException ve) {
-                throw ve;
-            } catch (NoSuchMethodException ex) {
-                try {
-                    java.lang.reflect.Method m2 = caixas.getClass().getMethod("obterAberto");
-                    Object r2 = m2.invoke(caixas);
-                    if (r2 == null) {
-                        throw new ValidacaoException("Abra o caixa antes de registrar uma venda.");
-                    }
-                } catch (java.lang.reflect.InvocationTargetException ite) {
-                    Throwable t = ite.getTargetException();
-                    if (t instanceof ValidacaoException ve) {
-                        throw ve;
-                    }
-                    throw new ValidacaoException("Abra o caixa antes de registrar uma venda.");
-                } catch (Throwable ex2) {
-                }
-            } catch (java.lang.reflect.InvocationTargetException ite) {
-                Throwable t = ite.getTargetException();
-                if (t instanceof ValidacaoException ve) {
-                    throw ve;
-                }
-                throw new ValidacaoException("Abra o caixa antes de registrar uma venda.");
-            } catch (Throwable ignored) {
-            }
+        if (caixas.caixaAberto().isEmpty()) {
+            throw new ValidacaoException("Abra o caixa antes de registrar uma venda.");
         }
         if (venda.getFormaPagamento() == null) {
             throw new ValidacaoException("Selecione a forma de pagamento.");

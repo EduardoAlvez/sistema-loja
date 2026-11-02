@@ -27,6 +27,7 @@ class CupomServiceTest {
     void preparar() {
         app = BancoTeste.criar("cupom" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
     }
 
     @Test

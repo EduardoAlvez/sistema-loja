@@ -39,6 +39,7 @@ class ImpressaoCupomServiceTest {
     void preparar() {
         app = BancoTeste.criar("impressao" + System.nanoTime());
         operador = app.getAuth().autenticar("operador", "caixa123");
+        BancoTeste.abrirCaixa(app, operador);
         Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
         venda = new Venda();
         venda.setUsuarioId(operador.getId());
