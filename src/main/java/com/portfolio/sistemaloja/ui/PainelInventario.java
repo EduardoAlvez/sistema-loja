@@ -48,6 +48,7 @@ public class PainelInventario extends JPanel {
         limitarObservacao();
 
         JTabbedPane abas = new JTabbedPane();
+        abas.setFont(abas.getFont().deriveFont(java.awt.Font.PLAIN, 13f));
         abas.addTab("Perdas de estoque", montarPerdas());
         abas.addTab("Contagem cíclica", new PainelContagem(aplicacao));
         add(abas, BorderLayout.CENTER);

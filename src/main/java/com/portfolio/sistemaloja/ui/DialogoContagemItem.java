@@ -44,6 +44,7 @@ public class DialogoContagemItem extends JDialog {
         pack();
         setLocationRelativeTo(proprietario);
         setMinimumSize(getPreferredSize());
+        javax.swing.SwingUtilities.invokeLater(quantidadeField::requestFocusInWindow);
     }
 
     private void montar() {
@@ -99,6 +100,18 @@ public class DialogoContagemItem extends JDialog {
         botoes.add(cancelar);
         botoes.add(registrar);
         add(botoes, BorderLayout.SOUTH);
+
+        getRootPane().setDefaultButton(registrar);
+        getRootPane().getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0), "sair");
+        getRootPane().getActionMap().put("sair", new javax.swing.AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                dispose();
+            }
+        });
 
         quantidadeField.getDocument().addDocumentListener(new DocumentListener() {
             @Override

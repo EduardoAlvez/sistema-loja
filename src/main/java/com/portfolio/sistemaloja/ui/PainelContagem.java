@@ -38,15 +38,19 @@ public class PainelContagem extends JPanel {
     private final Aplicacao aplicacao;
     private final JLabel situacao = new JLabel(" ");
     private final JLabel progresso = new JLabel(" ");
+    private final JLabel feedback = new JLabel(" ");
     private final JTextField observacao = new JTextField(28);
+    private final JButton iniciar = new JButton("Iniciar contagem");
     private final JButton informar = new JButton("Informar contagem");
     private final JButton fechar = new JButton("Fechar e ajustar");
+    private final JButton cancelar = new JButton("Cancelar contagem");
     private final DefaultTableModel modeloItens = Ui.modeloTabela(
             "Produto", "Estoque atual", "Quantidade contada", "Diferença", "Situação");
     private final JTable tabelaItens = Ui.tabela(modeloItens);
     private final DefaultTableModel modeloHistorico = Ui.modeloTabela(
-            "Contagem", "Iniciada em", "Fechada em", "Responsável", "Observação");
+            "Contagem", "Iniciada em", "Fechada em", "Responsável", "Observação", "Status");
     private final JTable tabelaHistorico = Ui.tabela(modeloHistorico);
+    private final JLabel rotuloHistorico = Ui.rotulo("Contagens anteriores");
     private ContagemInventario contagemAberta;
     private List<ContagemItem> itens = new ArrayList<>();
 
@@ -56,8 +60,40 @@ public class PainelContagem extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         add(montarCabecalho(), BorderLayout.NORTH);
         add(montarTabelas(), BorderLayout.CENTER);
-        add(progresso, BorderLayout.SOUTH);
+        add(montarRodape(), BorderLayout.SOUTH);
+        configurarTabelaItens();
         carregar();
+    }
+
+    private JPanel montarRodape() {
+        JPanel rodape = new JPanel(new BorderLayout());
+        feedback.setFont(feedback.getFont().deriveFont(java.awt.Font.BOLD, 13f));
+        feedback.setForeground(Ui.COR_ESCURA);
+        rodape.add(progresso, BorderLayout.WEST);
+        rodape.add(feedback, BorderLayout.EAST);
+        return rodape;
+    }
+
+    private void configurarTabelaItens() {
+        tabelaItens.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        int[] larguras = {320, 110, 130, 110, 120};
+        for (int i = 0; i < larguras.length; i++) {
+            tabelaItens.getColumnModel().getColumn(i).setPreferredWidth(larguras[i]);
+        }
+        tabelaItens.getAccessibleContext().setAccessibleName("Itens da contagem em aberto");
+        tabelaHistorico.getAccessibleContext().setAccessibleName("Contagens de inventário anteriores");
+        tabelaHistorico.getColumnModel().getColumn(5).setCellRenderer(new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public java.awt.Component getTableCellRendererComponent(JTable tabelaHistorico, Object valor,
+                    boolean selecionado, boolean focoCelula, int linha, int coluna) {
+                java.awt.Component c = super.getTableCellRendererComponent(
+                        tabelaHistorico, valor, selecionado, focoCelula, linha, coluna);
+                c.setForeground(!selecionado && "Cancelada".equals(valor)
+                        ? Ui.COR_ALERTA
+                        : tabelaHistorico.getForeground());
+                return c;
+            }
+        });
     }
 
     private JPanel montarCabecalho() {
@@ -75,7 +111,6 @@ public class PainelContagem extends JPanel {
         gbc.insets = new Insets(4, 4, 4, 4);
         gbc.anchor = GridBagConstraints.WEST;
 
-        JButton iniciar = new JButton("Iniciar contagem");
         iniciar.setBackground(Ui.COR_PRINCIPAL);
         iniciar.setForeground(Color.WHITE);
         iniciar.addActionListener(e -> iniciarContagem());
@@ -93,10 +128,14 @@ public class PainelContagem extends JPanel {
         gbc.gridx = 2;
         acoes.add(fechar, gbc);
 
+        cancelar.addActionListener(e -> cancelarContagem());
         gbc.gridx = 3;
+        acoes.add(cancelar, gbc);
+
+        gbc.gridx = 4;
         gbc.insets = new Insets(4, 16, 4, 4);
         acoes.add(Ui.rotulo("Observação do fechamento:", observacao), gbc);
-        gbc.gridx = 4;
+        gbc.gridx = 5;
         gbc.weightx = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         acoes.add(observacao, gbc);
@@ -111,7 +150,7 @@ public class PainelContagem extends JPanel {
         painelItens.add(new JScrollPane(tabelaItens), BorderLayout.CENTER);
 
         JPanel painelHistorico = new JPanel(new BorderLayout(4, 4));
-        painelHistorico.add(Ui.rotulo("Contagens anteriores"), BorderLayout.NORTH);
+        painelHistorico.add(rotuloHistorico, BorderLayout.NORTH);
         painelHistorico.add(new JScrollPane(tabelaHistorico), BorderLayout.CENTER);
 
         JSplitPane divisor = new JSplitPane(JSplitPane.VERTICAL_SPLIT, painelItens, painelHistorico);
@@ -171,6 +210,8 @@ public class PainelContagem extends JPanel {
             aplicacao.getInventario().informarContagem(contagemAberta.getId(), item.getProdutoId(),
                     quantidade.get());
             carregar();
+            feedback.setText("Quantidade " + quantidade.get() + " registrada para "
+                    + item.getProdutoNome() + ".");
         } catch (ValidacaoException ex) {
             Ui.erro(this, ex.getMessage());
         } catch (RuntimeException ex) {
@@ -202,6 +243,36 @@ public class PainelContagem extends JPanel {
             Ui.erro(this, ex.getMessage());
         } catch (RuntimeException ex) {
             Ui.erro(this, "Falha ao fechar a contagem.", ex);
+        }
+    }
+
+    private void cancelarContagem() {
+        if (contagemAberta == null) {
+            Ui.aviso(this, "Não há contagem em aberto para cancelar.");
+            return;
+        }
+        if (!Ui.confirma(this, "Cancelar a contagem " + contagemAberta.getNumero()
+                + "? O estoque NÃO será alterado e as quantidades já informadas serão descartadas.")) {
+            return;
+        }
+        String motivo = javax.swing.JOptionPane.showInputDialog(this,
+                "Motivo do cancelamento (obrigatório):",
+                "Cancelar contagem",
+                javax.swing.JOptionPane.QUESTION_MESSAGE);
+        if (motivo == null || motivo.trim().isEmpty()) {
+            feedback.setText("Cancelamento abortado: informe o motivo.");
+            return;
+        }
+        try {
+            ContagemInventario cancelada = aplicacao.getInventario()
+                    .cancelarContagem(contagemAberta.getId(), motivo.trim());
+            observacao.setText("");
+            carregar();
+            feedback.setText("Contagem " + cancelada.getNumero() + " cancelada. Estoque intacto.");
+        } catch (ValidacaoException ex) {
+            Ui.erro(this, ex.getMessage());
+        } catch (RuntimeException ex) {
+            Ui.erro(this, "Falha ao cancelar a contagem.", ex);
         }
     }
 
@@ -241,8 +312,10 @@ public class PainelContagem extends JPanel {
             modeloHistorico.setRowCount(0);
             situacao.setText("Falha ao carregar a contagem.");
             progresso.setText("Nada carregado.");
+            iniciar.setEnabled(true);
             informar.setEnabled(false);
             fechar.setEnabled(false);
+            cancelar.setEnabled(false);
             observacao.setEnabled(false);
             Ui.erro(this, "Falha ao carregar a contagem.", ex);
             return;
@@ -280,8 +353,10 @@ public class PainelContagem extends JPanel {
                 ? "Inicie uma contagem para registrar as quantidades."
                 : contados + " de " + itens.size() + " item(ns) contados.");
         boolean aberta = contagemAberta != null;
+        iniciar.setEnabled(!aberta);
         informar.setEnabled(aberta);
         fechar.setEnabled(aberta);
+        cancelar.setEnabled(aberta);
         observacao.setEnabled(aberta);
     }
 
@@ -297,9 +372,27 @@ public class PainelContagem extends JPanel {
                     contagem.getDataFechamento() == null ? "-"
                             : Ui.dataHora(contagem.getDataFechamento().toString()),
                     contagem.getUsuarioNome() == null ? "" : contagem.getUsuarioNome(),
-                    contagem.getObservacao() == null ? "" : contagem.getObservacao()
+                    historicoObservacao(contagem),
+                    contagem.getStatus().getDescricao()
             });
         }
+        rotuloHistorico.setText(modeloHistorico.getRowCount() == 0
+                ? "Contagens anteriores (nenhuma ainda)"
+                : "Contagens anteriores");
+    }
+
+    /**
+     * O que a coluna de observacao do historico mostra: a observacao do fechamento ou,
+     * numa contagem cancelada, o motivo do cancelamento rotulado.
+     */
+    private String historicoObservacao(ContagemInventario contagem) {
+        if (contagem.getObservacao() != null && !contagem.getObservacao().isEmpty()) {
+            return contagem.getObservacao();
+        }
+        if (contagem.getMotivoCancelamento() != null) {
+            return "Motivo: " + contagem.getMotivoCancelamento();
+        }
+        return "";
     }
 
     private String situacaoItem(ContagemItem item) {
@@ -338,5 +431,21 @@ public class PainelContagem extends JPanel {
 
     public int totalLinhasHistorico() {
         return modeloHistorico.getRowCount();
+    }
+
+    public String textoFeedback() {
+        return feedback.getText();
+    }
+
+    public Object valorHistorico(int linha, int coluna) {
+        return modeloHistorico.getValueAt(linha, coluna);
+    }
+
+    public boolean iniciarHabilitado() {
+        return iniciar.isEnabled();
+    }
+
+    public boolean acoesDeContagemHabilitadas() {
+        return informar.isEnabled() && fechar.isEnabled() && cancelar.isEnabled();
     }
 }

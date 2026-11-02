@@ -79,7 +79,7 @@ public class DialogoNovaContagem extends JDialog {
 
         gbc.gridx = 0;
         gbc.gridy = 1;
-        painel.add(Ui.rotulo(""), gbc);
+        painel.add(new JLabel(), gbc);
         gbc.gridx = 1;
         painel.add(lote, gbc);
 
@@ -126,6 +126,18 @@ public class DialogoNovaContagem extends JDialog {
         botoes.add(iniciar);
         rodape.add(botoes, BorderLayout.EAST);
         add(rodape, BorderLayout.SOUTH);
+
+        getRootPane().setDefaultButton(iniciar);
+        getRootPane().getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0), "sair");
+        getRootPane().getActionMap().put("sair", new javax.swing.AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                dispose();
+            }
+        });
 
         todos.addActionListener(e -> atualizarEstado());
         lote.addActionListener(e -> atualizarEstado());
