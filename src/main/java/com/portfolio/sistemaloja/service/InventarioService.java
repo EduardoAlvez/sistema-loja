@@ -135,6 +135,7 @@ public class InventarioService {
         try (Connection conexao = fonteConexao.getConnection()) {
             conexao.setAutoCommit(false);
             try {
+                contagemRepo.travarControle(conexao);
                 ContagemInventario aberta = contagemRepo.buscarAberta(conexao);
                 if (aberta != null) {
                     throw new ValidacaoException("Já existe uma contagem em aberto (" + aberta.getNumero()
@@ -237,6 +238,7 @@ public class InventarioService {
             try {
                 ContagemInventario contagem = contagemRepo.buscarPorId(contagemId, conexao);
                 exigirAberta(contagem);
+                contagemRepo.travarCabecalho(contagemId, conexao);
                 List<ContagemItem> itens = contagemRepo.listarItens(contagemId, conexao);
 
                 int contados = 0;
@@ -273,7 +275,9 @@ public class InventarioService {
                     contagemRepo.registrarAjuste(item.getId(), deltaAplicado, conexao);
                 }
 
-                contagemRepo.fechar(contagemId, observacaoNormalizada, conexao);
+                if (!contagemRepo.fecharSeAberta(contagemId, observacaoNormalizada, conexao)) {
+                    throw new ValidacaoException("A contagem " + contagem.getNumero() + " já foi fechada ou cancelada.");
+                }
                 auditoria.registrarComo(usuario.getLogin(), "FECHAR_CONTAGEM_INVENTARIO", "CONTAGEM_INVENTARIO",
                         contagemId, "numero=" + contagem.getNumero() + ";itens=" + contados
                                 + ";ajustes=" + ajustes, conexao);

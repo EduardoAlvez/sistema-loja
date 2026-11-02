@@ -72,6 +72,29 @@ public class ContagemInventarioRepository {
         }
     }
 
+    public void travarControle(Connection conexao) throws SQLException {
+        String sql = "SELECT id FROM contagem_controle WHERE id = 1 FOR UPDATE";
+        try (PreparedStatement ps = conexao.prepareStatement(sql)) {
+            try (ResultSet resultado = ps.executeQuery()) {
+                if (!resultado.next()) {
+                    throw new SQLException("Linha sentinela de contagem não encontrada.");
+                }
+            }
+        }
+    }
+
+    public void travarCabecalho(long contagemId, Connection conexao) throws SQLException {
+        String sql = "SELECT id FROM contagem_inventario WHERE id = ? FOR UPDATE";
+        try (PreparedStatement ps = conexao.prepareStatement(sql)) {
+            ps.setLong(1, contagemId);
+            try (ResultSet resultado = ps.executeQuery()) {
+                if (!resultado.next()) {
+                    throw new SQLException("Contagem não encontrada.");
+                }
+            }
+        }
+    }
+
     public ContagemInventario buscarPorId(long contagemId, Connection conexao) throws SQLException {
         String sql = SELECT_CABECALHO + " WHERE c.id = ?";
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
@@ -128,18 +151,22 @@ public class ContagemInventarioRepository {
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
             ps.setInt(1, deltaAplicado);
             ps.setLong(2, itemId);
-            ps.executeUpdate();
+            int linhas = ps.executeUpdate();
+            if (linhas == 0) {
+                throw new SQLException("Item da contagem não encontrado para registrar ajuste.");
+            }
         }
     }
 
-    public void fechar(long contagemId, String observacao, Connection conexao) throws SQLException {
+    public boolean fecharSeAberta(long contagemId, String observacao, Connection conexao) throws SQLException {
         String sql = "UPDATE contagem_inventario SET status = ?, observacao = ?, data_fechamento = CURRENT_TIMESTAMP "
-                + "WHERE id = ?";
+                + "WHERE id = ? AND status = ?";
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
             ps.setString(1, StatusContagem.FECHADA.name());
             ps.setString(2, observacao);
             ps.setLong(3, contagemId);
-            ps.executeUpdate();
+            ps.setString(4, StatusContagem.ABERTA.name());
+            return ps.executeUpdate() == 1;
         }
     }
 
