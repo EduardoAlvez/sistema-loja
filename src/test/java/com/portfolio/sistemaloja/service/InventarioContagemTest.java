@@ -262,7 +262,7 @@ class InventarioContagemTest {
     }
 
     @Test
-    void fechaContagemGravaDiferencaEAjustadoNoItem() {
+    void fechaContagemGravaDeltaAplicadoEAjustadoNoItem() {
         autenticarGerente();
         long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId()));
         app.getInventario().informarContagem(contagemId, refrigerante.getId(), 45);
@@ -271,7 +271,7 @@ class InventarioContagemTest {
 
         ContagemItem item = app.getInventario().listarItens(contagemId).get(0);
         assertTrue(item.isAjustado());
-        assertEquals(5, item.getDiferenca());
+        assertEquals(5, item.getDeltaAplicado());
     }
 
     @Test

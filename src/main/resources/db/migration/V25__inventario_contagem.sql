@@ -19,7 +19,7 @@ CREATE TABLE contagem_item (
   produto_id BIGINT NOT NULL,
   estoque_sistema INT NOT NULL,
   quantidade_contada INT,
-  diferenca INT,
+  delta_aplicado INT,
   ajustado BOOLEAN NOT NULL DEFAULT FALSE,
   CONSTRAINT uk_contagem_item UNIQUE (contagem_id, produto_id),
   CONSTRAINT fk_contagem_item_contagem FOREIGN KEY (contagem_id) REFERENCES contagem_inventario(id) ON DELETE CASCADE,

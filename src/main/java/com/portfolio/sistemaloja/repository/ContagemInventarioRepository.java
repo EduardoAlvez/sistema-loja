@@ -95,7 +95,7 @@ public class ContagemInventarioRepository {
     public List<ContagemItem> listarItens(long contagemId, Connection conexao) throws SQLException {
         String sql = """
                 SELECT ci.id, ci.contagem_id, ci.produto_id, ci.estoque_sistema, ci.quantidade_contada,
-                       ci.diferenca, ci.ajustado,
+                       ci.delta_aplicado, ci.ajustado,
                        p.nome AS produto_nome, p.codigo_barras AS produto_codigo_barras,
                        p.estoque AS estoque_atual
                   FROM contagem_item ci
@@ -123,10 +123,10 @@ public class ContagemInventarioRepository {
         }
     }
 
-    public void registrarAjuste(long itemId, int diferenca, Connection conexao) throws SQLException {
-        String sql = "UPDATE contagem_item SET diferenca = ?, ajustado = TRUE WHERE id = ?";
+    public void registrarAjuste(long itemId, int deltaAplicado, Connection conexao) throws SQLException {
+        String sql = "UPDATE contagem_item SET delta_aplicado = ?, ajustado = TRUE WHERE id = ?";
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
-            ps.setInt(1, diferenca);
+            ps.setInt(1, deltaAplicado);
             ps.setLong(2, itemId);
             ps.executeUpdate();
         }
@@ -185,8 +185,8 @@ public class ContagemInventarioRepository {
         item.setEstoqueAtual(resultado.getInt("estoque_atual"));
         int quantidadeContada = resultado.getInt("quantidade_contada");
         item.setQuantidadeContada(resultado.wasNull() ? null : quantidadeContada);
-        int diferenca = resultado.getInt("diferenca");
-        item.setDiferenca(resultado.wasNull() ? null : diferenca);
+        int deltaAplicado = resultado.getInt("delta_aplicado");
+        item.setDeltaAplicado(resultado.wasNull() ? null : deltaAplicado);
         item.setAjustado(resultado.getBoolean("ajustado"));
         return item;
     }

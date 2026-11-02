@@ -58,7 +58,7 @@ class PainelContagemTest {
     }
 
     @Test
-    void mostraQuantidadeContadaEDiferencaAposInformar() {
+    void mostraQuantidadeContadaEPrevisaoDeDiferencaAposInformar() {
         long contagemId = app.getInventario().abrirContagem(List.of(refrigerante.getId()));
         app.getInventario().informarContagem(contagemId, refrigerante.getId(), 45);
 

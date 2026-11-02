@@ -258,19 +258,19 @@ public class InventarioService {
                     if (estoque == null) {
                         throw new ValidacaoException("Produto não encontrado: " + item.getProdutoNome() + ".");
                     }
-                    int diferenca = item.getQuantidadeContada() - estoque;
-                    if (diferenca != 0) {
-                        if (!produtoRepo.alterarEstoque(item.getProdutoId(), diferenca, conexao)) {
+                    int deltaAplicado = item.getQuantidadeContada() - estoque;
+                    if (deltaAplicado != 0) {
+                        if (!produtoRepo.alterarEstoque(item.getProdutoId(), deltaAplicado, conexao)) {
                             throw new ValidacaoException("Não foi possível ajustar o estoque de "
                                     + item.getProdutoNome() + ".");
                         }
                         ajustes++;
                         auditoria.registrarComo(usuario.getLogin(), "AJUSTAR_ESTOQUE_CONTAGEM", "PRODUTO",
                                 item.getProdutoId(), "contagem=" + contagem.getNumero() + ";antes=" + estoque
-                                        + ";contada=" + item.getQuantidadeContada() + ";diferenca=" + diferenca,
+                                        + ";contada=" + item.getQuantidadeContada() + ";delta=" + deltaAplicado,
                                 conexao);
                     }
-                    contagemRepo.registrarAjuste(item.getId(), diferenca, conexao);
+                    contagemRepo.registrarAjuste(item.getId(), deltaAplicado, conexao);
                 }
 
                 contagemRepo.fechar(contagemId, observacaoNormalizada, conexao);

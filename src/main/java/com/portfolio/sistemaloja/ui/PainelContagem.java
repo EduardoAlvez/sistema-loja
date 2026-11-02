@@ -239,7 +239,7 @@ public class PainelContagem extends JPanel {
                     item.getProdutoNome() + " (" + item.getProdutoCodigoBarras() + ")",
                     item.getEstoqueAtual(),
                     item.foiContado() ? item.getQuantidadeContada() : "-",
-                    item.foiContado() ? formatarDiferenca(item.diferencaAtual()) : "-",
+                    item.previaDeDiferenca() == null ? "-" : formatarPrevisao(item.previaDeDiferenca()),
                     situacaoItem(item)
             });
         }
@@ -283,11 +283,11 @@ public class PainelContagem extends JPanel {
         return item.foiContado() ? "Contado" : "Não contado";
     }
 
-    private String formatarDiferenca(int diferenca) {
-        if (diferenca > 0) {
-            return "+" + diferenca;
+    private String formatarPrevisao(int previsao) {
+        if (previsao > 0) {
+            return "+" + previsao;
         }
-        return String.valueOf(diferenca);
+        return String.valueOf(previsao);
     }
 
     public int totalLinhas() {

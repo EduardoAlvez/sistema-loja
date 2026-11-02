@@ -33,7 +33,7 @@ public class DialogoContagemItem extends JDialog {
     private final ContagemItem item;
     private final int estoqueAtual;
     private final JTextField quantidadeField = new JTextField(10);
-    private final JLabel diferencaLabel = new JLabel(" ");
+    private final JLabel previsaoLabel = new JLabel(" ");
     private Integer resultado;
 
     public DialogoContagemItem(Window proprietario, ContagemItem item, int estoqueAtual) {
@@ -84,8 +84,8 @@ public class DialogoContagemItem extends JDialog {
         gbc.gridy = 4;
         painel.add(Ui.rotulo("Diferença prevista:"), gbc);
         gbc.gridx = 1;
-        diferencaLabel.setFont(diferencaLabel.getFont().deriveFont(java.awt.Font.BOLD, 13f));
-        painel.add(diferencaLabel, gbc);
+        previsaoLabel.setFont(previsaoLabel.getFont().deriveFont(java.awt.Font.BOLD, 13f));
+        painel.add(previsaoLabel, gbc);
 
         add(painel, BorderLayout.CENTER);
 
@@ -103,47 +103,47 @@ public class DialogoContagemItem extends JDialog {
         quantidadeField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                atualizarDiferenca();
+                atualizarPrevisao();
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
-                atualizarDiferenca();
+                atualizarPrevisao();
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                atualizarDiferenca();
+                atualizarPrevisao();
             }
         });
-        atualizarDiferenca();
+        atualizarPrevisao();
     }
 
-    private void atualizarDiferenca() {
+    private void atualizarPrevisao() {
         String texto = quantidadeField.getText().trim();
         if (texto.isEmpty()) {
-            diferencaLabel.setText("Informe a quantidade contada.");
+            previsaoLabel.setText("Informe a quantidade contada.");
             return;
         }
         int quantidade;
         try {
             quantidade = Integer.parseInt(texto);
         } catch (NumberFormatException e) {
-            diferencaLabel.setText("Quantidade inválida.");
+            previsaoLabel.setText("Quantidade inválida.");
             return;
         }
         if (quantidade < 0) {
-            diferencaLabel.setText("A quantidade contada não pode ser negativa.");
+            previsaoLabel.setText("A quantidade contada não pode ser negativa.");
             return;
         }
-        int diferenca = quantidade - estoqueAtual;
-        if (diferenca == 0) {
-            diferencaLabel.setText("Sem divergência: o estoque permanece " + estoqueAtual + ".");
-        } else if (diferenca > 0) {
-            diferencaLabel.setText("Divergência de +" + diferenca + ": o estoque será ajustado para "
+        int previsao = quantidade - estoqueAtual;
+        if (previsao == 0) {
+            previsaoLabel.setText("Sem divergência: o estoque permanece " + estoqueAtual + ".");
+        } else if (previsao > 0) {
+            previsaoLabel.setText("Divergência de +" + previsao + ": o estoque será ajustado para "
                     + quantidade + ".");
         } else {
-            diferencaLabel.setText("Divergência de " + diferenca + ": o estoque será ajustado para "
+            previsaoLabel.setText("Divergência de " + previsao + ": o estoque será ajustado para "
                     + quantidade + ".");
         }
     }
