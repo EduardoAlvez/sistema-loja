@@ -493,6 +493,40 @@ public class RelatorioRepository {
         return "C";
     }
 
+    public List<TotaisFormaPagamento> totaisPorFormaEntre(LocalDate inicio, LocalDate fim) {
+        String sql = """
+                SELECT forma, COUNT(*) AS qtd, COALESCE(SUM(valor), 0) AS total FROM (
+                    SELECT v.forma_pagamento AS forma, v.total AS valor
+                      FROM vendas v
+                     WHERE v.status = 'CONCLUIDA' AND v.data_hora >= ? AND v.data_hora < ?
+                       AND NOT EXISTS (SELECT 1 FROM venda_pagamentos p WHERE p.venda_id = v.id)
+                    UNION ALL
+                    SELECT p.forma_pagamento AS forma, p.valor AS valor
+                      FROM venda_pagamentos p
+                      JOIN vendas v ON v.id = p.venda_id
+                     WHERE v.status = 'CONCLUIDA' AND v.data_hora >= ? AND v.data_hora < ?
+                ) t GROUP BY forma ORDER BY forma""";
+        List<TotaisFormaPagamento> lista = new ArrayList<>();
+        try (Connection conexao = fonte.getConnection();
+             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+            preparada.setObject(1, inicio);
+            preparada.setObject(2, fim.plusDays(1));
+            preparada.setObject(3, inicio);
+            preparada.setObject(4, fim.plusDays(1));
+            try (ResultSet resultado = preparada.executeQuery()) {
+                while (resultado.next()) {
+                    lista.add(new TotaisFormaPagamento(
+                            resultado.getString("forma"),
+                            resultado.getInt("qtd"),
+                            resultado.getBigDecimal("total")));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao agregar vendas por forma de pagamento", e);
+        }
+        return lista;
+    }
+
     private static final java.time.format.DateTimeFormatter DATA =
             java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
 }

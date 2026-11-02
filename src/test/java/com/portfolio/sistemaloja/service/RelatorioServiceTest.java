@@ -212,6 +212,64 @@ class RelatorioServiceTest {
                 () -> app.getRelatorios().resumoPorOperador(hoje, hoje.minusDays(1)));
     }
 
+    @Test
+    void projecaoTaxasCartaoUsaTotalDoTipoComFixaPorLancamento() {
+        com.portfolio.sistemaloja.model.TaxaCartao taxa = new com.portfolio.sistemaloja.model.TaxaCartao();
+        taxa.setBandeira("VISA");
+        taxa.setTipoCartao("CREDITO");
+        taxa.setParcelasMin(1);
+        taxa.setParcelasMax(12);
+        taxa.setTaxaPercentual(new BigDecimal("3.5000"));
+        taxa.setTaxaFixa(new BigDecimal("0.49"));
+        app.getTaxasCartao().salvar(taxa);
+
+        registrarVenda("7891000100103", 1, FormaPagamento.CREDITO);
+        registrarVenda("7891000100103", 1, FormaPagamento.CREDITO);
+        registrarVenda("7891000100104", 1, FormaPagamento.PIX);
+
+        LocalDate hoje = LocalDate.now();
+        List<com.portfolio.sistemaloja.service.RelatorioService.ProjecaoTaxaCartao> projecoes =
+                app.getRelatorios().taxasCartao(hoje, hoje);
+
+        assertEquals(1, projecoes.size());
+        com.portfolio.sistemaloja.service.RelatorioService.ProjecaoTaxaCartao projetado = projecoes.get(0);
+        assertEquals("VISA", projetado.bandeira());
+        assertEquals(2, projetado.quantidadeLancamentos());
+        assertEquals(0, new BigDecimal("17.98").compareTo(projetado.valorBruto()),
+                projetado.valorBruto().toString());
+        // 17.98 * 0.035 = 0.6293 + 2 * 0.49 = 1.6093 -> 1.61 HALF_UP
+        assertEquals(0, new BigDecimal("1.61").compareTo(projetado.valorTaxa()),
+                projetado.valorTaxa().toString());
+        assertEquals(0, new BigDecimal("16.37").compareTo(projetado.valorLiquido()),
+                projetado.valorLiquido().toString());
+    }
+
+    @Test
+    void projecaoTaxasCartaoSemVendasProjetaZero() {
+        com.portfolio.sistemaloja.model.TaxaCartao taxa = new com.portfolio.sistemaloja.model.TaxaCartao();
+        taxa.setBandeira("ELO");
+        taxa.setTipoCartao("DEBITO");
+        taxa.setTaxaPercentual(new BigDecimal("1.0000"));
+        taxa.setTaxaFixa(new BigDecimal("0.10"));
+        app.getTaxasCartao().salvar(taxa);
+
+        LocalDate hoje = LocalDate.now();
+        List<com.portfolio.sistemaloja.service.RelatorioService.ProjecaoTaxaCartao> projecoes =
+                app.getRelatorios().taxasCartao(hoje, hoje);
+
+        assertEquals(1, projecoes.size());
+        assertEquals(0, projecoes.get(0).quantidadeLancamentos());
+        assertEquals(0, BigDecimal.ZERO.compareTo(projecoes.get(0).valorBruto()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(projecoes.get(0).valorTaxa()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(projecoes.get(0).valorLiquido()));
+    }
+
+    @Test
+    void projecaoTaxasCartaoValidaPeriodoInvertido() {
+        assertThrows(ValidacaoException.class,
+                () -> app.getRelatorios().taxasCartao(LocalDate.now().plusDays(1), LocalDate.now()));
+    }
+
     private Venda registrarVenda(String codigo, int quantidade, FormaPagamento pagamento) {
         Produto produto = app.getProdutos().buscarPorCodigoBarras(codigo);
         Venda venda = new Venda();

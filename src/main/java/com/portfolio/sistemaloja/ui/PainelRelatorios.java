@@ -110,6 +110,10 @@ public class PainelRelatorios extends JPanel {
     private final javax.swing.table.DefaultTableModel modeloSugestao =
             Ui.modeloTabela("Produto", "Estoque", "Estoque mín.", "Vendido no período", "Média/dia", "Qtd. sugerida");
     private final JTable tabelaSugestao = Ui.tabela(modeloSugestao);
+    private final javax.swing.table.DefaultTableModel modeloTaxasTef =
+            Ui.modeloTabela("Bandeira", "Adquirente", "Tipo", "Faixa", "Lançamentos no período",
+                    "Bruto no período", "Taxa projetada", "Líquido projetado");
+    private final JTable tabelaTaxasTef = Ui.tabela(modeloTaxasTef);
 
     private List<VendaHora> listaVendaHora = List.of();
     private List<CurvaABC> listaCurvaProdutos = List.of();
@@ -364,6 +368,20 @@ public class PainelRelatorios extends JPanel {
                     Ui.moeda(comparativo.variacao()),
                     comparativo.variacaoPercentual() + "%"
             });
+
+            modeloTaxasTef.setRowCount(0);
+            for (RelatorioService.ProjecaoTaxaCartao t : aplicacao.getRelatorios().taxasCartao(de, ate)) {
+                modeloTaxasTef.addRow(new Object[]{
+                        t.bandeira(),
+                        t.adquirenteOuPadrao(),
+                        t.tipoCartao(),
+                        t.faixaParcelas(),
+                        t.quantidadeLancamentos(),
+                        Ui.moeda(t.valorBruto()),
+                        Ui.moeda(t.valorTaxa()),
+                        Ui.moeda(t.valorLiquido())
+                });
+            }
         } catch (RuntimeException e) {
             Ui.erro(this, e.getMessage(), e);
         }
@@ -484,14 +502,13 @@ public class PainelRelatorios extends JPanel {
     }
 
     private JPanel montarTaxasTef() {
-        JPanel painel = new JPanel(new BorderLayout());
-        JTextArea area = new JTextArea("Relatório de taxas e valores a receber por adquirente/bandeira.\n" +
-                "Configuração em taxas_cartao (bandeira, tipo_cartao, parcelas, taxa_percentual, taxa_fixa).\n" +
-                "Cálculo: valorTaxa = (valorBruto * taxaPercentual/100) + taxaFixa | valorLiquido = valorBruto - valorTaxa.");
-        area.setEditable(false);
-        area.setLineWrap(true);
-        area.setWrapStyleWord(true);
-        painel.add(new JScrollPane(area), BorderLayout.CENTER);
+        JPanel painel = new JPanel(new BorderLayout(0, 8));
+        painel.setOpaque(false);
+        JLabel legenda = new JLabel("Projeção pela configuração vigente de taxas_cartao — não é transação por "
+                + "venda: cada linha assume que todos os lançamentos do tipo no período passaram por essa taxa.");
+        legenda.setFont(legenda.getFont().deriveFont(12f));
+        painel.add(legenda, BorderLayout.NORTH);
+        painel.add(new JScrollPane(tabelaTaxasTef), BorderLayout.CENTER);
         return painel;
     }
 

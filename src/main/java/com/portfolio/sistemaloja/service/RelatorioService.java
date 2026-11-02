@@ -1,5 +1,6 @@
 package com.portfolio.sistemaloja.service;
 
+import com.portfolio.sistemaloja.model.TaxaCartao;
 import com.portfolio.sistemaloja.model.Venda;
 import com.portfolio.sistemaloja.repository.ComparativoPeriodo;
 import com.portfolio.sistemaloja.repository.CurvaABC;
@@ -10,6 +11,8 @@ import com.portfolio.sistemaloja.repository.ProdutoVendado;
 import com.portfolio.sistemaloja.repository.SugestaoCompra;
 import com.portfolio.sistemaloja.repository.RelatorioRepository;
 import com.portfolio.sistemaloja.repository.ResumoOperador;
+import com.portfolio.sistemaloja.repository.TaxaCartaoRepository;
+import com.portfolio.sistemaloja.repository.TotaisFormaPagamento;
 import com.portfolio.sistemaloja.repository.VendaDoDia;
 import com.portfolio.sistemaloja.repository.VendaHora;
 import com.portfolio.sistemaloja.repository.VendaRepository;
@@ -19,15 +22,21 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class RelatorioService {
 
     private final VendaRepository vendas;
     private final RelatorioRepository relatorios;
+    private final TaxaCartaoRepository taxas;
 
-    public RelatorioService(VendaRepository vendas, RelatorioRepository relatorios) {
+    public RelatorioService(VendaRepository vendas, RelatorioRepository relatorios,
+                            TaxaCartaoRepository taxas) {
         this.vendas = vendas;
         this.relatorios = relatorios;
+        this.taxas = taxas;
     }
 
     public ResumoDashboard resumoDoDia() {
@@ -150,6 +159,56 @@ public class RelatorioService {
             throw new ValidacaoException("A data inicial deve ser anterior à final.");
         }
         return relatorios.comparativoPeriodo(inicio, fim);
+    }
+
+    /**
+     * Projecao de custo de taxa de cartao pela configuracao vigente. Cada linha assume
+     * que TODOS os lancamentos do tipo no periodo passaram por aquela taxa: as linhas de
+     * um mesmo tipo se sobrepoe sobre o mesmo total, e a soma entre linhas nao e grandeza
+     * real. A taxa fixa incide por lancamento; o percentual, sobre o bruto do tipo.
+     */
+    public List<ProjecaoTaxaCartao> taxasCartao(LocalDate inicio, LocalDate fim) {
+        if (inicio.isAfter(fim)) {
+            throw new ValidacaoException("A data inicial deve ser anterior à final.");
+        }
+        Map<String, TotaisFormaPagamento> porForma = relatorios.totaisPorFormaEntre(inicio, fim).stream()
+                .collect(Collectors.toMap(t -> t.forma().toUpperCase(Locale.ROOT), t -> t, (a, b) -> a));
+        List<ProjecaoTaxaCartao> projecoes = new ArrayList<>();
+        for (TaxaCartao taxa : taxas.listar(true)) {
+            TotaisFormaPagamento totais = porForma.get(
+                    taxa.getTipoCartao().toUpperCase(Locale.ROOT));
+            int quantidade = totais == null ? 0 : totais.quantidade();
+            BigDecimal bruto = totais == null ? BigDecimal.ZERO : totais.total();
+            BigDecimal percentual = taxa.getTaxaPercentual()
+                    .divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
+            BigDecimal valorTaxa = bruto.multiply(percentual)
+                    .add(taxa.getTaxaFixa().multiply(BigDecimal.valueOf(quantidade)))
+                    .setScale(2, RoundingMode.HALF_UP);
+            if (valorTaxa.signum() < 0) {
+                valorTaxa = BigDecimal.ZERO;
+            }
+            BigDecimal valorLiquido = bruto.subtract(valorTaxa).setScale(2, RoundingMode.HALF_UP);
+            projecoes.add(new ProjecaoTaxaCartao(taxa.getBandeira(), taxa.getAdquirente(),
+                    taxa.getTipoCartao(), taxa.getParcelasMin(), taxa.getParcelasMax(),
+                    quantidade, bruto, valorTaxa, valorLiquido));
+        }
+        return projecoes;
+    }
+
+    public record ProjecaoTaxaCartao(String bandeira, String adquirente, String tipoCartao,
+                                     int parcelasMin, int parcelasMax, int quantidadeLancamentos,
+                                     BigDecimal valorBruto, BigDecimal valorTaxa,
+                                     BigDecimal valorLiquido) {
+
+        public String faixaParcelas() {
+            return parcelasMin == parcelasMax
+                    ? String.valueOf(parcelasMin) + "x"
+                    : parcelasMin + "-" + parcelasMax + "x";
+        }
+
+        public String adquirenteOuPadrao() {
+            return adquirente == null || adquirente.isBlank() ? "-" : adquirente;
+        }
     }
 
     public record ResumoDashboard(int vendas, BigDecimal faturamento, BigDecimal ticketMedio,

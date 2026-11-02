@@ -127,7 +127,8 @@ public class Aplicacao {
                 new CupomEscPosService(this.cupomTermico, this.configuracoes),
                 new ImpressorasSpool());
         this.usuarios = new UsuarioService(usuarioRepository, auditoria);
-        this.relatorios = new RelatorioService(vendaRepository, relatorioRepository);
+        this.relatorios = new RelatorioService(vendaRepository, relatorioRepository,
+                new TaxaCartaoRepository(fonte));
         this.exportacao = new ExportacaoService();
         this.produtoRepository = produtoRepository;
     }
