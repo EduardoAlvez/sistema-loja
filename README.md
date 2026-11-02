@@ -81,6 +81,16 @@ regras de negócio e testes automatizados.
 ### Inventário (opcional)
 - **Perdas com motivo** (somente GERENTE/ADMIN): baixa de estoque e registro do motivo
   (**quebra, vencimento, roubo, avaria, outros**) com observação
+- **Contagem cíclica** (somente GERENTE/ADMIN): abrir sobre um lote ou todos os ativos,
+  informar item a item e **fechar aplicando os ajustes em uma única transação** — a quantidade
+  contada vira o estoque do produto (semântica absoluta, medida em MySQL 8.4 real)
+- **Cancelar contagem** sem tocar no estoque, com motivo obrigatório — o módulo nunca fica
+  travado com uma contagem abandonada
+- **Uma contagem aberta por vez**, garantida no banco (sentinela `contagem_controle` travada
+  com `SELECT ... FOR UPDATE`), e fechamento/cancelamento **imunes a duplo clique**: o
+  `UPDATE` condiciona o status e confere a linha efetivamente alterada
+- Ajuste calculado sobre o estoque **lido com trava de linha no fechamento**: venda concorrente
+  durante a contagem não corrompe o resultado nem duplica auditoria
 - Módulo **opcional**: não é exigido para vender nem para fechar o caixa
 - Motivo validado no serviço (não apenas na interface), vem de um **enum único** compartilhado
   com a interface, e motivo **OUTROS exige observação**
@@ -389,13 +399,14 @@ O PDV agora suporta venda a prazo (fiado) para clientes cadastrados:
 mvn test
 ```
 
-**329 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**400 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
 as **promoções com vigência, dias e horários**, a **fidelidade por pontos** (crédito, resgate,
-saldo, extrato e estornos), as migrações do Flyway e a trilha de auditoria —
-rodam sobre **H2 em modo MySQL**, ou seja, não dependem do Docker.
+saldo, extrato e estornos), o **inventário com contagem cíclica serializada** (abertura,
+informe, fechamento, cancelamento e as races de concorrência), as migrações do Flyway e a
+trilha de auditoria — rodam sobre **H2 em modo MySQL**, ou seja, não dependem do Docker.
 
 ---
 
@@ -449,9 +460,9 @@ sistema-loja/
 │   │   │   ├── service/                     # Regras de negócio e validações
 │   │   │   └── ui/                          # Classes Swing (telas, painéis, diálogos)
 │   │   └── resources/
-│   │       ├── db/migration/                # V1 a V20 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações)
+│   │       ├── db/migration/                # V1 a V25 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações, inventário)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 329 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 400 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -542,7 +553,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 351 testes JUnit (serviços, UI, migrações e integração sobre H2 e MySQL 8.4)
+- [x] 400 testes JUnit (serviços, UI, migrações, concorrência e integração sobre H2 e MySQL 8.4)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
@@ -568,7 +579,8 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
   - [ ] Testes de entrada, custo médio e sugestão
 - [ ] Inventário/contagem cíclica, perdas com motivo e transferência entre lojas
   - [x] Perdas com motivo (quebra, vencimento, roubo, avaria, outros) — opcional, restrito a GERENTE/ADMIN
-  - [ ] Contagem cíclica com ajuste de estoque após conferência
+  - [x] Contagem cíclica com ajuste de estoque após conferência (fechamento transacional,
+        serializado no banco; cancelamento sem ajustar; validada em MySQL 8.4)
 - [ ] Lote e validade com alerta de vencimento
 - [ ] TEF por interface abstrata, taxa por bandeira e conciliação de cartões
   - [x] Interface `OperadoraCartao` + implementação simulada (pacote `tef/`)
