@@ -42,6 +42,10 @@ regras de negócio e testes automatizados.
 - **Carrinho editável**: quantidade alterável na própria tabela, itens duplicados são somados
 - **4 formas de pagamento**: dinheiro, débito, crédito e PIX, com **cálculo de troco** em tempo real
 - **Desconto no total ou por item**, limitado pelo perfil do operador (10%) ou do administrador (50%)
+  — promoção e desconto são **visíveis**: o carrinho marca a linha com `(de X por Y)` / `(com desconto)`,
+  destaca o valor na coluna Desconto e resume `Descontos: −R$` no rodapé; o cupom imprime a tabela
+  em `UNIT` e uma linha `- Desconto` por item (a alçada conta só o desconto manual — promoção de loja
+  não consome o limite do operador)
 - **Fidelidade por pontos**: o cliente selecionado mostra o **saldo de pontos**, o operador digita
   quantos pontos resgatar e o desconto entra no total na hora, respeitando o limite do perfil
 - **Crédito de pontos** por venda, **extrato de pontos** do cliente e **estorno** em devolução
@@ -53,7 +57,8 @@ regras de negócio e testes automatizados.
 - **Cupom térmico de 80mm** com **QR Code PIX** (BR Code oficial, com valor e CRC16), opção de salvar em `.txt` e **impressão ESC/POS** (corte, negrito e gaveta) pela fila do sistema
 - **Promoções com vigência**: preço promocional por período, dia da semana e horário
   (happy hour), aplicado automaticamente no carrinho
-- **Devolução parcial** com crédito no cliente e estorno de estoque
+- **Devolução parcial** com crédito no cliente e estorno de estoque — cada unidade devolvida estorna o
+  **valor efetivamente pago** (item em promoção ou com desconto não devolve preço cheio)
 - Baixa de estoque **transacional** (commit/rollback) e validação de estoque antes de vender
 - **Atalhos F3 a F12**: buscar, dividir, pausar, retomar, reimprimir, limpar, sangria, suprimento,
   abrir caixa e finalizar — além do atalho **F2** (menu Operação) que abre o PDV de qualquer tela
@@ -405,7 +410,7 @@ O PDV agora suporta venda a prazo (fiado) para clientes cadastrados:
 mvn test
 ```
 
-**454 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**468 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -469,7 +474,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V25 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações, inventário)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 454 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 468 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -551,17 +556,17 @@ sistema-loja/
 - [x] CI no GitHub Actions com badge de build
 - [x] Publicar no GitHub
 - [x] Telas no README e release `v1.0.0` com jar para download
-- [x] Desconto no total e por item, limitado pelo perfil do operador
+- [x] Desconto no total e por item, limitado pelo perfil do operador — promoção e desconto visíveis no carrinho e no cupom (#46/#47)
 - [x] Movimento de caixa: abertura, sangria, suprimento e fechamento com relatório
 - [x] Pagamento dividido entre formas
 - [x] Pausa e retomada de venda em andamento
 - [x] Reimpressão do último cupom do operador
 - [x] Atalhos F3 a F12 no PDV
-- [x] Devolução parcial com crédito no cliente
+- [x] Devolução parcial com crédito no cliente, estornando o valor efetivamente pago
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 454 testes JUnit (serviços, UI, migrações, concorrência, fiado/TEF e integração sobre H2 e MySQL 8.4)
+- [x] 468 testes JUnit (serviços, UI, migrações, concorrência, fiado/TEF e integração sobre H2 e MySQL 8.4)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
