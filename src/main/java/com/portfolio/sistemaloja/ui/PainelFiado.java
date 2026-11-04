@@ -35,7 +35,7 @@ public class PainelFiado extends JPanel {
     private final transient Aplicacao aplicacao;
     private final FiadoService fiados;
     private final DefaultTableModel modelo = new DefaultTableModel(
-            new Object[]{"Cliente ID", "Venda ID", "Valor Total", "Pago", "Devedor", "Juros", "Vencimento", "Status"}, 0) {
+            new Object[]{"Fiado ID", "Cliente ID", "Venda ID", "Valor Total", "Pago", "Devedor", "Juros", "Vencimento", "Status"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -68,6 +68,8 @@ public class PainelFiado extends JPanel {
         add(topo, BorderLayout.NORTH);
 
         tabela.setRowSorter(sorter);
+        // Fiado ID mora so no modelo (coluna 0): a visao mantem as colunas de sempre.
+        tabela.removeColumn(tabela.getColumnModel().getColumn(0));
         busca.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             @Override
             public void insertUpdate(javax.swing.event.DocumentEvent e) {
@@ -92,7 +94,7 @@ public class PainelFiado extends JPanel {
         if (texto.isEmpty()) {
             sorter.setRowFilter(null);
         } else {
-            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + texto, 0));
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + texto, 1));
         }
     }
 
@@ -102,7 +104,7 @@ public class PainelFiado extends JPanel {
         List<Fiado> fiadosLista = fiados.listarPendentes();
         for (Fiado f : fiadosLista) {
             modelo.addRow(new Object[]{
-                    f.clienteId(), f.vendaId(),
+                    f.id(), f.clienteId(), f.vendaId(),
                     Ui.moeda(f.valorTotal()), Ui.moeda(f.valorPago()),
                     Ui.moeda(f.valorDevedor()), Ui.moeda(f.jurosAplicados()),
                     f.dataVencimento(), f.status()
@@ -116,12 +118,7 @@ public class PainelFiado extends JPanel {
             Ui.info(this, "Selecione um fiado na tabela.");
             return;
         }
-        long clienteId = (Long) tabela.getValueAt(linha, 0);
-        long vendaId = (Long) tabela.getValueAt(linha, 1);
-        Fiado fiado = fiados.listarPorCliente(clienteId).stream()
-                .filter(f -> f.vendaId().equals(vendaId))
-                .findFirst()
-                .orElse(null);
+        Fiado fiado = fiadoDaLinha(linha);
         if (fiado == null) {
             Ui.erro(this, "Fiado não encontrado.");
             return;
@@ -132,5 +129,17 @@ public class PainelFiado extends JPanel {
             carregar();
             Ui.info(this, "Recebimento de " + Ui.moeda(resultado.get().valor()) + " registrado.");
         }
+    }
+
+    /** Linha resolvida pelo id proprio do fiado (divida #45): sem re-lookup por cliente+venda. */
+    Fiado fiadoDaLinha(int linhaView) {
+        if (linhaView < 0 || linhaView >= tabela.getRowCount()) {
+            return null;
+        }
+        Object id = modelo.getValueAt(sorter.convertRowIndexToModel(linhaView), 0);
+        if (!(id instanceof Number numero)) {
+            return null;
+        }
+        return fiados.buscarPorId(numero.longValue()).orElse(null);
     }
 }

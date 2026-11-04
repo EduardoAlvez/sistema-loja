@@ -230,6 +230,10 @@ public class FiadoService {
         return fiados.listarPendentes();
     }
 
+    public java.util.Optional<Fiado> buscarPorId(long id) {
+        return fiados.buscarPorId(id);
+    }
+
     public List<Fiado> listarVencidos(LocalDate dataReferencia) {
         if (dataReferencia == null) {
             dataReferencia = LocalDate.now(relogio);
