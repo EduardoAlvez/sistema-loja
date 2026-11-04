@@ -15,8 +15,10 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Font;
 import java.awt.Rectangle;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,6 +27,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PainelPDVTest {
@@ -52,7 +55,16 @@ class PainelPDVTest {
 
         assertEquals(1, painel.itensNoCarrinho());
         assertEquals(2, painel.itemDoCarrinho(0, 1));
-        assertEquals(Ui.moeda(new BigDecimal("1.50")), painel.itemDoCarrinho(0, 3));
+        assertEquals(Ui.moeda(new BigDecimal("2.50")), painel.itemDoCarrinho(0, 3),
+                "unit deve mostrar o preco de tabela");
+        assertEquals(Ui.moeda(new BigDecimal("2.00")), painel.itemDoCarrinho(0, 2),
+                "coluna de desconto deve mostrar o ganho da promocao");
+        assertEquals(Ui.moeda(new BigDecimal("3.00")), painel.itemDoCarrinho(0, 4));
+        assertTrue(String.valueOf(painel.itemDoCarrinho(0, 0))
+                .contains("(de " + Ui.moeda(new BigDecimal("2.50"))
+                        + " por " + Ui.moeda(new BigDecimal("1.50")) + ")"),
+                String.valueOf(painel.itemDoCarrinho(0, 0)));
+        assertTrue(painel.descontosRodapeVisiveis());
     }
 
     @Test
@@ -78,8 +90,13 @@ class PainelPDVTest {
 
         painel.adicionarProduto(refrigerante);
 
-        assertEquals(Ui.moeda(new BigDecimal("7.00")), painel.itemDoCarrinho(0, 3));
-        assertTrue(String.valueOf(painel.itemDoCarrinho(0, 0)).contains("(promo)"),
+        assertEquals(Ui.moeda(refrigerante.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
+        assertEquals(Ui.moeda(new BigDecimal("5.97")), painel.itemDoCarrinho(0, 2),
+                "3 por 7 vira desconto de 5,97 no item");
+        assertEquals(Ui.moeda(new BigDecimal("21.00")), painel.itemDoCarrinho(0, 4));
+        assertTrue(String.valueOf(painel.itemDoCarrinho(0, 0))
+                .contains("(de " + Ui.moeda(new BigDecimal("8.99"))
+                        + " por " + Ui.moeda(new BigDecimal("7.00")) + ")"),
                 String.valueOf(painel.itemDoCarrinho(0, 0)));
     }
 
@@ -94,7 +111,7 @@ class PainelPDVTest {
         painel.adicionarProduto(refrigerante);
 
         assertEquals(Ui.moeda(refrigerante.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
-        assertFalse(String.valueOf(painel.itemDoCarrinho(0, 0)).contains("(promo)"),
+        assertFalse(String.valueOf(painel.itemDoCarrinho(0, 0)).contains("por R$"),
                 String.valueOf(painel.itemDoCarrinho(0, 0)));
     }
 
@@ -107,13 +124,76 @@ class PainelPDVTest {
         painel.adicionarProduto(refrigerante);
         painel.adicionarProduto(refrigerante);
         painel.adicionarProduto(refrigerante);
-        assertEquals(Ui.moeda(new BigDecimal("7.00")), painel.itemDoCarrinho(0, 3));
+        assertEquals(Ui.moeda(refrigerante.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
+        assertEquals(Ui.moeda(new BigDecimal("5.97")), painel.itemDoCarrinho(0, 2));
 
         painel.definirQuantidadeNoCarrinho(0, 2);
 
         assertEquals(Ui.moeda(refrigerante.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
-        assertFalse(String.valueOf(painel.itemDoCarrinho(0, 0)).contains("(promo)"),
+        assertFalse(String.valueOf(painel.itemDoCarrinho(0, 0)).contains("por R$"),
                 String.valueOf(painel.itemDoCarrinho(0, 0)));
+    }
+
+    @Test
+    void descontoManualGanhaRotuloCelulaEDestaqueNoRodape() {
+        Produto arroz = app.getProdutos().buscarPorCodigoBarras("7891000200100");
+        PainelPDV painel = new PainelPDV(app, operador);
+        painel.adicionarProduto(arroz);
+        assertFalse(painel.descontosRodapeVisiveis());
+
+        painel.definirDescontoNoCarrinho(0, "3,00");
+
+        assertTrue(String.valueOf(painel.itemDoCarrinho(0, 0)).contains("(com desconto)"),
+                String.valueOf(painel.itemDoCarrinho(0, 0)));
+        assertEquals(Ui.moeda(new BigDecimal("3.00")), painel.itemDoCarrinho(0, 2));
+        assertEquals(Ui.moeda(arroz.getPrecoVenda()), painel.itemDoCarrinho(0, 3));
+        assertTrue(painel.descontosRodapeVisiveis());
+        assertTrue(painel.textoDescontosRodape().contains(Ui.moeda(new BigDecimal("3.00"))),
+                painel.textoDescontosRodape());
+    }
+
+    @Test
+    void destaqueDeDescontoNaoVazaParaOutrasCelulas() {
+        Produto arroz = app.getProdutos().buscarPorCodigoBarras("7891000200100");
+        PainelPDV painel = new PainelPDV(app, operador);
+        painel.adicionarProduto(arroz);
+        painel.definirDescontoNoCarrinho(0, "3,00");
+
+        JLabel desconto = (JLabel) painel.celulaRenderizada(0, 2);
+        Color corDesconto = desconto.getForeground();
+        int estiloDesconto = desconto.getFont().getStyle();
+        String textoDesconto = desconto.getText();
+
+        JLabel subtotal = (JLabel) painel.celulaRenderizada(0, 4);
+
+        assertEquals(Ui.COR_ALERTA, corDesconto);
+        assertEquals(Font.BOLD, estiloDesconto);
+        assertTrue(textoDesconto.startsWith("\u2212"), textoDesconto);
+        assertNotEquals(Ui.COR_ALERTA, subtotal.getForeground());
+        assertEquals(Font.PLAIN, subtotal.getFont().getStyle());
+    }
+
+    @Test
+    void promocaoComAcrescimoManualMantemRotuloDePorEJaSomaNoRodape() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        agua.setPrecoPromocional(new BigDecimal("1.50"));
+        agua.setPromoInicio(LocalDate.of(2000, 1, 1));
+        agua.setPromoFim(LocalDate.of(2099, 12, 31));
+        app.getProdutos().salvar(agua);
+
+        PainelPDV painel = new PainelPDV(app, operador);
+        painel.adicionarProduto(agua);
+        painel.adicionarProduto(agua);
+
+        painel.definirDescontoNoCarrinho(0, "2.60");
+
+        String nome = String.valueOf(painel.itemDoCarrinho(0, 0));
+        assertTrue(nome.contains("por "), nome);
+        assertFalse(nome.contains("com desconto"), nome);
+        assertEquals(Ui.moeda(new BigDecimal("2.60")), painel.itemDoCarrinho(0, 2));
+        assertEquals(Ui.moeda(new BigDecimal("2.40")), painel.itemDoCarrinho(0, 4));
+        assertTrue(painel.textoDescontosRodape().contains(Ui.moeda(new BigDecimal("2.60"))),
+                painel.textoDescontosRodape());
     }
 
     @Test
