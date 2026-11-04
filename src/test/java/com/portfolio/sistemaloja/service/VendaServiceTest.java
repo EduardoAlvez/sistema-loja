@@ -440,9 +440,46 @@ class VendaServiceTest {
 
         Venda registrada = promo.getVendas().registrar(venda);
 
-        assertEquals(0, new BigDecimal("1.50").compareTo(
+        assertEquals(0, new BigDecimal("2.50").compareTo(
                 registrada.getItens().get(0).getPrecoUnitario()));
+        assertEquals(0, new BigDecimal("4.00").compareTo(
+                registrada.getItens().get(0).getDesconto()));
+        assertEquals(0, new BigDecimal("6.00").compareTo(
+                registrada.getItens().get(0).getSubtotal()));
         assertEquals(0, new BigDecimal("6.00").compareTo(registrada.getTotal()));
+    }
+
+    @Test
+    void promoComAcrescimoManualDoOperadorPersisteAsDuasParcelas() {
+        Aplicacao promo = appNoHorario(LocalDateTime.of(2026, 10, 20, 12, 0));
+        Usuario caixa = promo.getAuth().autenticar("admin", "admin123");
+        BancoTeste.abrirCaixa(promo, caixa);
+        Produto agua = promo.getProdutos().buscarPorCodigoBarras("7891000100104");
+        agua.setPrecoPromocional(new BigDecimal("1.50"));
+        agua.setPromoInicio(LocalDate.of(2026, 10, 1));
+        agua.setPromoFim(LocalDate.of(2026, 10, 31));
+        promo.getProdutos().salvar(agua);
+
+        Venda venda = new Venda();
+        venda.setUsuarioId(caixa.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        VendaItem item = new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda());
+        item.recalcularPrecos(agua.getPrecoVenda(), new BigDecimal("1.50"));
+        item.setDesconto(new BigDecimal("6.00"));
+        venda.adicionarItem(item);
+
+        Venda registrada = promo.getVendas().registrar(venda);
+        VendaItem gravado = registrada.getItens().get(0);
+
+        assertEquals(0, new BigDecimal("2.50").compareTo(gravado.getPrecoUnitario()));
+        assertEquals(0, new BigDecimal("6.00").compareTo(gravado.getDesconto()));
+        assertEquals(0, new BigDecimal("4.00").compareTo(gravado.getSubtotal()));
+        assertEquals(0, new BigDecimal("4.00").compareTo(registrada.getTotal()));
+
+        VendaItem relido = promo.getVendas().buscarPorId(registrada.getId())
+                .getItens().get(0);
+        assertEquals(0, new BigDecimal("2.50").compareTo(relido.getPrecoUnitario()));
+        assertEquals(0, new BigDecimal("6.00").compareTo(relido.getDesconto()));
     }
 
     @Test

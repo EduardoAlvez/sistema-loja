@@ -64,6 +64,35 @@ class CupomTermicoServiceTest {
     }
 
     @Test
+    void cupomImprimeLinhaDeDescontoPorItem() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = new Venda();
+        venda.setUsuarioId(operador.getId());
+        venda.setFormaPagamento(FormaPagamento.DINHEIRO);
+        VendaItem item = new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda());
+        item.setDesconto(new BigDecimal("1.00"));
+        venda.adicionarItem(item);
+        venda.setValorPago(new BigDecimal("9.00"));
+        Venda registrada = app.getVendas().registrar(venda);
+
+        String texto = cupom.formatar(registrada);
+
+        assertTrue(texto.contains("- Desconto"), texto);
+        assertTrue(texto.contains("2,50"), "unit deve ser o preco de tabela: " + texto);
+        for (String linha : texto.split("\n")) {
+            assertTrue(linha.length() <= CupomTermicoService.LARGURA,
+                    "linha mais larga que a bobina de 80mm: [" + linha + "]");
+        }
+    }
+
+    @Test
+    void cupomSemDescontoNaoGeraLinhaDeDesconto() {
+        String texto = cupom.formatar(registrar(FormaPagamento.DINHEIRO, 4));
+
+        assertFalse(texto.contains("- Desconto"), texto);
+    }
+
+    @Test
     void qrDoPixEhDecodificavelEOValorEhODaVenda() {
         Venda venda = registrar(FormaPagamento.PIX, 4);
 

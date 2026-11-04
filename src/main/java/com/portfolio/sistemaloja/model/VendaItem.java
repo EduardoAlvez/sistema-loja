@@ -1,6 +1,7 @@
 package com.portfolio.sistemaloja.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class VendaItem {
 
@@ -10,6 +11,7 @@ public class VendaItem {
     private int quantidade;
     private BigDecimal precoUnitario;
     private BigDecimal desconto = BigDecimal.ZERO;
+    private BigDecimal descontoPromocao = BigDecimal.ZERO;
     private BigDecimal subtotal = BigDecimal.ZERO;
 
     public VendaItem() {
@@ -80,6 +82,49 @@ public class VendaItem {
     public void setDesconto(BigDecimal desconto) {
         this.desconto = desconto == null ? BigDecimal.ZERO : desconto;
         recalcularSubtotal();
+    }
+
+    /** Parcela do desconto que vem de promoção vigente; não é persistida. */
+    public BigDecimal getDescontoPromocao() {
+        return descontoPromocao;
+    }
+
+    public void setDescontoPromocao(BigDecimal descontoPromocao) {
+        this.descontoPromocao = descontoPromocao == null ? BigDecimal.ZERO : descontoPromocao;
+    }
+
+    /** Parte do desconto digitada pelo operador, sem a promoção (pode ser negativa na entrada bruta). */
+    public BigDecimal getDescontoManual() {
+        return desconto.subtract(descontoPromocao);
+    }
+
+    /**
+     * Aplica preço de tabela e promove o ganho da promoção para o desconto do item
+     * (issue #46), preservando a parcela manual já digitada. O subtotal cobrado
+     * permanece o preço vigente menos o desconto manual.
+     */
+    public void recalcularPrecos(BigDecimal precoTabela, BigDecimal precoVigente) {
+        BigDecimal tabela = precoTabela == null ? BigDecimal.ZERO : precoTabela;
+        BigDecimal vigente = precoVigente == null ? tabela : precoVigente;
+        BigDecimal bruto = tabela.multiply(BigDecimal.valueOf(quantidade));
+        BigDecimal pago = vigente.multiply(BigDecimal.valueOf(quantidade));
+        BigDecimal residual = bruto.subtract(pago);
+        if (residual.compareTo(BigDecimal.ZERO) < 0) {
+            residual = BigDecimal.ZERO;
+        }
+        BigDecimal manual = getDescontoManual();
+        this.precoUnitario = tabela;
+        this.descontoPromocao = residual;
+        this.desconto = residual.add(manual);
+        recalcularSubtotal();
+    }
+
+    /** Valor efetivamente pago por unidade (subtotal rateado), para devoluções. */
+    public BigDecimal getUnitarioPago() {
+        if (quantidade <= 0) {
+            return subtotal == null ? BigDecimal.ZERO : subtotal;
+        }
+        return subtotal.divide(BigDecimal.valueOf(quantidade), 2, RoundingMode.HALF_UP);
     }
 
     public BigDecimal getValorBruto() {

@@ -287,7 +287,7 @@ public class VendaService {
         for (VendaItem item : itens) {
             BigDecimal descontoItem = item.getDesconto() == null ? BigDecimal.ZERO : item.getDesconto();
             item.setDesconto(descontoItem);
-            if (descontoItem.compareTo(BigDecimal.ZERO) < 0) {
+            if (item.getDescontoManual().compareTo(BigDecimal.ZERO) < 0) {
                 throw new ValidacaoException("O desconto do item " + item.getProdutoNome()
                         + " não pode ser negativo.");
             }
@@ -321,7 +321,7 @@ public class VendaService {
         BigDecimal descontoTotal = venda.getDesconto()
                 .add(venda.getValorPontos())
                 .add(itens.stream()
-                        .map(VendaItem::getDesconto)
+                        .map(VendaItem::getDescontoManual)
                         .reduce(BigDecimal.ZERO, BigDecimal::add));
         BigDecimal limite = bruto.multiply(BigDecimal.valueOf(percentual))
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
@@ -427,7 +427,8 @@ public class VendaService {
         for (VendaItem item : itens) {
             Produto produto = catalogo.get(item.getProdutoId());
             item.setProdutoNome(produto.getNome());
-            item.setPrecoUnitario(precoUnitario(produto, item.getQuantidade(), momento));
+            item.recalcularPrecos(produto.getPrecoVenda(),
+                    precoUnitario(produto, item.getQuantidade(), momento));
         }
     }
 
