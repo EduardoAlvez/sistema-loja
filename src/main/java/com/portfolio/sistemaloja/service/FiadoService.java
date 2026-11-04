@@ -14,6 +14,7 @@ import com.portfolio.sistemaloja.repository.RecebimentoFiadoRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -30,11 +31,12 @@ public class FiadoService {
     private final AuditoriaService auditoria;
     private final Sessao sessao;
     private final com.portfolio.sistemaloja.db.ConexaoFonte fonte;
+    private final Clock relogio;
 
     public FiadoService(FiadoRepository fiados, RecebimentoFiadoRepository recebimentos,
                         ClienteRepository clientes, ConfiguracaoRepository configuracoes,
                         AutorizacaoService autorizacoes, AuditoriaService auditoria, Sessao sessao,
-                        com.portfolio.sistemaloja.db.ConexaoFonte fonte) {
+                        com.portfolio.sistemaloja.db.ConexaoFonte fonte, Clock relogio) {
         this.fiados = fiados;
         this.recebimentos = recebimentos;
         this.clientes = clientes;
@@ -43,6 +45,7 @@ public class FiadoService {
         this.auditoria = auditoria;
         this.sessao = sessao;
         this.fonte = fonte;
+        this.relogio = relogio;
     }
 
     public Fiado gerarFiado(Long clienteId, Long vendaId, BigDecimal valorTotal,
@@ -88,7 +91,7 @@ public class FiadoService {
         // Verifica limite de credito (considerando ja o devedor com juros)
         BigDecimal limite = cliente.getLimiteCredito();
         BigDecimal saldoDevedorExistente = fiados.saldoDevedorTotalPorCliente(clienteId);
-        BigDecimal juros = calcularJuros(valorTotal, dataVencimento, LocalDate.now());
+        BigDecimal juros = calcularJuros(valorTotal, dataVencimento, LocalDate.now(relogio));
         BigDecimal valorDevedor = valorTotal.add(juros);
         BigDecimal disponivel = limite.subtract(saldoDevedorExistente);
 
@@ -100,7 +103,7 @@ public class FiadoService {
         // Se a criacao ja assou juros retroativos, o carimbo de calculo nasce agora:
         // sem ele, o primeiro receber recobraria o mesmo vencimento->hoje por cima.
         LocalDateTime estampaInicialDeCalculo = juros.compareTo(BigDecimal.ZERO) > 0
-                ? LocalDateTime.now()
+                ? LocalDateTime.now(relogio)
                 : null;
 
         return new ContaFiado(valorTotal, valorDevedor, juros, estampaInicialDeCalculo);
@@ -154,7 +157,7 @@ public class FiadoService {
                     fiado.valorTotal(), fiado.valorPago(), novoDevedor,
                     fiado.jurosAplicados().add(jurosVencidos),
                     fiado.dataVencimento(), fiado.status(), fiado.observacao(),
-                    LocalDateTime.now());
+                    LocalDateTime.now(relogio));
             fiados.salvar(fiado);
             auditoria.registrar("JUROS_APLICADOS", "FIADO", fiado.id(),
                     "juros " + jurosVencidos.toPlainString() + " aplicados ao fiado " + fiadoId);
@@ -174,13 +177,13 @@ public class FiadoService {
         String novoStatus;
         if (valorDevedorNovo.compareTo(BigDecimal.ZERO) == 0) {
             novoStatus = "QUITADO";
-        } else if (fiado.isInadimplente() || fiado.dataVencimento().isBefore(LocalDate.now())) {
+        } else if (fiado.isInadimplente() || fiado.dataVencimento().isBefore(LocalDate.now(relogio))) {
             novoStatus = "INADIMPLENTE";
         } else {
             novoStatus = "PARCIAL";
         }
 
-        RecebimentoFiado recebimento = new RecebimentoFiado(null, fiadoId, LocalDateTime.now(),
+        RecebimentoFiado recebimento = new RecebimentoFiado(null, fiadoId, LocalDateTime.now(relogio),
                 valor, formaPagamento, usuarioId, observacao);
         recebimentos.salvar(recebimento);
 
@@ -208,7 +211,7 @@ public class FiadoService {
 
     public List<Fiado> listarVencidos(LocalDate dataReferencia) {
         if (dataReferencia == null) {
-            dataReferencia = LocalDate.now();
+            dataReferencia = LocalDate.now(relogio);
         }
         // Nao persiste alteracoes: apenas retorna os vencidos com juros calculados em memoria
         List<Fiado> vencidos = fiados.listarVencidos(dataReferencia);
@@ -236,11 +239,11 @@ public class FiadoService {
      * dois paineis emitam o mesmo evento.
      */
     public int marcarVencidos() {
-        return marcarVencidos(LocalDate.now());
+        return marcarVencidos(LocalDate.now(relogio));
     }
 
     public int marcarVencidos(LocalDate dataReferencia) {
-        LocalDate referencia = dataReferencia == null ? LocalDate.now() : dataReferencia;
+        LocalDate referencia = dataReferencia == null ? LocalDate.now(relogio) : dataReferencia;
         try (java.sql.Connection conexao = fonte.getConnection()) {
             try {
                 conexao.setAutoCommit(false);
@@ -321,7 +324,7 @@ public class FiadoService {
 
     private BigDecimal calcularJurosVencidos(Fiado fiado) {
         LocalDateTime ultimoCalculo = fiado.ultimoCalculoJuros();
-        LocalDate dataReferencia = LocalDate.now();
+        LocalDate dataReferencia = LocalDate.now(relogio);
 
         // Guarda intra-dia: hoje ja calculado nao cobra de novo. Redundante com a base
         // incremental abaixo (mesmo dia => 0 dias => ZERO), mas barata e mantem a
