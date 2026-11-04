@@ -149,25 +149,18 @@ public class FiadoService {
             throw new ValidacaoException("Este ja foi quitado.");
         }
 
-        // Aplica juros vencidos ate hoje (incremental, so o que nao foi cobrado ainda)
+        // Fase 1: calcular e validar tudo antes de tocar o banco (divida #45) — nada de
+        // juros vencidos gravados se o valor informado estourar o devedor.
         BigDecimal jurosVencidos = calcularJurosVencidos(fiado);
-        if (jurosVencidos.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal novoDevedor = fiado.valorDevedor().add(jurosVencidos);
-            fiado = new Fiado(fiado.id(), fiado.vendaId(), fiado.clienteId(),
-                    fiado.valorTotal(), fiado.valorPago(), novoDevedor,
-                    fiado.jurosAplicados().add(jurosVencidos),
-                    fiado.dataVencimento(), fiado.status(), fiado.observacao(),
-                    LocalDateTime.now(relogio));
-            fiados.salvar(fiado);
-            auditoria.registrar("JUROS_APLICADOS", "FIADO", fiado.id(),
-                    "juros " + jurosVencidos.toPlainString() + " aplicados ao fiado " + fiadoId);
-        }
-
-        BigDecimal valorPagoNovo = fiado.valorPago().add(valor);
-        BigDecimal valorDevedorNovo = fiado.valorDevedor().subtract(valor);
+        BigDecimal devedorComJuros = fiado.valorDevedor().add(jurosVencidos);
+        BigDecimal valorDevedorNovo = devedorComJuros.subtract(valor);
         if (valorDevedorNovo.compareTo(BigDecimal.ZERO) < 0) {
             throw new ValidacaoException("O valor recebido excede o devedor do fiado.");
         }
+        BigDecimal valorPagoNovo = fiado.valorPago().add(valor);
+        LocalDateTime estampaJuros = jurosVencidos.compareTo(BigDecimal.ZERO) > 0
+                ? LocalDateTime.now(relogio)
+                : fiado.ultimoCalculoJuros();
 
         // Re-derivacao (issue #43): o status persistido eh sempre a verdade do momento,
         // sem depender de o painel ter rodado a marcacao antes. Um vencido que recebe
@@ -183,23 +176,51 @@ public class FiadoService {
             novoStatus = "PARCIAL";
         }
 
-        RecebimentoFiado recebimento = new RecebimentoFiado(null, fiadoId, LocalDateTime.now(relogio),
-                valor, formaPagamento, usuarioId, observacao);
-        recebimentos.salvar(recebimento);
-
         Fiado atualizado = new Fiado(fiado.id(), fiado.vendaId(), fiado.clienteId(),
                 fiado.valorTotal(), valorPagoNovo, valorDevedorNovo,
-                fiado.jurosAplicados(), fiado.dataVencimento(), novoStatus, fiado.observacao(),
-                fiado.ultimoCalculoJuros());
-        fiados.salvar(atualizado);
+                fiado.jurosAplicados().add(jurosVencidos), fiado.dataVencimento(),
+                novoStatus, fiado.observacao(), estampaJuros);
+        RecebimentoFiado recebimento = new RecebimentoFiado(null, fiadoId,
+                LocalDateTime.now(relogio), valor, formaPagamento, usuarioId, observacao);
 
-        auditoria.registrar("FIADO_RECEBIMENTO", "FIADO", fiado.id(),
-                "recebido " + valor.toPlainString() + " forma " + formaPagamento
-                        + " devedor restante " + valorDevedorNovo.toPlainString());
-
-        if (novoStatus.equals("QUITADO")) {
-            auditoria.registrar("FIADO_QUITADO", "FIADO", fiado.id(),
-                    "fiado quitado pelo cliente " + fiado.clienteId());
+        // Fase 2: recebimento, fiado e auditorias no MESMO commit (molde registrarVendaFiado).
+        // Uma falha no meio nao pode deixar juro cobrado sem recebimento nem dívida paga
+        // com status velho (divida declarada da issue #45).
+        String login = loginDaSessao();
+        try (java.sql.Connection conexao = fonte.getConnection()) {
+            try {
+                conexao.setAutoCommit(false);
+                fiados.salvar(atualizado, conexao);
+                recebimentos.salvar(recebimento, conexao);
+                if (jurosVencidos.compareTo(BigDecimal.ZERO) > 0) {
+                    auditoria.registrarComo(login, "JUROS_APLICADOS", "FIADO", fiado.id(),
+                            "juros " + jurosVencidos.toPlainString() + " aplicados ao fiado " + fiadoId,
+                            conexao);
+                }
+                auditoria.registrarComo(login, "FIADO_RECEBIMENTO", "FIADO", fiado.id(),
+                        "recebido " + valor.toPlainString() + " forma " + formaPagamento
+                                + " devedor restante " + valorDevedorNovo.toPlainString(), conexao);
+                if (novoStatus.equals("QUITADO")) {
+                    auditoria.registrarComo(login, "FIADO_QUITADO", "FIADO", fiado.id(),
+                            "fiado quitado pelo cliente " + fiado.clienteId(), conexao);
+                }
+                conexao.commit();
+            } catch (RuntimeException | java.sql.SQLException e) {
+                try {
+                    conexao.rollback();
+                } catch (java.sql.SQLException falhaRollback) {
+                    // rollback que falha nao pode esconder o erro original
+                }
+                if (e instanceof ValidacaoException validacao) {
+                    throw validacao;
+                }
+                if (e instanceof java.sql.SQLException sqlErro) {
+                    throw new ValidacaoException("Erro ao receber o fiado.", sqlErro);
+                }
+                throw (RuntimeException) e;
+            }
+        } catch (java.sql.SQLException e) {
+            throw new ValidacaoException("Erro ao receber o fiado.", e);
         }
 
         return atualizado;
