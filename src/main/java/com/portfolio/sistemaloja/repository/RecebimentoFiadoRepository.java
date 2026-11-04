@@ -27,12 +27,30 @@ public class RecebimentoFiadoRepository {
         this.fonte = fonte;
     }
 
+    private java.util.function.Consumer<Connection> falharAoSalvar = conexao -> { };
+
+    public void falharAoSalvarParaTeste(java.util.function.Consumer<Connection> hook) {
+        this.falharAoSalvar = hook;
+    }
+
     public RecebimentoFiado salvar(RecebimentoFiado recebimento) {
+        try (Connection conexao = fonte.getConnection()) {
+            return inserir(recebimento, conexao);
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao salvar recebimento de fiado", e);
+        }
+    }
+
+    public RecebimentoFiado salvar(RecebimentoFiado recebimento, Connection conexao) throws SQLException {
+        return inserir(recebimento, conexao);
+    }
+
+    private RecebimentoFiado inserir(RecebimentoFiado recebimento, Connection conexao) throws SQLException {
         String sql = "INSERT INTO recebimentos_fiado (fiado_id, data_pagamento, valor, "
                 + "forma_pagamento, usuario_id, observacao) "
                 + "VALUES (?, ?, ?, ?, ?, ?)";
-        try (Connection conexao = fonte.getConnection();
-             PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        falharAoSalvar.accept(conexao);
+        try (PreparedStatement preparada = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparada.setLong(1, recebimento.fiadoId());
             preparada.setObject(2, recebimento.dataPagamento());
             preparada.setBigDecimal(3, recebimento.valor());
@@ -49,8 +67,6 @@ public class RecebimentoFiadoRepository {
                 }
             }
             return recebimento;
-        } catch (SQLException e) {
-            throw new RepositorioException("Falha ao salvar recebimento de fiado", e);
         }
     }
 

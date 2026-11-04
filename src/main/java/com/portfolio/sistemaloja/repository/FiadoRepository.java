@@ -46,7 +46,7 @@ public class FiadoRepository {
     }
 
     public Fiado salvar(Fiado fiado, Connection conexao) throws SQLException {
-        return inserir(fiado, conexao);
+        return fiado.id() == null ? inserir(fiado, conexao) : atualizar(fiado, conexao);
     }
 
     private Fiado inserir(Fiado fiado, Connection conexao) throws SQLException {
@@ -79,11 +79,18 @@ public class FiadoRepository {
     }
 
     private Fiado atualizar(Fiado fiado) {
+        try (Connection conexao = fonte.getConnection()) {
+            return atualizar(fiado, conexao);
+        } catch (SQLException e) {
+            throw new RepositorioException("Falha ao salvar fiado", e);
+        }
+    }
+
+    private Fiado atualizar(Fiado fiado, Connection conexao) throws SQLException {
         String sql = "UPDATE fiados SET venda_id = ?, cliente_id = ?, valor_total = ?, valor_pago = ?, "
                 + "valor_devedor = ?, juros_aplicados = ?, ultimo_calculo_juros = ?, "
                 + "data_vencimento = ?, status = ?, observacao = ? WHERE id = ?";
-        try (Connection conexao = fonte.getConnection();
-             PreparedStatement preparada = conexao.prepareStatement(sql)) {
+        try (PreparedStatement preparada = conexao.prepareStatement(sql)) {
             preparada.setLong(1, fiado.vendaId());
             preparada.setLong(2, fiado.clienteId());
             preparada.setBigDecimal(3, fiado.valorTotal());
@@ -97,8 +104,6 @@ public class FiadoRepository {
             preparada.setLong(11, fiado.id());
             preparada.executeUpdate();
             return fiado;
-        } catch (SQLException e) {
-            throw new RepositorioException("Falha ao salvar fiado", e);
         }
     }
 

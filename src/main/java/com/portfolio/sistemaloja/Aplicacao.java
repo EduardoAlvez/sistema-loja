@@ -73,6 +73,7 @@ public class Aplicacao {
     private final DevolucaoRepository devolucaoRepository;
     private final ContagemInventarioRepository contagemInventarioRepository;
     private final FiadoRepository fiadoRepository;
+    private final RecebimentoFiadoRepository recebimentoFiadoRepository;
     private final ConfiguracaoService configuracoes;
     private final AutorizacaoService autorizacoes;
     private final FiadoService fiados;
@@ -106,7 +107,8 @@ public class Aplicacao {
         this.configuracoes = new ConfiguracaoService(configuracaoRepository, sessao, fonte);
         this.autorizacoes = new AutorizacaoService(usuarioRepository, sessao, auditoria);
         this.fiadoRepository = new FiadoRepository(fonte);
-        this.fiados = new FiadoService(fiadoRepository, new RecebimentoFiadoRepository(fonte),
+        this.recebimentoFiadoRepository = new RecebimentoFiadoRepository(fonte);
+        this.fiados = new FiadoService(fiadoRepository, recebimentoFiadoRepository,
                 clienteRepository, configuracaoRepository, autorizacoes, auditoria, sessao, fonte, relogio);
         this.fidelidade = new FidelidadeService(fidelidadeRepository, this.configuracoes);
         this.promocoes = new PromocaoService(new PromocaoProdutoRepository(fonte), produtoRepository,
@@ -221,6 +223,10 @@ public class Aplicacao {
 
     public FiadoRepository getFiadoRepository() {
         return fiadoRepository;
+    }
+
+    public RecebimentoFiadoRepository getRecebimentoFiadoRepository() {
+        return recebimentoFiadoRepository;
     }
 
     public ConfiguracaoService getConfiguracoes() {
