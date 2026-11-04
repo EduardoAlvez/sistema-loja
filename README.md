@@ -399,7 +399,7 @@ O PDV agora suporta venda a prazo (fiado) para clientes cadastrados:
   estourado sem PIN é detectado antes de qualquer INSERT e uma falha no fiado desfaz a venda
   inteira (nada de venda órfã ou duplicada pelo retry do PIN — issue #42).
 - **Juros**: taxa de juros mensal configurável pelo admin, aplicada sobre valores em atraso **incrementalmente a partir do último cálculo** (recebimentos em dias distintos cobram só a pena nova; juros assados na criação do fiado já entram no saldo sem serem recobrados no primeiro recebimento).
-- **Recebimento**: a aba "Fiado / Recebíveis" lista os **pendentes** (Aberto, Parcial e Inadimplente — um parcial não pode sumir da fila de cobrança), permitindo registrar recebimentos parciais ou totais, com atualização automática do saldo devedor.
+- **Recebimento**: a aba "Fiado / Recebíveis" lista os **pendentes** (Aberto, Parcial e Inadimplente — um parcial não pode sumir da fila de cobrança), permitindo registrar recebimentos parciais ou totais, com atualização automática do saldo devedor. O recebimento é **transacional**: fiado, recebimento, juros e auditorias vivem e morrem no mesmo commit (#45).
 - **Inadimplência no banco**: abrir/atualizar o painel marca como `INADIMPLENTE` os fiados com vencimento vencido (marcação idempotente, travada por `SELECT ... FOR UPDATE`); o status exibido é o persistido, e ele **conta no saldo devedor** — inadimplente não ganha crédito novo sem PIN.
 - **Auditoria**: eventos `FIADO_GERADO`, `FIADO_RECEBIMENTO`, `FIADO_QUITADO`, `FIADO_INADIMPLENTE`, `LIMITE_CREDITO_ALTERADO` e `JUROS_APLICADOS` são registrados na trilha de auditoria.
 - **Migração V19**: tabelas `fiados` e `recebimentos_fiado`, além da coluna `limite_credito` em `clientes`.
@@ -410,7 +410,7 @@ O PDV agora suporta venda a prazo (fiado) para clientes cadastrados:
 mvn test
 ```
 
-**468 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
+**472 testes** cobrindo serviços, validações, senhas, o ciclo completo de venda (pagamento
 dividido, desconto, caixa, pausa, devolução e comissão), o cupom térmico com **PIX BR Code**
 e QR Code decodificado no teste, a **impressão ESC/POS com impressora em memória** (QR nativo,
 corte e gaveta), a exportação em PDF/Excel, o gráfico, o CSV de produtos,
@@ -474,7 +474,7 @@ sistema-loja/
 │   │   └── resources/
 │   │       ├── db/migration/                # V1 a V25 (esquema, caixa, PIX, estoque mínimo, promoções, pontos, configurações, inventário)
 │   │       └── log4j2.xml                   # Logs: console + arquivo com rotação
-│   └── test/java/com/portfolio/sistemaloja/ # 468 testes JUnit 5
+│   └── test/java/com/portfolio/sistemaloja/ # 472 testes JUnit 5
 └── target/                                  # Build (ignorada no git)
 ```
 
@@ -566,7 +566,7 @@ sistema-loja/
 - [x] Relatório por operador com comissão
 - [x] Cupom térmico 80mm com QR Code PIX (BR Code + CRC16)
 - [x] Alerta de estoque mínimo e filtro de produtos por categoria
-- [x] 468 testes JUnit (serviços, UI, migrações, concorrência, fiado/TEF e integração sobre H2 e MySQL 8.4)
+- [x] 472 testes JUnit (serviços, UI, migrações, concorrência, fiado/TEF e integração sobre H2 e MySQL 8.4)
 - [x] Release `v1.1.0` com jar para download
 Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agrupados por esforço.
 
@@ -605,7 +605,7 @@ Itens levantados na pesquisa de mercado (comparação com PDVs comerciais), agru
   - [x] Relatório de taxas e valores a receber por adquirente — projeção pela configuração
         vigente, com a limitação declarada na aba (vendas não guardam bandeira/adquirente)
   - [x] Testes da interface simulada, das taxas e da conciliação
-- [x] Fiado/crediário com limite, vencimento, recebimento parcial e juros
+- [x] Fiado/crediário com limite, vencimento, recebimento parcial e juros — receber transacional, painel por id, Clock injetado (#45)
 - [ ] Multi-caixa e multi-loja com preço centralizado
 - [x] Relatórios de estoque crítico usando o `estoque_minimo` de cada produto
 - [x] Subir o `docker-compose.yml` para MySQL 8.4 LTS
