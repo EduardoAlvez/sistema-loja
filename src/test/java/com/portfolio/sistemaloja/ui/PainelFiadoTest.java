@@ -97,6 +97,35 @@ class PainelFiadoTest {
         assertEquals("QUITADO", app.getFiados().listarPorCliente(cliente.getId()).get(0).status());
     }
 
+    /**
+     * Divida #45: a linha resolve o fiado pelo id proprio, nunca por "primeiro match de
+     * cliente+venda" (findFirst). Com dois fiados na MESMA venda o fluxo antigo receberia
+     * o primeiro duas vezes.
+     */
+    @Test
+    void linhaResolveFiadoPeloIdProprioMesmoComDoisNaMesmaVenda() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = new Venda();
+        venda.setUsuarioId(admin.getId());
+        venda.setFormaPagamento(FormaPagamento.PIX);
+        venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 1, agua.getPrecoVenda()));
+        long vendaId = app.getVendas().registrar(venda).getId();
+
+        Long primeiro = app.getFiados().gerarFiado(cliente.getId(), vendaId,
+                new BigDecimal("100.00"), LocalDate.now().plusDays(5), null, null).id();
+        Long segundo = app.getFiados().gerarFiado(cliente.getId(), vendaId,
+                new BigDecimal("60.00"), LocalDate.now().plusDays(20), null, null).id();
+
+        PainelFiado painel = new PainelFiado(app);
+
+        assertEquals(primeiro, painel.fiadoDaLinha(0).id());
+        assertEquals(segundo, painel.fiadoDaLinha(1).id());
+        org.junit.jupiter.api.Assertions.assertNotEquals(painel.fiadoDaLinha(0).id(),
+                painel.fiadoDaLinha(1).id(),
+                "linhas distintas da mesma venda nao podem resolver o mesmo fiado");
+        org.junit.jupiter.api.Assertions.assertNull(painel.fiadoDaLinha(2));
+    }
+
     private Fiado gerarFiado(LocalDate vencimento) {
         Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
         Venda venda = new Venda();
