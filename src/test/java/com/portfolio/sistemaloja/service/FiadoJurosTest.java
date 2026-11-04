@@ -13,11 +13,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.Timestamp;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -30,22 +30,21 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * 2) receber em dois dias distintos => o segundo cobrava o periodo inteiro de novo.
  * A base correta e max(vencimento, ultimo_calculo_juros).
  *
- * Nota: os UPDATEs JDBC simulam a passagem de dias porque o servico usa LocalDate.now()
- * hardcoded. Uma execucao que cruzar a meia-noite entre o UPDATE e o receber desloca a
- * contagem em um dia - se esse flake raro aparecer, e o relogio da JVM, nao o calculo.
+ * A passagem dos dias e simulada adiantando o Clock injetado no app (divida #45):
+ * sem UPDATE JDBC cru e sem corrida de meia-noite entre o teste e o servico.
  */
 class FiadoJurosTest {
 
+    private RelogioAjustavel relogio;
     private Aplicacao app;
-    private String nomeBanco;
     private Usuario admin;
     private Cliente cliente;
     private long vendaId;
 
     @BeforeEach
-    void preparar() throws Exception {
-        nomeBanco = "fiadojuros" + System.nanoTime();
-        app = BancoTeste.criar(nomeBanco);
+    void preparar() {
+        relogio = new RelogioAjustavel(LocalDate.now().atTime(10, 0));
+        app = BancoTeste.criar("fiadojuros" + System.nanoTime(), relogio);
         admin = app.getAuth().autenticar("admin", "admin123");
         BancoTeste.abrirCaixa(app, admin);
 
@@ -79,12 +78,12 @@ class FiadoJurosTest {
     }
 
     @Test
-    void recebimentosEmDiasDistintosCobramAPenaOMesmoPeriodoUmaVez() throws Exception {
+    void recebimentosEmDiasDistintosCobramAPenaOMesmoPeriodoUmaVez() {
         Fiado criado = app.getFiados().gerarFiado(cliente.getId(), vendaId,
                 new BigDecimal("100.00"), LocalDate.now(), null, null);
         assertEquals(0, new BigDecimal("100.00").compareTo(criado.valorDevedor()));
 
-        atrasarVencimentoEm(10);
+        relogio.adiantarDias(10);
 
         Fiado aposPrimeiro = app.getFiados().receber(criado.id(), new BigDecimal("50.00"),
                 "DINHEIRO", admin.getId(), null);
@@ -94,7 +93,7 @@ class FiadoJurosTest {
         assertEquals(0, new BigDecimal("51.67").compareTo(aposPrimeiro.valorDevedor()),
                 aposPrimeiro.valorDevedor().toString());
 
-        marcarUltimoCalculoComoOntem();
+        relogio.adiantarDias(1);
 
         Fiado aposSegundo = app.getFiados().receber(criado.id(), new BigDecimal("50.00"),
                 "DINHEIRO", admin.getId(), null);
@@ -109,30 +108,6 @@ class FiadoJurosTest {
                 "pagar parcialmente um vencido mantem inadimplente (sem flap nem evento repetido)");
     }
 
-    private void atrasarVencimentoEm(int dias) throws Exception {
-        try (Connection conexao = BancoTeste.conexao(nomeBanco);
-             PreparedStatement ps = conexao.prepareStatement(
-                     "UPDATE fiados SET data_vencimento = ? WHERE id = ?")) {
-            ps.setTimestamp(1, Timestamp.valueOf(LocalDate.now().minusDays(dias).atStartOfDay()));
-            ps.setLong(2, criado().id());
-            ps.executeUpdate();
-        }
-    }
-
-    private void marcarUltimoCalculoComoOntem() throws Exception {
-        try (Connection conexao = BancoTeste.conexao(nomeBanco);
-             PreparedStatement ps = conexao.prepareStatement(
-                     "UPDATE fiados SET ultimo_calculo_juros = ? WHERE id = ?")) {
-            ps.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now().minusDays(1)));
-            ps.setLong(2, criado().id());
-            ps.executeUpdate();
-        }
-    }
-
-    private Fiado criado() {
-        return app.getFiados().listarPorCliente(cliente.getId()).get(0);
-    }
-
     private long registrarVendaPix() {
         Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
         Venda venda = new Venda();
@@ -140,5 +115,34 @@ class FiadoJurosTest {
         venda.setFormaPagamento(FormaPagamento.PIX);
         venda.adicionarItem(new VendaItem(agua.getId(), agua.getNome(), 1, agua.getPrecoVenda()));
         return app.getVendas().registrar(venda).getId();
+    }
+
+    private static class RelogioAjustavel extends Clock {
+
+        private Instant agora;
+        private final ZoneId zona = ZoneId.systemDefault();
+
+        RelogioAjustavel(java.time.LocalDateTime inicio) {
+            agora = inicio.atZone(zona).toInstant();
+        }
+
+        void adiantarDias(int dias) {
+            agora = agora.plus(dias, ChronoUnit.DAYS);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return zona;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return agora;
+        }
     }
 }
