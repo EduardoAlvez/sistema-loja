@@ -2,6 +2,7 @@ package com.portfolio.sistemaloja.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -16,6 +17,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -40,6 +42,7 @@ import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.event.TableModelEvent;
+import javax.swing.table.DefaultTableCellRenderer;
 
 import com.portfolio.sistemaloja.Aplicacao;
 import com.portfolio.sistemaloja.model.Autorizacao;
@@ -79,6 +82,7 @@ public class PainelPDV extends JPanel {
     private final JLabel statusPagamento = new JLabel(" ");
     private final JLabel saldoPontos = new JLabel(" ");
     private final JLabel total = new JLabel("R$ 0,00");
+    private final JLabel rotuloDescontos = new JLabel(" ");
     private final JLabel troco = new JLabel("R$ 0,00");
     private final JLabel statusEstoque = new JLabel(" ");
     private final JLabel statusCaixa = new JLabel(" ");
@@ -101,7 +105,7 @@ public class PainelPDV extends JPanel {
     private BigDecimal subtotal = BigDecimal.ZERO;
     private final javax.swing.table.DefaultTableModel modeloCarrinho =
             new javax.swing.table.DefaultTableModel(
-                    new Object[]{"Produto", "Qtd", "Desconto", "Preço unit.", "Subtotal"}, 0) {
+                    new Object[]{"Produto", "Qtd", "Desconto (item)", "Preço unit.", "Subtotal"}, 0) {
                 @Override
                 public boolean isCellEditable(int linha, int coluna) {
                     return coluna == 1 || coluna == 2;
@@ -119,6 +123,7 @@ public class PainelPDV extends JPanel {
         add(montarCentro(), BorderLayout.CENTER);
         add(montarRodape(), BorderLayout.SOUTH);
         configurarEventos();
+        configurarDestaqueCarrinho();
         instalarAtalhos();
         recarregarClientes();
         atualizarStatusCaixa();
@@ -134,6 +139,39 @@ public class PainelPDV extends JPanel {
 
     void definirQuantidadeNoCarrinho(int linha, int quantidade) {
         modeloCarrinho.setValueAt(quantidade, linha, 1);
+    }
+
+    void definirDescontoNoCarrinho(int linha, String valor) {
+        modeloCarrinho.setValueAt(valor, linha, 2);
+    }
+
+    Component celulaRenderizada(int linha, int coluna) {
+        return tabelaCarrinho.prepareRenderer(
+                tabelaCarrinho.getCellRenderer(linha, coluna), linha, coluna);
+    }
+
+    String textoDescontosRodape() {
+        return rotuloDescontos.getText();
+    }
+
+    boolean descontosRodapeVisiveis() {
+        return !rotuloDescontos.getText().isBlank();
+    }
+
+    /** Rótulo de visibilidade do ganho por item (issue #47): promoção conta a história do preço. */
+    private String nomeCarrinho(VendaItem item) {
+        StringBuilder nome = new StringBuilder(item.getProdutoNome());
+        BigDecimal residual = item.getDescontoPromocao();
+        BigDecimal manual = item.getDescontoManual();
+        if (residual.compareTo(BigDecimal.ZERO) > 0 && item.getQuantidade() > 0) {
+            BigDecimal por = item.getPrecoUnitario().subtract(
+                    residual.divide(BigDecimal.valueOf(item.getQuantidade()), 2, RoundingMode.HALF_UP));
+            nome.append(" (de ").append(Ui.moeda(item.getPrecoUnitario()))
+                    .append(" por ").append(Ui.moeda(por)).append(")");
+        } else if (manual.compareTo(BigDecimal.ZERO) > 0) {
+            nome.append(" (com desconto)");
+        }
+        return nome.toString();
     }
 
     String textoSaldoPontos() {
@@ -290,6 +328,9 @@ public class PainelPDV extends JPanel {
 
         JPanel statusLinha = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 2));
         statusLinha.setOpaque(false);
+        rotuloDescontos.setForeground(Ui.COR_ALERTA);
+        rotuloDescontos.setFont(rotuloDescontos.getFont().deriveFont(Font.BOLD));
+        statusLinha.add(rotuloDescontos);
         statusLinha.add(statusPagamento);
         saldoPontos.setForeground(new Color(110, 118, 126));
         statusLinha.add(saldoPontos);
@@ -604,10 +645,8 @@ public class PainelPDV extends JPanel {
                     return;
                 }
                 int quantidade = item.getQuantidade() + 1;
-                BigDecimal preco = precoUnitario(produto, quantidade);
-                item.setPrecoUnitario(preco);
                 item.setQuantidade(quantidade);
-                marcarPromocao(produto, preco);
+                aplicarPrecosVigentes(item, produto);
                 sincronizarCarrinho();
                 return;
             }
@@ -616,14 +655,24 @@ public class PainelPDV extends JPanel {
             Ui.erro(this, "Produto sem estoque: " + produto.getNome());
             return;
         }
-        BigDecimal preco = precoUnitario(produto, 1);
-        marcarPromocao(produto, preco);
-        carrinho.add(new VendaItem(produto.getId(), produto.getNome(), 1, preco));
+        VendaItem novo = new VendaItem(produto.getId(), produto.getNome(), 1, produto.getPrecoVenda());
+        carrinho.add(novo);
+        aplicarPrecosVigentes(novo, produto);
         sincronizarCarrinho();
     }
 
     private BigDecimal precoUnitario(Produto produto, int quantidade) {
         return aplicacao.getPromocoes().precoUnitarioVigente(produto, quantidade);
+    }
+
+    /**
+     * Preço de tabela no item e ganho da promoção registrado como desconto (issue #46),
+     * preservando o acréscimo manual do operador.
+     */
+    private void aplicarPrecosVigentes(VendaItem item, Produto produto) {
+        BigDecimal vigente = precoUnitario(produto, item.getQuantidade());
+        item.recalcularPrecos(produto.getPrecoVenda(), vigente);
+        marcarPromocao(produto, vigente);
     }
 
     private void marcarPromocao(Produto produto, BigDecimal preco) {
@@ -641,9 +690,7 @@ public class PainelPDV extends JPanel {
             if (produto == null) {
                 continue;
             }
-            BigDecimal preco = precoUnitario(produto, item.getQuantidade());
-            item.setPrecoUnitario(preco);
-            marcarPromocao(produto, preco);
+            aplicarPrecosVigentes(item, produto);
         }
         sincronizarCarrinho();
         return antes.compareTo(totalDoCarrinho()) != 0;
@@ -677,22 +724,18 @@ public class PainelPDV extends JPanel {
                 Ui.erro(this, "Estoque insuficiente para " + produto.getNome()
                         + ". Disponível: " + produto.getEstoque() + ".");
                 quantidade = produto.getEstoque();
-                if (quantidade <= 0) {
-                    removerItemDoCarrinho(linha);
-                } else {
-                    item.setQuantidade(quantidade);
-                    BigDecimal preco = precoUnitario(produto, quantidade);
-                    item.setPrecoUnitario(preco);
-                    marcarPromocao(produto, preco);
-                }
+            if (quantidade <= 0) {
+                removerItemDoCarrinho(linha);
             } else {
                 item.setQuantidade(quantidade);
-                if (produto != null) {
-                    BigDecimal preco = precoUnitario(produto, quantidade);
-                    item.setPrecoUnitario(preco);
-                    marcarPromocao(produto, preco);
-                }
+                aplicarPrecosVigentes(item, produto);
             }
+        } else {
+            item.setQuantidade(quantidade);
+            if (produto != null) {
+                aplicarPrecosVigentes(item, produto);
+            }
+        }
         }
         sincronizarCarrinho();
     }
@@ -719,16 +762,17 @@ public class PainelPDV extends JPanel {
             return;
         }
         Object valor = modeloCarrinho.getValueAt(linha, 2);
-        BigDecimal descontoItem = parseMoeda(String.valueOf(valor));
+        BigDecimal digitado = parseMoeda(String.valueOf(valor));
         VendaItem item = carrinho.get(linha);
-        if (descontoItem.compareTo(BigDecimal.ZERO) <= 0) {
-            item.setDesconto(BigDecimal.ZERO);
-        } else if (descontoItem.compareTo(item.getValorBruto()) >= 0) {
-            Ui.erro(this, "O desconto de " + item.getProdutoNome() + " não pode alcançar o subtotal do item.");
-            item.setDesconto(BigDecimal.ZERO);
-        } else {
-            item.setDesconto(descontoItem);
+        if (digitado.compareTo(BigDecimal.ZERO) < 0) {
+            digitado = BigDecimal.ZERO;
         }
+        if (digitado.compareTo(item.getValorBruto()) >= 0) {
+            Ui.erro(this, "O desconto de " + item.getProdutoNome() + " não pode alcançar o subtotal do item.");
+            sincronizarCarrinho();
+            return;
+        }
+        item.setDesconto(digitado.max(item.getDescontoPromocao()));
         sincronizarCarrinho();
     }
 
@@ -736,10 +780,7 @@ public class PainelPDV extends JPanel {
         modeloCarrinho.setRowCount(0);
         BigDecimal soma = BigDecimal.ZERO;
         for (VendaItem item : carrinho) {
-            String nome = item.getProdutoNome();
-            if (produtosComPromocao.contains(item.getProdutoId())) {
-                nome = nome + " (promo)";
-            }
+            String nome = nomeCarrinho(item);
             modeloCarrinho.addRow(new Object[]{
                     nome,
                     item.getQuantidade(),
@@ -766,6 +807,16 @@ public class PainelPDV extends JPanel {
         BigDecimal totalVenda = subtotal.subtract(descontoValor).subtract(valorPontos);
         if (totalVenda.compareTo(BigDecimal.ZERO) < 0) {
             totalVenda = BigDecimal.ZERO;
+        }
+        BigDecimal descontosItens = BigDecimal.ZERO;
+        for (VendaItem item : carrinho) {
+            descontosItens = descontosItens.add(item.getDesconto());
+        }
+        BigDecimal descontos = descontosItens.add(descontoValor).add(valorPontos);
+        if (descontos.compareTo(BigDecimal.ZERO) > 0) {
+            rotuloDescontos.setText("Descontos: \u2212 " + Ui.moeda(descontos));
+        } else {
+            rotuloDescontos.setText(" ");
         }
         total.setText(Ui.moeda(totalVenda));
         calcularTroco();
@@ -826,6 +877,67 @@ public class PainelPDV extends JPanel {
 
     private BigDecimal parseMoeda(String texto) {
         return Ui.parseMoeda(texto);
+    }
+
+    /** Destaque visual do desconto no carrinho (issue #47): célula laranja, prefixo − e tooltip. */
+    private void configurarDestaqueCarrinho() {
+        Color textoPadrao = tabelaCarrinho.getForeground();
+        Font fontePadrao = tabelaCarrinho.getFont();
+        tabelaCarrinho.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object valor, boolean selecionado,
+                    boolean foco, int linha, int coluna) {
+                Component c = super.getTableCellRendererComponent(t, valor, selecionado, foco, linha, coluna);
+                if (!selecionado) {
+                    c.setBackground(linha % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
+                    c.setForeground(textoPadrao);
+                }
+                c.setFont(fontePadrao);
+                String texto = String.valueOf(valor);
+                if (coluna == 2 && c instanceof JLabel) {
+                    if (parseMoeda(texto).compareTo(BigDecimal.ZERO) > 0) {
+                        c.setForeground(Ui.COR_ALERTA);
+                        c.setFont(fontePadrao.deriveFont(Font.BOLD));
+                        ((JLabel) c).setText("\u2212 " + texto);
+                    } else {
+                        ((JLabel) c).setText(texto);
+                    }
+                }
+                return c;
+            }
+        });
+        tabelaCarrinho.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                tabelaCarrinho.setToolTipText(dicaDescontoLinha(tabelaCarrinho.rowAtPoint(e.getPoint())));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                tabelaCarrinho.setToolTipText(null);
+            }
+        });
+    }
+
+    private String dicaDescontoLinha(int linhaView) {
+        if (linhaView < 0 || linhaView >= tabelaCarrinho.getRowCount()) {
+            return null;
+        }
+        int modelRow = tabelaCarrinho.convertRowIndexToModel(linhaView);
+        if (modelRow >= carrinho.size()) {
+            return null;
+        }
+        VendaItem item = carrinho.get(modelRow);
+        BigDecimal promocao = item.getDescontoPromocao();
+        BigDecimal manual = item.getDescontoManual();
+        if (promocao.compareTo(BigDecimal.ZERO) <= 0 && manual.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        StringBuilder dica = new StringBuilder("Descontos da linha: promoção ").append(Ui.moeda(promocao));
+        if (manual.compareTo(BigDecimal.ZERO) > 0) {
+            dica.append(" + manual ").append(Ui.moeda(manual));
+        }
+        return dica.append(" = \u2212").append(Ui.moeda(promocao.add(manual))).toString();
     }
 
     private void abrirPagamentoDividido() {
