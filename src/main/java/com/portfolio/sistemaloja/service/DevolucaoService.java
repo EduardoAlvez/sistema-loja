@@ -52,7 +52,7 @@ public class DevolucaoService {
             }
             item.setProdutoId(vendido.getProdutoId());
             item.setProdutoNome(vendido.getProdutoNome());
-            item.setValorUnitario(vendido.getPrecoUnitario());
+            item.setValorUnitario(vendido.getUnitarioPago());
             devolucao.adicionarItem(item);
         }
         devolucao.recalcularValor();

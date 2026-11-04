@@ -59,6 +59,27 @@ class DevolucaoServiceTest {
     }
 
     @Test
+    void devolucaoDeItemComDescontoEstornaOValorEfetivamentePago() {
+        Produto agua = app.getProdutos().buscarPorCodigoBarras("7891000100104");
+        Venda venda = new Venda();
+        venda.setUsuarioId(operador.getId());
+        venda.setClienteId(maria.getId());
+        venda.setFormaPagamento(FormaPagamento.DINHEIRO);
+        VendaItem comDesconto = new VendaItem(agua.getId(), agua.getNome(), 4, agua.getPrecoVenda());
+        comDesconto.setDesconto(new BigDecimal("1.00"));
+        venda.adicionarItem(comDesconto);
+        venda.setValorPago(comDesconto.getSubtotal());
+        Venda registrada = app.getVendas().registrar(venda);
+        VendaItem item = registrada.getItens().get(0);
+
+        Devolucao devolucao = app.getDevolucoes().devolver(registrada.getId(),
+                List.of(new DevolucaoItem(item.getId(), null, null, 2, null)), true, null, operador);
+
+        assertEquals(0, new BigDecimal("2.25").compareTo(devolucao.getItens().get(0).getValorUnitario()));
+        assertEquals(0, new BigDecimal("4.50").compareTo(devolucao.getValor()));
+    }
+
+    @Test
     void usaOprecoDaVendaMesmoSeOProdutoMudarDePreco() {
         Venda registrada = app.getVendas().registrar(venda(2, maria.getId()));
         VendaItem item = registrada.getItens().get(0);

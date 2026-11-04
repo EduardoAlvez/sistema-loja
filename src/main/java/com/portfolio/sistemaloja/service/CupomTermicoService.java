@@ -74,6 +74,9 @@ public class CupomTermicoService {
             linhas.add(String.format("%-22s%3d%10s%10s",
                     truncar(item.getProdutoNome(), 22), item.getQuantidade(),
                     VALOR.format(item.getPrecoUnitario()), VALOR.format(item.getSubtotal())));
+            if (item.getDesconto() != null && item.getDesconto().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                linhas.add(linhaValor("  - Desconto", item.getDesconto()));
+            }
         }
         linhas.add("-".repeat(LARGURA));
         if (venda.getDesconto().compareTo(BigDecimal.ZERO) > 0) {

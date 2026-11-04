@@ -244,7 +244,10 @@ class PromocaoServiceTest {
         Venda registrada = app.getVendas().registrar(venda);
 
         VendaItem item = registrada.getItens().get(0);
-        assertEquals(0, new BigDecimal("7.00").compareTo(item.getPrecoUnitario()));
+        assertEquals(0, new BigDecimal("8.99").compareTo(item.getPrecoUnitario()),
+                "unitario gravado deve ser o preco de tabela");
+        assertEquals(0, new BigDecimal("5.97").compareTo(item.getDesconto()),
+                "a diferenca da promocao vira desconto do item");
         assertEquals(0, new BigDecimal("21.00").compareTo(registrada.getTotal()));
     }
 
@@ -284,8 +287,10 @@ class PromocaoServiceTest {
 
         Venda registrada = app.getVendas().registrar(venda);
 
-        assertEquals(0, new BigDecimal("6.00").compareTo(
+        assertEquals(0, new BigDecimal("8.99").compareTo(
                 registrada.getItens().get(0).getPrecoUnitario()));
+        assertEquals(0, new BigDecimal("8.97").compareTo(
+                registrada.getItens().get(0).getDesconto()));
         assertEquals(0, new BigDecimal("18.00").compareTo(registrada.getTotal()));
     }
 
